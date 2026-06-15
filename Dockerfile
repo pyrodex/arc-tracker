@@ -25,16 +25,14 @@ COPY backend/package.json backend/package-lock.json* ./backend/
 RUN cd backend && npm install --omit=dev --prefer-offline
 
 # Copy application code
-COPY backend/        ./backend/
-COPY scripts/        ./scripts/
-COPY docker/entrypoint.sh ./entrypoint.sh
+COPY backend/  ./backend/
+COPY scripts/  ./scripts/
 
 # Copy built frontend
 COPY --from=frontend-builder /build/frontend/dist ./frontend/dist
 
 # Pre-create data dirs with correct ownership so the volume mount inherits them
-RUN mkdir -p /data/icons && chown -R arcapp:arcapp /data && \
-    chmod +x /app/entrypoint.sh
+RUN mkdir -p /data/icons && chown -R arcapp:arcapp /data
 
 # Drop to non-root
 USER arcapp
@@ -49,4 +47,6 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://localhost:3001/api/blueprints/categories || exit 1
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Ensure data dir exists, start icon download in background, then start server.
+# Using exec so the Node process receives SIGTERM directly from Docker.
+CMD ["sh", "-c", "mkdir -p ${DATA_DIR}/icons && node /app/scripts/download-icons.js & exec node /app/backend/src/server.js"]
