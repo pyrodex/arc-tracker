@@ -10,7 +10,7 @@
 
 services:
   arc-tracker:
-    image: ghcr.io/richiecrews1980/arc-blueprint-tracker:${IMAGE_TAG:-latest}
+    image: ghcr.io/pyrodex/arc-blueprint-tracker:${IMAGE_TAG:-latest}
     container_name: arc-blueprint-tracker
     restart: unless-stopped
 

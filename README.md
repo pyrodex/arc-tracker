@@ -130,7 +130,7 @@ Layer caching via GitHub Actions cache keeps builds fast after the first run.
 
 The image is published at:
 ```
-ghcr.io/richiecrews1980/arc-blueprint-tracker
+ghcr.io/pyrodex/arc-blueprint-tracker
 ```
 
 ## Reverse Proxy Example (Caddy)
