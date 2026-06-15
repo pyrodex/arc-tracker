@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+*/node_modules
+**/.npm
+
+# Build outputs
+frontend/dist
+backend/dist
+data/
+
+# Dev/test files
+*.test.*
+*.spec.*
+**/*.test.*
+**/*.spec.*
+coverage/
+.nyc_output/
+
+# Source control
+.git
+.gitignore
+
+# Editor
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / env
+.env
+.env.*
+*.pem
+*.key
+
+# Docs
+*.md
+docs/
+
+# Docker files (already in context root)
+docker-compose*.yml

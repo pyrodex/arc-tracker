@@ -1,0 +1,59 @@
+services:
+  arc-tracker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: arc-blueprint-tracker:latest
+    container_name: arc-blueprint-tracker
+    restart: unless-stopped
+
+    ports:
+      # Expose locally; your reverse proxy should front this
+      - "${HOST_PORT:-3001}:3001"
+
+    volumes:
+      # Persist SQLite database and downloaded icons
+      - arc-tracker-data:/data
+
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATA_DIR: /data
+
+    # Resource limits (adjust to your host)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+    # Read-only root filesystem (only /data and /tmp are writable)
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/blueprints/categories"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  arc-tracker-data:
+    driver: local
