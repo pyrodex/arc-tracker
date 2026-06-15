@@ -16,13 +16,26 @@ A self-hosted web tool for tracking learned and extra blueprints across multiple
 
 ## Quick Start
 
-### Docker (recommended)
+### Docker — pre-built image from GitHub Container Registry (easiest)
+
+```bash
+# Pull and run the latest image (no build required)
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+Pin to a specific release:
+
+```bash
+IMAGE_TAG=v1.0.0 docker compose -f docker-compose.ghcr.yml up -d
+```
+
+Open http://localhost:3001
+
+### Docker — build locally from source
 
 ```bash
 docker compose up -d
 ```
-
-Open http://localhost:3001
 
 ### Override the host port
 
@@ -102,6 +115,23 @@ arc-blueprint-tracker/
 - **Read-only root filesystem** — only `/data` and `/tmp` are writable
 - **All capabilities dropped** — `cap_drop: ALL`
 - **No authentication** — designed to sit behind a reverse proxy (nginx, Caddy, Traefik) that handles auth
+
+## CI/CD
+
+A GitHub Actions workflow (`.github/workflows/docker-build.yml`) automatically builds and publishes the image to GitHub Container Registry on every push to `main`:
+
+| Event | What happens |
+|-------|-------------|
+| Push to `main` | Build for `linux/amd64` + `linux/arm64`, push `latest` + `sha-<short>` tags |
+| Push a `v*.*.*` tag | Also publish semver tags (`1.2.3`, `1.2`, `1`) |
+| Pull request | Build only (no push) to validate the Dockerfile |
+
+Layer caching via GitHub Actions cache keeps builds fast after the first run.
+
+The image is published at:
+```
+ghcr.io/richiecrews1980/arc-blueprint-tracker
+```
 
 ## Reverse Proxy Example (Caddy)
 

@@ -1,0 +1,61 @@
+# docker-compose using the pre-built image from GitHub Container Registry.
+# No local build required — just pull and run.
+#
+# Usage:
+#   docker compose -f docker-compose.ghcr.yml pull
+#   docker compose -f docker-compose.ghcr.yml up -d
+#
+# Pin to a specific release:
+#   IMAGE_TAG=v1.0.0 docker compose -f docker-compose.ghcr.yml up -d
+
+services:
+  arc-tracker:
+    image: ghcr.io/richiecrews1980/arc-blueprint-tracker:${IMAGE_TAG:-latest}
+    container_name: arc-blueprint-tracker
+    restart: unless-stopped
+
+    ports:
+      - "${HOST_PORT:-3001}:3001"
+
+    volumes:
+      - arc-tracker-data:/data
+
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DATA_DIR: /data
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,noexec,nosuid,nodev
+
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/blueprints/categories"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  arc-tracker-data:
+    driver: local
