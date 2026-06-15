@@ -1,18 +1,17 @@
 import { useState } from 'react';
 import { CheckCircle2, Circle, Plus, Minus } from 'lucide-react';
-import type { Blueprint, Character, TrackingMap } from '../types';
+import type { Blueprint, TrackingMap } from '../types';
 import BlueprintIcon from './BlueprintIcon';
 import { CategoryBadge } from './CategoryIcon';
 
 interface Props {
   blueprint: Blueprint;
-  character: Character;
   trackingMap: TrackingMap;
   onToggleLearned: (blueprintId: number, learned: boolean) => void;
   onSetExtras: (blueprintId: number, extras: number) => void;
 }
 
-export default function BlueprintCard({ blueprint, character, trackingMap, onToggleLearned, onSetExtras }: Props) {
+export default function BlueprintCard({ blueprint, trackingMap, onToggleLearned, onSetExtras }: Props) {
   const tracking = trackingMap[blueprint.id];
   const learned = tracking?.learned === 1;
   const extras = tracking?.extras ?? 0;

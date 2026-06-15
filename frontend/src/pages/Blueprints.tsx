@@ -227,7 +227,6 @@ export default function Blueprints() {
                 <BlueprintCard
                   key={bp.id}
                   blueprint={bp}
-                  character={activeChar!}
                   trackingMap={trackingMap}
                   onToggleLearned={handleToggleLearned}
                   onSetExtras={handleSetExtras}
