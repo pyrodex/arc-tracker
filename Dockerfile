@@ -5,7 +5,7 @@ WORKDIR /build/frontend
 
 # Install deps first (layer cache)
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci --prefer-offline
+RUN npm install --prefer-offline
 
 # Build
 COPY frontend/ ./
@@ -22,7 +22,7 @@ WORKDIR /app
 
 # Install backend production dependencies
 COPY backend/package.json backend/package-lock.json* ./backend/
-RUN cd backend && npm ci --omit=dev --prefer-offline
+RUN cd backend && npm install --omit=dev --prefer-offline
 
 # Copy application code
 COPY backend/  ./backend/
