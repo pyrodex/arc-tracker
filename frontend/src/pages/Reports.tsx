@@ -184,7 +184,7 @@ function ExtrasInventory() {
               {isOpen && (
                 <div className="bg-arc-bg/40 px-4 py-3 border-t border-arc-border/40">
                   <div className="flex flex-wrap gap-3">
-                    {bp.character_breakdown.map(cb => (
+                    {[...bp.character_breakdown].sort((a, b) => a.character_name.localeCompare(b.character_name)).map(cb => (
                       <div
                         key={cb.character_id}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg border"
