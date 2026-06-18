@@ -42,6 +42,7 @@ export default function Reports() {
 function UnlearnedReport() {
   const { data, isLoading } = useUnlearnedReport();
   const { data: characters = [] } = useCharacters();
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   if (isLoading) return <LoadingState />;
   if (!data || characters.length === 0) return <EmptyState message="No characters or blueprints found." />;
@@ -55,58 +56,82 @@ function UnlearnedReport() {
     );
   }
 
+  const toggle = (id: number) => setExpanded(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
   return (
     <div>
       <p className="text-sm text-arc-muted mb-4">
         <span className="text-arc-text font-semibold">{data.length}</span> blueprint{data.length !== 1 ? 's' : ''} not learned by at least one character.
       </p>
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-arc-border">
-                <th className="text-left px-4 py-3 text-xs text-arc-muted font-medium uppercase tracking-wide">Blueprint</th>
-                <th className="text-left px-4 py-3 text-xs text-arc-muted font-medium uppercase tracking-wide hidden md:table-cell">Category</th>
-                {characters.map(c => (
-                  <th key={c.id} className="text-center px-2 py-3 text-xs font-medium uppercase tracking-wide min-w-[80px]">
-                    <span style={{ color: c.color }} className="truncate block max-w-[80px] mx-auto">{c.name}</span>
-                  </th>
-                ))}
-                <th className="text-center px-2 py-3 text-xs text-arc-muted font-medium uppercase tracking-wide">Missing</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((bp: UnlearnedBlueprint) => (
-                <tr key={bp.id} className="border-b border-arc-border/40 hover:bg-arc-hover/40 transition-colors">
-                  <td className="px-4 py-2.5">
-                    <div className="flex items-center gap-2">
-                      <BlueprintIcon slug={bp.slug} name={bp.name} category={bp.category} size={32} />
-                      <span className="text-arc-text font-medium">{bp.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2.5 hidden md:table-cell"><CategoryBadge category={bp.category} /></td>
-                  {(bp.characters as CharacterLearnStatus[]).map(cs => (
-                    <td key={cs.character_id} className="text-center px-2 py-2.5">
-                      {cs.learned
-                        ? <span className="text-arc-learned text-base">✓</span>
-                        : <span className="text-arc-danger/70 text-base">✗</span>
-                      }
-                    </td>
-                  ))}
-                  <td className="text-center px-2 py-2.5">
-                    <span className={`badge ${
-                      bp.unlearned_count === characters.length
-                        ? 'bg-arc-danger/15 text-arc-danger border border-arc-danger/30'
-                        : 'bg-arc-extra/15 text-arc-extra border border-arc-extra/30'
-                    }`}>
-                      {bp.unlearned_count}/{characters.length}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+
+      <div className="card overflow-hidden divide-y divide-arc-border/50">
+        {data.map((bp: UnlearnedBlueprint) => {
+          const isOpen    = expanded.has(bp.id);
+          const allMissing = bp.unlearned_count === characters.length;
+
+          return (
+            <div key={bp.id}>
+              {/* Collapsed row */}
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-arc-hover/40 transition-colors text-left"
+                onClick={() => toggle(bp.id)}
+              >
+                <BlueprintIcon slug={bp.slug} name={bp.name} category={bp.category} size={40} />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-arc-text">{bp.name}</span>
+                  <span className="ml-2 hidden sm:inline"><CategoryBadge category={bp.category} /></span>
+                </div>
+
+                {/* Missing count badge */}
+                <span className={`badge shrink-0 font-bold px-3 ${
+                  allMissing
+                    ? 'bg-arc-danger/15 text-arc-danger border border-arc-danger/30'
+                    : 'bg-arc-extra/15 text-arc-extra border border-arc-extra/30'
+                }`}>
+                  {bp.unlearned_count}/{characters.length} missing
+                </span>
+
+                {isOpen
+                  ? <ChevronDown  className="w-4 h-4 text-arc-muted shrink-0" />
+                  : <ChevronRight className="w-4 h-4 text-arc-muted shrink-0" />
+                }
+              </button>
+
+              {/* Expanded: character status pills */}
+              {isOpen && (
+                <div className="bg-arc-bg/40 px-4 py-3 border-t border-arc-border/40">
+                  <div className="flex flex-wrap gap-2">
+                    {(bp.characters as CharacterLearnStatus[]).map(cs => (
+                      <div
+                        key={cs.character_id}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg border"
+                        style={{
+                          backgroundColor: cs.character_color + (cs.learned ? '15' : '10'),
+                          borderColor:     cs.character_color + (cs.learned ? '40' : '30'),
+                        }}
+                      >
+                        <span className={`text-base leading-none ${cs.learned ? 'text-arc-learned' : 'text-arc-danger'}`}>
+                          {cs.learned ? '✓' : '✗'}
+                        </span>
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cs.character_color }} />
+                        <span className="text-sm" style={{ color: cs.character_color }}>{cs.character_name}</span>
+                        {cs.character_label && (
+                          <span className="text-xs text-arc-dim">
+                            · {cs.character_label.split(',').map((l: string) => l.trim()).filter(Boolean).join(', ')}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
