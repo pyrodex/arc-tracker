@@ -23,14 +23,19 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'blob:'],
       connectSrc: ["'self'"],
       fontSrc: ["'self'", 'data:'],
+      workerSrc: ["'self'", 'blob:'],
     },
   },
+  // Allow embedding in reverse proxy iframes if needed
   crossOriginEmbedderPolicy: false,
+  // Don't set COEP which can block subresource loads
+  crossOriginOpenerPolicy: false,
 }));
 
 app.use(compression());
