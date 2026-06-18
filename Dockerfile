@@ -1,5 +1,5 @@
 # ── Stage 1: Build frontend ────────────────────────────────────────────────────
-FROM node:20-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /build/frontend
 
@@ -13,7 +13,7 @@ RUN npm run build
 
 
 # ── Stage 2: Production image ──────────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 # Security: don't run as root
 RUN addgroup -g 1001 -S arcapp && adduser -u 1001 -S arcapp -G arcapp
