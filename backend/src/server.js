@@ -351,6 +351,21 @@ app.get('/api/reports/extras', (req, res) => {
   res.json(result);
 });
 
+// ── Health / debug ─────────────────────────────────────────────────────────────
+app.get('/health', (req, res) => {
+  const bpCount = db.prepare('SELECT COUNT(*) as c FROM blueprints').get().c;
+  const charCount = db.prepare('SELECT COUNT(*) as c FROM characters').get().c;
+  res.json({
+    status: 'ok',
+    frontend: fs.existsSync(STATIC_DIR) ? 'present' : 'MISSING',
+    static_dir: STATIC_DIR,
+    blueprints: bpCount,
+    characters: charCount,
+    node: process.version,
+    uptime_s: Math.floor(process.uptime()),
+  });
+});
+
 // ── Serve frontend ─────────────────────────────────────────────────────────────
 if (fs.existsSync(STATIC_DIR)) {
   app.use(express.static(STATIC_DIR, { maxAge: '1d', etag: true }));
