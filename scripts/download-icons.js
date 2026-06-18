@@ -93,8 +93,20 @@ function guessFileNames(name) {
     `File:${titleCase} Blueprint.png`,
     `File:${titleCase}.png`,
     `File:${titleCase.replace(/ /g, '_')}.png`,
+    `File:Arc Raiders ${titleCase}.png`,
   ];
   return [...new Set(candidates)];
+}
+
+// Fextralife CDN URL patterns (tried before MediaWiki API as they're more reliable)
+function fextralifeUrls(name, slug) {
+  const base = 'https://arcraiders.wiki.fextralife.com/file/Arc-Raiders';
+  return [
+    `${base}/${slug}-arc-raiders.png`,
+    `${base}/${slug}.png`,
+    `${base}/${slug}-blueprint-arc-raiders.png`,
+    `${base}/${name.toLowerCase().replace(/[^a-z0-9]+/g, '%20')}.png`,
+  ];
 }
 
 async function downloadImage(url, destPath) {
@@ -146,15 +158,23 @@ async function processBlueprint(bp) {
     return { name: bp.name, status: 'skip' };
   }
 
-  const fileNames = guessFileNames(bp.name);
-  let downloaded = false;
+  // 1. Try Fextralife direct URLs first (faster, no API call)
+  for (const url of fextralifeUrls(bp.name, slug)) {
+    try {
+      await downloadImage(url, destPng);
+      return { name: bp.name, status: 'downloaded', url };
+    } catch {
+      // try next
+    }
+  }
 
+  // 2. Fall back to MediaWiki API on arcraiders.wiki
+  const fileNames = guessFileNames(bp.name);
   for (const fileName of fileNames) {
     try {
       const imgUrl = await resolveWikiImageUrl(WIKI_BASE, fileName);
       if (imgUrl) {
         await downloadImage(imgUrl, destPng);
-        downloaded = true;
         return { name: bp.name, status: 'downloaded', url: imgUrl };
       }
     } catch {
@@ -162,11 +182,10 @@ async function processBlueprint(bp) {
     }
   }
 
-  if (!downloaded) {
-    const svg = generateSvgPlaceholder(bp.name, bp.category);
-    fs.writeFileSync(destSvg, svg, 'utf8');
-    return { name: bp.name, status: 'placeholder' };
-  }
+  // 3. Generate SVG placeholder
+  const svg = generateSvgPlaceholder(bp.name, bp.category);
+  fs.writeFileSync(destSvg, svg, 'utf8');
+  return { name: bp.name, status: 'placeholder' };
 }
 
 async function main() {

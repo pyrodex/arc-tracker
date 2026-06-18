@@ -5,20 +5,29 @@ export default {
     extend: {
       colors: {
         arc: {
-          bg:      '#080c14',
-          panel:   '#0d1520',
-          card:    '#111a2c',
-          border:  '#1e2d47',
-          hover:   '#162035',
-          accent:  '#38bdf8',
-          learned: '#22c55e',
-          extra:   '#f59e0b',
-          danger:  '#ef4444',
+          bg:      'rgb(var(--arc-bg)      / <alpha-value>)',
+          panel:   'rgb(var(--arc-panel)   / <alpha-value>)',
+          card:    'rgb(var(--arc-card)    / <alpha-value>)',
+          border:  'rgb(var(--arc-border)  / <alpha-value>)',
+          hover:   'rgb(var(--arc-hover)   / <alpha-value>)',
+          accent:  'rgb(var(--arc-accent)  / <alpha-value>)',
+          learned: 'rgb(var(--arc-learned) / <alpha-value>)',
+          extra:   'rgb(var(--arc-extra)   / <alpha-value>)',
+          danger:  'rgb(var(--arc-danger)  / <alpha-value>)',
+          text:    'rgb(var(--arc-text)    / <alpha-value>)',
+          muted:   'rgb(var(--arc-text-muted) / <alpha-value>)',
+          dim:     'rgb(var(--arc-text-dim)   / <alpha-value>)',
         },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
+      },
+      keyframes: {
+        'fade-in': { from: { opacity: '0', transform: 'translateY(4px)' }, to: { opacity: '1', transform: 'translateY(0)' } },
+      },
+      animation: {
+        'fade-in': 'fade-in 0.2s ease-out',
       },
     },
   },

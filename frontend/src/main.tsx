@@ -3,7 +3,11 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
+import { initTheme } from './hooks/useTheme';
 import './index.css';
+
+// Apply saved theme before first paint to prevent flash
+initTheme();
 
 const queryClient = new QueryClient({
   defaultOptions: {
