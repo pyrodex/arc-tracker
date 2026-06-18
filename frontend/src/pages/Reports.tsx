@@ -105,7 +105,7 @@ function UnlearnedReport() {
               {isOpen && (
                 <div className="bg-arc-bg/40 px-4 py-3 border-t border-arc-border/40">
                   <div className="flex flex-wrap gap-2">
-                    {(bp.characters as CharacterLearnStatus[]).map(cs => (
+                    {[...(bp.characters as CharacterLearnStatus[])].sort((a, b) => a.character_name.localeCompare(b.character_name)).map(cs => (
                       <div
                         key={cs.character_id}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg border"
