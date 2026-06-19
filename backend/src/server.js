@@ -302,7 +302,7 @@ app.get('/api/reports/unlearned', (req, res) => {
     SELECT b.id, b.name, b.slug, b.category, b.map, b.condition
     FROM blueprints b
     WHERE b.in_game = 1
-    ORDER BY b.sort_order, b.name
+    ORDER BY b.name COLLATE NOCASE
   `).all();
 
   const allTracking = db.prepare(`
