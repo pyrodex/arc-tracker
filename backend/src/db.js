@@ -68,8 +68,7 @@ function initSchema() {
 }
 
 function seedBlueprints() {
-  const count = db.prepare('SELECT COUNT(*) as c FROM blueprints').get().c;
-  if (count > 0) return;
+  const categoryOrder = ['weapons', 'mods', 'explosives', 'medicine', 'augments', 'utility', 'crafting'];
 
   const insert = db.prepare(`
     INSERT OR IGNORE INTO blueprints
@@ -78,9 +77,15 @@ function seedBlueprints() {
       (@name, @slug, @category, @map, @condition, @containers, @quest_reward, @trials_reward, @in_game, @sort_order)
   `);
 
-  const categoryOrder = ['weapons', 'mods', 'explosives', 'medicine', 'augments', 'utility', 'crafting'];
-  const insertMany = db.transaction((blueprints) => {
+  // Sync in_game flag so that blueprints added/enabled in the seed data
+  // are reflected in existing databases without a full re-seed.
+  const updateInGame = db.prepare(
+    'UPDATE blueprints SET in_game = @in_game WHERE name = @name AND in_game != @in_game'
+  );
+
+  const upsertMany = db.transaction((blueprints) => {
     blueprints.forEach((bp, i) => {
+      const in_game = bp.in_game === false ? 0 : 1;
       insert.run({
         name: bp.name,
         slug: slugify(bp.name),
@@ -90,14 +95,17 @@ function seedBlueprints() {
         containers: bp.containers || null,
         quest_reward: bp.quest_reward || null,
         trials_reward: bp.trials_reward ? 1 : 0,
-        in_game: bp.in_game === false ? 0 : 1,
+        in_game,
         sort_order: categoryOrder.indexOf(bp.category) * 100 + i,
       });
+      updateInGame.run({ name: bp.name, in_game });
     });
   });
 
-  insertMany(BLUEPRINTS);
-  console.log(`Seeded ${BLUEPRINTS.length} blueprints`);
+  const before = db.prepare('SELECT COUNT(*) as c FROM blueprints').get().c;
+  upsertMany(BLUEPRINTS);
+  const after = db.prepare('SELECT COUNT(*) as c FROM blueprints').get().c;
+  if (after > before) console.log(`Seeded ${after - before} new blueprint(s) (total: ${after})`);
 }
 
 initSchema();

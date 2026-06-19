@@ -88,10 +88,10 @@ const BLUEPRINTS = [
   // ─── Utility ───────────────────────────────────────────────────────────────
   { name: 'Barricade Kit',      category: 'utility', map: 'All',           condition: 'Any',     containers: 'Electrical Containers', quest_reward: null,           trials_reward: true  },
   { name: 'Blue Light Stick',   category: 'utility', map: 'All',           condition: 'Any',     containers: 'Anywhere',             quest_reward: null,           trials_reward: true  },
-  { name: 'Crash Mat',          category: 'utility', map: 'All',           condition: 'Any',     containers: 'Unknown',              quest_reward: null,           trials_reward: false, in_game: false },
+  { name: 'Crash Mat',          category: 'utility', map: 'All',           condition: 'Any',     containers: 'Unknown',              quest_reward: null,           trials_reward: false },
   { name: 'Fireworks Box',      category: 'utility', map: 'Condition Only',condition: 'Cold Snap',containers: 'Anywhere',            quest_reward: 'Test Case',    trials_reward: false },
   { name: 'Green Light Stick',  category: 'utility', map: 'All',           condition: 'Any',     containers: 'Anywhere',             quest_reward: null,           trials_reward: true  },
-  { name: 'Powered Descender',  category: 'utility', map: 'All',           condition: 'Any',     containers: 'Unknown',              quest_reward: null,           trials_reward: false, in_game: false },
+  { name: 'Powered Descender',  category: 'utility', map: 'All',           condition: 'Any',     containers: 'Unknown',              quest_reward: null,           trials_reward: false },
   { name: 'Red Light Stick',    category: 'utility', map: 'All',           condition: 'Any',     containers: 'Anywhere',             quest_reward: null,           trials_reward: true  },
   { name: 'Remote Raider Flare',category: 'utility', map: 'All',           condition: 'Any',     containers: 'Electrical Containers', quest_reward: null,           trials_reward: true  },
   { name: 'Snap Hook',          category: 'utility', map: 'Condition Only',condition: 'Electromagnetic Storm', containers: 'Anywhere',    quest_reward: null,           trials_reward: false },
