@@ -246,4 +246,3 @@ jobs:
             dependency versions in sync with `package.json`.
 
             This PR was opened automatically by the **Refresh lock files** CI job.
-          labels: dependencies
