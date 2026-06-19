@@ -1,5 +1,5 @@
 # ── Stage 1: Build frontend ────────────────────────────────────────────────────
-FROM node:20-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 
 WORKDIR /build/frontend
 
@@ -12,21 +12,32 @@ COPY frontend/ ./
 RUN npm run build
 
 
-# ── Stage 2: Production image ──────────────────────────────────────────────────
-FROM node:20-alpine AS runner
+# ── Stage 2: Build backend deps (needs python3/make/g++ for better-sqlite3) ───
+FROM node:22-alpine AS backend-builder
+
+# Build tools required to compile better-sqlite3 native addon
+RUN apk add --no-cache python3 make g++
+
+WORKDIR /build/backend
+
+COPY backend/package.json backend/package-lock.json* ./
+RUN npm install --omit=dev --prefer-offline
+
+
+# ── Stage 3: Production image ──────────────────────────────────────────────────
+FROM node:22-alpine AS runner
 
 # Security: don't run as root
 RUN addgroup -g 1001 -S arcapp && adduser -u 1001 -S arcapp -G arcapp
 
 WORKDIR /app
 
-# Install backend production dependencies
-COPY backend/package.json backend/package-lock.json* ./backend/
-RUN cd backend && npm install --omit=dev --prefer-offline
-
 # Copy application code
 COPY backend/  ./backend/
 COPY scripts/  ./scripts/
+
+# Overlay pre-compiled backend node_modules (built with python3/make/g++)
+COPY --from=backend-builder /build/backend/node_modules ./backend/node_modules
 
 # Copy built frontend
 COPY --from=frontend-builder /build/frontend/dist ./frontend/dist
