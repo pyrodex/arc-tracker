@@ -216,6 +216,7 @@ jobs:
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout
@@ -233,14 +234,16 @@ jobs:
           echo "Refreshing frontend/package-lock.json"
           cd frontend && npm install --package-lock-only --ignore-scripts && cd ..
 
-      - name: Commit lock files if changed
-        run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add backend/package-lock.json frontend/package-lock.json
-          if git diff --cached --quiet; then
-            echo "Lock files already up to date — nothing to commit."
-          else
-            git commit -m "chore: refresh package-lock.json files [skip ci]"
-            git push
-          fi
+      - name: Open PR if lock files changed
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore: refresh package-lock.json files"
+          branch: chore/refresh-lockfiles
+          delete-branch: true
+          title: "chore: refresh package-lock.json files"
+          body: |
+            Automated refresh of `package-lock.json` files to keep resolved
+            dependency versions in sync with `package.json`.
+
+            This PR was opened automatically by the **Refresh lock files** CI job.
+          labels: dependencies
