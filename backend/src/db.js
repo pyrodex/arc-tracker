@@ -77,11 +77,12 @@ function seedBlueprints() {
       (@name, @slug, @category, @map, @condition, @containers, @quest_reward, @trials_reward, @in_game, @sort_order)
   `);
 
-  // Sync in_game flag so that blueprints added/enabled in the seed data
-  // are reflected in existing databases without a full re-seed.
-  const updateInGame = db.prepare(
-    'UPDATE blueprints SET in_game = @in_game WHERE name = @name AND in_game != @in_game'
-  );
+  // Sync mutable fields so seed corrections are reflected in existing databases.
+  const syncFields = db.prepare(`
+    UPDATE blueprints
+    SET category = @category, in_game = @in_game
+    WHERE name = @name AND (category != @category OR in_game != @in_game)
+  `);
 
   const upsertMany = db.transaction((blueprints) => {
     blueprints.forEach((bp, i) => {
@@ -98,7 +99,7 @@ function seedBlueprints() {
         in_game,
         sort_order: categoryOrder.indexOf(bp.category) * 100 + i,
       });
-      updateInGame.run({ name: bp.name, in_game });
+      syncFields.run({ name: bp.name, category: bp.category, in_game });
     });
   });
 
