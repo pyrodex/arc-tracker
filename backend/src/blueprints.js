@@ -26,7 +26,7 @@ const BLUEPRINTS = [
   { name: 'Rascal',       category: 'weapons', map: 'All',          condition: 'Any',                          containers: 'Raider Containers',                          quest_reward: null,                    trials_reward: true  },
   { name: 'Tempest',      category: 'weapons', map: 'Condition Only',condition: 'Night Raid, Hurricane',        containers: 'Residential Containers, First Wave Cache',   quest_reward: null,                    trials_reward: true  },
   { name: 'Torrente',     category: 'weapons', map: 'All',          condition: 'Any',                          containers: 'Raider Containers',                          quest_reward: null,                    trials_reward: true  },
-  { name: 'Trailblazer',  category: 'weapons', map: 'Stella Montis',condition: 'Any',                          containers: 'Anywhere',                                   quest_reward: null,                    trials_reward: true  },
+  { name: 'Trailblazer',  category: 'explosives', map: 'Stella Montis',condition: 'Any',                        containers: 'Anywhere',                                   quest_reward: null,                    trials_reward: true  },
   { name: 'Venator',      category: 'weapons', map: 'All',          condition: 'Any',                          containers: 'Raider Containers',                          quest_reward: null,                    trials_reward: true  },
   { name: 'Vulcano',      category: 'weapons', map: 'Condition Only',condition: 'Hidden Bunker, First Wave',   containers: 'Anywhere, First Wave Cache',                  quest_reward: null,                    trials_reward: true  },
 
