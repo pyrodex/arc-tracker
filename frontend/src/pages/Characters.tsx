@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Pencil, Trash2, Users, Minus, Plus } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Users, Minus, Plus, AlertTriangle } from 'lucide-react';
 import type { Character } from '../types';
 import { useCharacters, useCreateCharacter, useUpdateCharacter, useDeleteCharacter } from '../hooks/useApi';
 import Modal from '../components/Modal';
@@ -142,10 +142,17 @@ export default function Characters() {
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Character" width="max-w-sm">
         {deleteTarget && (
           <div>
-            <p className="text-arc-muted text-sm mb-1">
-              Delete <strong className="text-arc-text">{deleteTarget.name}</strong>?
-            </p>
-            <p className="text-arc-dim text-xs mb-5">All tracking data for this character will be permanently removed.</p>
+            <div className="flex items-start gap-3 mb-4 p-3 rounded-lg bg-arc-danger/10 border border-arc-danger/30">
+              <AlertTriangle className="w-5 h-5 text-arc-danger shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-arc-text">
+                  Delete <span style={{ color: deleteTarget.color }}>{deleteTarget.name}</span>?
+                </p>
+                <p className="text-xs text-arc-muted mt-1">
+                  All blueprint tracking data for this character will be permanently removed. This cannot be undone.
+                </p>
+              </div>
+            </div>
             <div className="flex justify-end gap-2">
               <button className="btn-ghost" onClick={() => setDeleteTarget(null)}>Cancel</button>
               <button
@@ -153,7 +160,7 @@ export default function Characters() {
                 disabled={deleteChar.isPending}
                 onClick={async () => { await deleteChar.mutateAsync(deleteTarget.id); setDeleteTarget(null); }}
               >
-                {deleteChar.isPending ? 'Deleting…' : 'Delete'}
+                {deleteChar.isPending ? 'Deleting…' : 'Yes, Delete'}
               </button>
             </div>
           </div>

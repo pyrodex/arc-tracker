@@ -60,7 +60,7 @@ export default function CharacterForm({ initial, onSubmit, onCancel, loading }: 
     onSubmit({
       name: name.trim(),
       label: joinLabels(labels),
-      notes: notes.trim() || undefined,
+      notes: notes.trim(),
       color,
     });
   };
