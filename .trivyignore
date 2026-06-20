@@ -1,15 +1,31 @@
 # ── npm-internal package CVEs ────────────────────────────────────────────────
 #
-# npm is present in the image as part of the Node.js base image but is NEVER
-# executed at runtime. The application runs as a plain `node` process.
-# The CVEs below affect packages bundled inside npm itself (used only when npm
-# installs or extracts packages), which never happens in this production
-# container. The attack surface is zero.
+# npm ships as part of the Node.js base image and is present in the production
+# container, but it is NEVER executed at runtime. The application runs purely
+# as a `node` process (no `npm install`, no `npm run`). All CVEs listed here
+# affect packages that are bundled INSIDE npm for npm's own use (package
+# extraction, glob matching, IP formatting). They have zero attack surface in
+# this container.
+#
+# Suppressed until the Node.js / npm project ships a base-image update that
+# resolves them, at which point the daily Dependabot run or a Dockerfile
+# base-image bump will clear them.
 
-# tar <= 7.5.15 bundled inside npm@10.x — not reachable at runtime.
-# Fix exists in tar@7.5.16+; npm@10 has not yet shipped a release with it.
+# tar <= 7.5.15  (npm@10 internal) — PAX size override file-smuggling.
+# Fixed in tar@7.5.16; npm@10 has not yet shipped a release with it.
 CVE-2026-53655
 
-# brace-expansion < 1.1.13 / 2.0.3 / 3.0.2 / 5.0.5 bundled inside npm@10.x
-# — not reachable at runtime.
+# brace-expansion  (npm@10 internal) — zero-step infinite loop DoS.
+# Fixed in 1.1.13 / 2.0.3 / 3.0.2 / 5.0.5.
 CVE-2026-33750
+
+# picomatch < 2.3.2 / 3.0.2 / 4.0.4  (npm@10 internal) — ReDoS via extglob.
+CVE-2026-33671
+
+# picomatch < 2.3.2 / 3.0.2 / 4.0.4  (npm@10 internal) — POSIX bracket
+# method injection / incorrect glob matching.
+CVE-2026-33672
+
+# ip-address < 10.1.1  (npm@10 internal) — XSS in Address6.group / .link.
+# Only relevant if output is rendered in a browser; npm never does this.
+CVE-2026-42338
