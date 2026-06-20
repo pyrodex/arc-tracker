@@ -1,5 +1,7 @@
 # ── Stage 1: Build frontend ────────────────────────────────────────────────────
-FROM node:22-alpine AS frontend-builder
+# node:22.23.0 includes undici 6.27.0 which patches CVE-2026-11525, CVE-2026-6733,
+# CVE-2026-9679, and CVE-2026-12151 (June 2026 Node.js security release).
+FROM node:22.23.0-alpine AS frontend-builder
 
 WORKDIR /build/frontend
 
@@ -13,7 +15,7 @@ RUN npm run build
 
 
 # ── Stage 2: Build backend deps (needs python3/make/g++ for better-sqlite3) ───
-FROM node:22-alpine AS backend-builder
+FROM node:22.23.0-alpine AS backend-builder
 
 # Build tools required to compile better-sqlite3 native addon
 RUN apk add --no-cache python3 make g++
@@ -25,11 +27,7 @@ RUN npm install --omit=dev --prefer-offline
 
 
 # ── Stage 3: Production image ──────────────────────────────────────────────────
-FROM node:22-alpine AS runner
-
-# Upgrade npm so its bundled tar meets CVE-2026-53655 fix (tar >= 7.5.16).
-# node:22-alpine ships with npm@10.x which bundles tar@7.5.15.
-RUN npm install -g npm@latest --ignore-scripts
+FROM node:22.23.0-alpine AS runner
 
 # Security: don't run as root
 RUN addgroup -g 1001 -S arcapp && adduser -u 1001 -S arcapp -G arcapp

@@ -1,0 +1,15 @@
+# ── npm-internal package CVEs ────────────────────────────────────────────────
+#
+# npm is present in the image as part of the Node.js base image but is NEVER
+# executed at runtime. The application runs as a plain `node` process.
+# The CVEs below affect packages bundled inside npm itself (used only when npm
+# installs or extracts packages), which never happens in this production
+# container. The attack surface is zero.
+
+# tar <= 7.5.15 bundled inside npm@10.x — not reachable at runtime.
+# Fix exists in tar@7.5.16+; npm@10 has not yet shipped a release with it.
+CVE-2026-53655
+
+# brace-expansion < 1.1.13 / 2.0.3 / 3.0.2 / 5.0.5 bundled inside npm@10.x
+# — not reachable at runtime.
+CVE-2026-33750
