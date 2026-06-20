@@ -54,6 +54,7 @@ app.use(express.json({ limit: '1mb' }));
 app.disable('x-powered-by');
 
 // ── Rate limiting ──────────────────────────────────────────────────────────────
+// Global limiter — covers every route including /icons and the SPA catch-all.
 const readLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 300,
@@ -62,6 +63,7 @@ const readLimiter = rateLimit({
   message: { error: 'Too many requests, please slow down.' },
 });
 
+// Tighter limit applied on top for mutating API calls.
 const writeLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 120,
@@ -70,7 +72,7 @@ const writeLimiter = rateLimit({
   message: { error: 'Too many write requests, please slow down.' },
 });
 
-app.use('/api', readLimiter);
+app.use(readLimiter);
 app.use('/api', (req, res, next) => {
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
     writeLimiter(req, res, next);
