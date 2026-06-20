@@ -40,13 +40,14 @@ function initSchema() {
     );
 
     CREATE TABLE IF NOT EXISTS characters (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      name       TEXT    NOT NULL,
-      label      TEXT,
-      notes      TEXT,
-      color      TEXT    NOT NULL DEFAULT '#3b82f6',
-      sort_order INTEGER DEFAULT 0,
-      created_at TEXT    DEFAULT (datetime('now'))
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT    NOT NULL,
+      label        TEXT,
+      notes        TEXT,
+      color        TEXT    NOT NULL DEFAULT '#3b82f6',
+      sort_order   INTEGER DEFAULT 0,
+      nomad_stash  INTEGER DEFAULT 0,
+      created_at   TEXT    DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS blueprint_tracking (
@@ -109,7 +110,15 @@ function seedBlueprints() {
   if (after > before) console.log(`Seeded ${after - before} new blueprint(s) (total: ${after})`);
 }
 
+function runMigrations() {
+  const cols = db.pragma('table_info(characters)').map(c => c.name);
+  if (!cols.includes('nomad_stash')) {
+    db.exec('ALTER TABLE characters ADD COLUMN nomad_stash INTEGER DEFAULT 0');
+  }
+}
+
 initSchema();
+runMigrations();
 seedBlueprints();
 
 module.exports = db;

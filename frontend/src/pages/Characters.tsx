@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Pencil, Trash2, Users } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Users, Minus, Plus } from 'lucide-react';
 import type { Character } from '../types';
 import { useCharacters, useCreateCharacter, useUpdateCharacter, useDeleteCharacter } from '../hooks/useApi';
 import Modal from '../components/Modal';
@@ -80,13 +80,40 @@ export default function Characters() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => setEditTarget(char)} className="btn-ghost p-2" title="Edit">
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button onClick={() => setDeleteTarget(char)} className="btn-danger p-2" title="Delete">
-                  <Trash2 className="w-4 h-4" />
-                </button>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="flex flex-col items-center gap-0.5">
+                  <span className="text-[10px] font-medium text-arc-muted uppercase tracking-wide">Nomad Stash</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="btn-ghost p-1 rounded disabled:opacity-40"
+                      title="Decrease Nomad Stash"
+                      disabled={char.nomad_stash <= 0 || updateChar.isPending}
+                      onClick={() => updateChar.mutate({ id: char.id, nomad_stash: Math.max(0, char.nomad_stash - 1) })}
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="min-w-[2rem] text-center text-sm font-semibold text-arc-text tabular-nums">
+                      {char.nomad_stash}
+                    </span>
+                    <button
+                      className="btn-ghost p-1 rounded"
+                      title="Increase Nomad Stash"
+                      disabled={updateChar.isPending}
+                      onClick={() => updateChar.mutate({ id: char.id, nomad_stash: char.nomad_stash + 1 })}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setEditTarget(char)} className="btn-ghost p-2" title="Edit">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setDeleteTarget(char)} className="btn-danger p-2" title="Delete">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}
