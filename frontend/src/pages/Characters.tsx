@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { UserPlus, Pencil, Trash2, Users, Minus, Plus, AlertTriangle } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Users, Minus, Plus, AlertTriangle, BookCheck, BookX, Layers } from 'lucide-react';
 import type { Character } from '../types';
-import { useCharacters, useCreateCharacter, useUpdateCharacter, useDeleteCharacter } from '../hooks/useApi';
+import { useCharacters, useCreateCharacter, useUpdateCharacter, useDeleteCharacter, useSummary } from '../hooks/useApi';
 import Modal from '../components/Modal';
 import CharacterForm from '../components/CharacterForm';
 
@@ -25,9 +25,14 @@ function LabelBadges({ label, color }: { label: string | null; color: string }) 
 
 export default function Characters() {
   const { data: characters = [], isLoading } = useCharacters();
+  const { data: summary } = useSummary();
   const createChar = useCreateCharacter();
   const updateChar = useUpdateCharacter();
   const deleteChar = useDeleteCharacter();
+
+  const statsById = Object.fromEntries(
+    (summary?.characters ?? []).map(s => [s.id, s])
+  );
 
   const [showCreate, setShowCreate]   = useState(false);
   const [editTarget, setEditTarget]   = useState<Character | null>(null);
@@ -75,6 +80,23 @@ export default function Characters() {
                 </div>
                 <LabelBadges label={char.label} color={char.color} />
                 {char.notes && <p className="text-xs text-arc-dim mt-1 truncate">{char.notes}</p>}
+                {statsById[char.id] && (() => {
+                  const s = statsById[char.id];
+                  const missing = s.total_blueprints - s.learned_count;
+                  return (
+                    <div className="flex items-center gap-2.5 mt-1.5">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400" title="Blueprints learned">
+                        <BookCheck className="w-3 h-3" />{s.learned_count}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-arc-muted" title="Blueprints not yet learned">
+                        <BookX className="w-3 h-3" />{missing}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400" title="Spare blueprints">
+                        <Layers className="w-3 h-3" />{s.total_extras}
+                      </span>
+                    </div>
+                  );
+                })()}
                 <p className="text-[10px] text-arc-dim mt-0.5">
                   Created {new Date(char.created_at).toLocaleDateString()}
                 </p>
