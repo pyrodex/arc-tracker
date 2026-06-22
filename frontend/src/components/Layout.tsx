@@ -88,6 +88,9 @@ export default function Layout() {
               className="hover:text-arc-accent transition-colors"
             >arcraiders.wiki</a>
           </p>
+          <p className="text-[10px] text-arc-dim/50 text-center tabular-nums">
+            v{__APP_VERSION__}
+          </p>
         </div>
       </aside>
 

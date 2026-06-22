@@ -1,6 +1,6 @@
 {
   "name": "arc-blueprint-tracker-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Backend for ARC Raiders blueprint tracker",
   "main": "src/server.js",
   "type": "commonjs",
