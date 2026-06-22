@@ -15,6 +15,10 @@ A self-hosted web tool for tracking learned and extra blueprints across multiple
 - **Multi-character support** — add as many characters as you need
 - **Multi-select labels** — assign one or more labels per character from presets (Wipe, Non-Wipe, Mule, PvP, PvE, HC, Leveling, Trade) or create custom labels
 - **Color coding** — pick from preset colors or a custom color picker; colors appear throughout the UI
+- **Notes** — optional free-text notes per character
+- **Nomad Stash** — per-character +/– counter for tracking your stash count, starting at zero
+- **At-a-glance stats** — each character card shows learned blueprint count, unlearned count, and spare/extra copies at a glance
+- **Delete confirmation** — a prominent confirmation prompt (with warning) is shown before a character and all its data are permanently removed
 
 ### Blueprints Page
 - **Filter by category** — Weapons, Mods, Explosives, Medicine, Augments, Utility, Crafting, or All
@@ -28,7 +32,7 @@ A self-hosted web tool for tracking learned and extra blueprints across multiple
 
 ### UI & Themes
 - **Dark, Light, and System/Auto** color schemes — toggle between dark (default), light, or follow the OS preference; choice persisted in `localStorage`
-- **Responsive layout** — sidebar navigation with an ARC Raiders–inspired logo mark
+- **Responsive layout** — sidebar navigation with the official ARC Raiders icon
 - **Modern design** — built with Tailwind CSS, smooth transitions, and consistent arc-themed color tokens
 
 ## Quick Start
@@ -90,7 +94,7 @@ arc-blueprint-tracker/
 ├── backend/
 │   └── src/
 │       ├── server.js          Express API + static file serving
-│       ├── db.js              better-sqlite3 setup, schema, and seed
+│       ├── db.js              better-sqlite3 setup, schema, seed, and migrations
 │       └── blueprints.js      Seed data (83 blueprints)
 ├── frontend/
 │   └── src/
@@ -116,12 +120,12 @@ arc-blueprint-tracker/
 | GET | `/api/blueprints/categories` | Category list with counts |
 | GET | `/api/characters` | All characters |
 | POST | `/api/characters` | Create a character |
-| PUT | `/api/characters/:id` | Update a character |
+| PUT | `/api/characters/:id` | Update a character (supports `nomad_stash`) |
 | DELETE | `/api/characters/:id` | Delete a character and all its tracking data |
 | GET | `/api/tracking/:characterId` | All tracking records for a character |
 | POST | `/api/tracking` | Upsert a single tracking record |
 | POST | `/api/tracking/batch` | Upsert up to 500 records at once |
-| GET | `/api/reports/summary` | Dashboard summary stats |
+| GET | `/api/reports/summary` | Dashboard summary stats (includes per-character learned/extras counts) |
 | GET | `/api/reports/unlearned` | Unlearned blueprints with per-character status |
 | GET | `/api/reports/extras` | Extras by blueprint with character breakdown |
 | POST | `/api/icons/refresh` | Trigger a background icon re-download |
