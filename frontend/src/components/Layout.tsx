@@ -12,27 +12,7 @@ const navItems = [
 
 function ArcRaidersLogo() {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-9 h-9">
-      {/* Outer hex ring */}
-      <polygon
-        points="20,2 36,11 36,29 20,38 4,29 4,11"
-        stroke="currentColor" strokeWidth="1.5" fill="none"
-        className="text-arc-accent" opacity="0.5"
-      />
-      {/* Inner diamond */}
-      <polygon
-        points="20,8 30,20 20,32 10,20"
-        stroke="currentColor" strokeWidth="1.5" fill="none"
-        className="text-arc-accent"
-      />
-      {/* Cross-hairs */}
-      <line x1="20" y1="2"  x2="20" y2="8"  stroke="currentColor" strokeWidth="1.5" className="text-arc-accent" />
-      <line x1="20" y1="32" x2="20" y2="38" stroke="currentColor" strokeWidth="1.5" className="text-arc-accent" />
-      <line x1="4"  y1="20" x2="10" y2="20" stroke="currentColor" strokeWidth="1.5" className="text-arc-accent" />
-      <line x1="30" y1="20" x2="36" y2="20" stroke="currentColor" strokeWidth="1.5" className="text-arc-accent" />
-      {/* Center dot */}
-      <circle cx="20" cy="20" r="2.5" fill="currentColor" className="text-arc-accent" />
-    </svg>
+    <img src="/arc-icon.png" alt="ARC Raiders" className="w-9 h-9 rounded-sm" />
   );
 }
 
