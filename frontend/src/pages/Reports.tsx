@@ -1,14 +1,59 @@
 import { useState } from 'react';
-import { BarChart3, AlertCircle, Package, ChevronDown, ChevronRight } from 'lucide-react';
+import { BarChart3, AlertCircle, Package, ChevronDown, ChevronRight, Users } from 'lucide-react';
 import { useUnlearnedReport, useExtrasReport, useCharacters } from '../hooks/useApi';
-import type { UnlearnedBlueprint, ExtrasReport, CharacterLearnStatus } from '../types';
+import type { UnlearnedBlueprint, ExtrasReport, CharacterLearnStatus, Character } from '../types';
 import { CategoryBadge } from '../components/CategoryIcon';
 import BlueprintIcon from '../components/BlueprintIcon';
 
 type ReportTab = 'unlearned' | 'extras';
 
+function CharacterFilter({
+  characters,
+  selectedId,
+  onChange,
+}: {
+  characters: Character[];
+  selectedId: number | null;
+  onChange: (id: number | null) => void;
+}) {
+  if (characters.length === 0) return null;
+  return (
+    <div className="flex items-center gap-2 flex-wrap mb-6">
+      <span className="text-xs text-arc-muted flex items-center gap-1 shrink-0">
+        <Users className="w-3.5 h-3.5" /> Filter:
+      </span>
+      <button
+        onClick={() => onChange(null)}
+        className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+          selectedId === null
+            ? 'bg-arc-accent/15 text-arc-accent border-arc-accent/40'
+            : 'text-arc-muted border-arc-border hover:text-arc-text hover:border-arc-muted/40'
+        }`}
+      >
+        All Characters
+      </button>
+      {characters.map(c => (
+        <button
+          key={c.id}
+          onClick={() => onChange(c.id)}
+          className="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
+          style={
+            selectedId === c.id
+              ? { backgroundColor: c.color + '25', color: c.color, borderColor: c.color + '60' }
+              : { color: 'var(--arc-muted)', borderColor: 'var(--arc-border)' }
+          }
+        >
+          {c.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function Reports() {
   const [tab, setTab] = useState<ReportTab>('unlearned');
+  const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
+  const { data: characters = [] } = useCharacters();
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
@@ -33,19 +78,30 @@ export default function Reports() {
         ))}
       </div>
 
-      {tab === 'unlearned' && <UnlearnedReport />}
-      {tab === 'extras'    && <ExtrasInventory />}
+      <CharacterFilter
+        characters={characters}
+        selectedId={selectedCharId}
+        onChange={setSelectedCharId}
+      />
+
+      {tab === 'unlearned' && <UnlearnedReport selectedCharId={selectedCharId} />}
+      {tab === 'extras'    && <ExtrasInventory selectedCharId={selectedCharId} />}
     </div>
   );
 }
 
-function UnlearnedReport() {
+function UnlearnedReport({ selectedCharId }: { selectedCharId: number | null }) {
   const { data, isLoading } = useUnlearnedReport();
   const { data: characters = [] } = useCharacters();
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   if (isLoading) return <LoadingState />;
   if (!data || characters.length === 0) return <EmptyState message="No characters or blueprints found." />;
+
+  const filtered = selectedCharId === null
+    ? data
+    : data.filter(bp => bp.characters.some(cs => cs.character_id === selectedCharId && !cs.learned));
+
   if (data.length === 0) {
     return (
       <div className="card p-10 text-center">
@@ -56,26 +112,32 @@ function UnlearnedReport() {
     );
   }
 
+  if (filtered.length === 0) {
+    return <EmptyState message="No unlearned blueprints for the selected character." />;
+  }
+
   const toggle = (id: number) => setExpanded(prev => {
     const next = new Set(prev);
     next.has(id) ? next.delete(id) : next.add(id);
     return next;
   });
 
+  const selectedChar = selectedCharId !== null ? characters.find(c => c.id === selectedCharId) : null;
+
   return (
     <div>
       <p className="text-sm text-arc-muted mb-4">
-        <span className="text-arc-text font-semibold">{data.length}</span> blueprint{data.length !== 1 ? 's' : ''} not learned by at least one character.
+        <span className="text-arc-text font-semibold">{filtered.length}</span> blueprint{filtered.length !== 1 ? 's' : ''} not learned
+        {selectedChar ? <> by <span className="font-semibold" style={{ color: selectedChar.color }}>{selectedChar.name}</span></> : ' by at least one character'}.
       </p>
 
       <div className="card overflow-hidden divide-y divide-arc-border/50">
-        {data.map((bp: UnlearnedBlueprint) => {
+        {filtered.map((bp: UnlearnedBlueprint) => {
           const isOpen    = expanded.has(bp.id);
           const allMissing = bp.unlearned_count === characters.length;
 
           return (
             <div key={bp.id}>
-              {/* Collapsed row */}
               <button
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-arc-hover/40 transition-colors text-left"
                 onClick={() => toggle(bp.id)}
@@ -86,7 +148,6 @@ function UnlearnedReport() {
                   <span className="ml-2 hidden sm:inline"><CategoryBadge category={bp.category} /></span>
                 </div>
 
-                {/* Missing count badge */}
                 <span className={`badge shrink-0 font-bold px-3 ${
                   allMissing
                     ? 'bg-arc-danger/15 text-arc-danger border border-arc-danger/30'
@@ -101,7 +162,6 @@ function UnlearnedReport() {
                 }
               </button>
 
-              {/* Expanded: character status pills */}
               {isOpen && (
                 <div className="bg-arc-bg/40 px-4 py-3 border-t border-arc-border/40">
                   <div className="flex flex-wrap gap-2">
@@ -137,30 +197,51 @@ function UnlearnedReport() {
   );
 }
 
-function ExtrasInventory() {
+function ExtrasInventory({ selectedCharId }: { selectedCharId: number | null }) {
   const { data, isLoading } = useExtrasReport();
+  const { data: characters = [] } = useCharacters();
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   if (isLoading) return <LoadingState />;
   if (!data || data.length === 0) return <EmptyState message="No extra blueprints found across any characters." />;
 
-  const totalExtras = data.reduce((s, bp) => s + bp.total_extras, 0);
+  const filtered = selectedCharId === null
+    ? data
+    : data.filter(bp => bp.character_breakdown.some(cb => cb.character_id === selectedCharId && cb.extras > 0));
+
+  const selectedChar = selectedCharId !== null ? characters.find(c => c.id === selectedCharId) : null;
+
+  const totalExtras = filtered.reduce((s, bp) => {
+    if (selectedCharId === null) return s + bp.total_extras;
+    const cb = bp.character_breakdown.find(c => c.character_id === selectedCharId);
+    return s + (cb?.extras ?? 0);
+  }, 0);
+
   const toggle = (id: number) => setExpanded(prev => {
     const next = new Set(prev);
     next.has(id) ? next.delete(id) : next.add(id);
     return next;
   });
 
+  if (filtered.length === 0) {
+    return <EmptyState message="No extra blueprints found for the selected character." />;
+  }
+
   return (
     <div>
       <p className="text-sm text-arc-muted mb-4">
         <span className="text-arc-text font-semibold">{totalExtras}</span> total extras across{' '}
-        <span className="text-arc-text font-semibold">{data.length}</span> blueprint types.
+        <span className="text-arc-text font-semibold">{filtered.length}</span> blueprint type{filtered.length !== 1 ? 's' : ''}
+        {selectedChar ? <> for <span className="font-semibold" style={{ color: selectedChar.color }}>{selectedChar.name}</span></> : ''}.
       </p>
 
       <div className="card overflow-hidden divide-y divide-arc-border/50">
-        {data.map((bp: ExtrasReport) => {
+        {filtered.map((bp: ExtrasReport) => {
           const isOpen = expanded.has(bp.blueprint_id);
+          const displayExtras = selectedCharId === null
+            ? bp.total_extras
+            : (bp.character_breakdown.find(cb => cb.character_id === selectedCharId)?.extras ?? 0);
+
           return (
             <div key={bp.blueprint_id}>
               <button
@@ -173,7 +254,7 @@ function ExtrasInventory() {
                   <span className="ml-2 hidden sm:inline"><CategoryBadge category={bp.category} /></span>
                 </div>
                 <span className="badge bg-arc-extra/15 text-arc-extra border border-arc-extra/30 text-sm font-bold px-3 shrink-0">
-                  {bp.total_extras} extra{bp.total_extras !== 1 ? 's' : ''}
+                  {displayExtras} extra{displayExtras !== 1 ? 's' : ''}
                 </span>
                 {isOpen
                   ? <ChevronDown className="w-4 h-4 text-arc-muted shrink-0" />

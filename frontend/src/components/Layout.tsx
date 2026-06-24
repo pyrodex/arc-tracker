@@ -22,7 +22,7 @@ export default function Layout() {
   return (
     <div className="flex min-h-screen">
       {/* Sidebar */}
-      <aside className="w-56 shrink-0 flex flex-col bg-arc-panel border-r border-arc-border">
+      <aside className="w-56 shrink-0 flex flex-col bg-arc-panel border-r border-arc-border sticky top-0 h-screen">
 
         {/* Logo / Brand */}
         <div className="px-4 py-5 border-b border-arc-border">
