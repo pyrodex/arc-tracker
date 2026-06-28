@@ -527,5 +527,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`ARC Blueprint Tracker listening on port ${PORT}`);
+  console.log(`ARC Tracker listening on port ${PORT}`);
 });

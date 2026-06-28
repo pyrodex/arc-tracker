@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: arc-blueprint-tracker:latest
-    container_name: arc-blueprint-tracker
+    image: arc-tracker:latest
+    container_name: arc-tracker
     restart: unless-stopped
 
     ports:

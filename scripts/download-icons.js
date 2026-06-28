@@ -151,7 +151,7 @@ function fetchUrl(urlStr, retries = 2) {
       path:     parsed.pathname + parsed.search,
       method:   'GET',
       headers:  {
-        'User-Agent': 'ARC-Blueprint-Tracker/1.0 (icon downloader; https://github.com/pyrodex/arc-blueprint-tracker)',
+        'User-Agent': 'ARC-Tracker/1.1 (icon downloader; https://github.com/pyrodex/arc-tracker)',
         Accept: 'application/json,image/*,*/*',
       },
       timeout: 20000,
@@ -255,7 +255,7 @@ const ARC_PARTS  = require('../backend/src/arc-parts');
 const ARC_PART_ITEMS = ARC_PARTS.map(p => ({ name: p.name, category: `arc-${p.rarity}` }));
 
 async function main() {
-  console.log('\n🎮 ARC Blueprint Tracker — Icon Download (arcraiders.wiki)\n');
+  console.log('\n🎮 ARC Tracker — Icon Download (arcraiders.wiki)\n');
   console.log(`Icons directory: ${ICONS_DIR}`);
   console.log(`Force re-download: ${FORCE}\n`);
 

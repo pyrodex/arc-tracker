@@ -13,7 +13,7 @@ Only the latest release on the `main` branch receives security fixes.
 
 **Please do not open a public GitHub issue for security vulnerabilities.**
 
-Use [GitHub Private Vulnerability Reporting](https://github.com/pyrodex/arc-blueprint-tracker/security/advisories/new) to submit a report confidentially. This keeps the details private until a fix is available.
+Use [GitHub Private Vulnerability Reporting](https://github.com/pyrodex/arc-tracker/security/advisories/new) to submit a report confidentially. This keeps the details private until a fix is available.
 
 Include as much of the following as possible:
 

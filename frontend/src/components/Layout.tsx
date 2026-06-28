@@ -34,7 +34,7 @@ export default function Layout() {
                 ARC Raiders
               </p>
               <p className="text-[11px] text-arc-muted leading-tight mt-0.5">
-                Blueprint Tracker
+                Tracker
               </p>
             </div>
           </div>
@@ -83,7 +83,7 @@ export default function Layout() {
           </div>
           <p className="text-[10px] text-arc-dim text-center">
             <a
-              href="https://github.com/pyrodex/arc-blueprint-tracker"
+              href="https://github.com/pyrodex/arc-tracker"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-arc-accent transition-colors"

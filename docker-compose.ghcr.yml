@@ -10,8 +10,8 @@
 
 services:
   arc-tracker:
-    image: ghcr.io/pyrodex/arc-blueprint-tracker:${IMAGE_TAG:-latest}
-    container_name: arc-blueprint-tracker
+    image: ghcr.io/pyrodex/arc-tracker:${IMAGE_TAG:-latest}
+    container_name: arc-tracker
     restart: unless-stopped
 
     ports:
