@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Pencil, Trash2, Users, Minus, Plus, AlertTriangle, BookCheck, BookX, Layers } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Users, Minus, Plus, AlertTriangle, BookCheck, BookX, Layers, Cpu } from 'lucide-react';
 import type { Character } from '../types';
 import { useCharacters, useCreateCharacter, useUpdateCharacter, useDeleteCharacter, useSummary } from '../hooks/useApi';
 import Modal from '../components/Modal';
@@ -93,6 +93,9 @@ export default function Characters() {
                       </span>
                       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400" title="Spare blueprints">
                         <Layers className="w-3 h-3" />{s.total_extras}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-400" title="ARC Parts collected">
+                        <Cpu className="w-3 h-3" />{s.total_arc_parts}
                       </span>
                     </div>
                   );
