@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { ArcPart, ArcPartTrackingMap } from '../types';
+import ArcPartIcon from './ArcPartIcon';
 
 interface ArcPartCardProps {
   part: ArcPart;
@@ -14,7 +15,6 @@ const rarityConfig = {
     bg: 'bg-amber-500/8',
     badge: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
     glow: 'shadow-[0_0_12px_rgb(245_158_11_/_0.15)]',
-    icon: '👑',
     countColor: 'text-amber-400',
     countBg: 'bg-amber-500/10 border-amber-500/30',
   },
@@ -24,7 +24,6 @@ const rarityConfig = {
     bg: 'bg-purple-500/8',
     badge: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
     glow: 'shadow-[0_0_12px_rgb(168_85_247_/_0.12)]',
-    icon: '⚡',
     countColor: 'text-purple-400',
     countBg: 'bg-purple-500/10 border-purple-500/30',
   },
@@ -63,13 +62,11 @@ export default function ArcPartCard({ part, trackingMap, onSetCount }: ArcPartCa
 
   return (
     <div
-      className={`card border ${config.border} ${count > 0 ? config.bg : ''} ${count > 0 ? config.glow : ''} transition-all duration-200`}
+      className={`card p-4 border ${config.border} ${count > 0 ? config.bg : ''} ${count > 0 ? config.glow : ''} transition-all duration-200`}
     >
       <div className="flex items-start gap-3">
-        {/* Rarity icon */}
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg shrink-0 border ${config.countBg}`}>
-          {config.icon}
-        </div>
+        {/* Part icon (wiki image with rarity fallback) */}
+        <ArcPartIcon slug={part.slug} name={part.name} rarity={part.rarity} size={44} />
 
         {/* Info */}
         <div className="flex-1 min-w-0">

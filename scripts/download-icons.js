@@ -123,6 +123,17 @@ const NAME_TO_FILE = {
   'Heavy Gun Parts':   'File:Heavy Gun Parts.png',
   'Light Gun Parts':   'File:Light Gun Parts.png',
   'Medium Gun Parts':  'File:Medium Gun Parts.png',
+
+  // ── ARC Parts (Epic / Legendary drops) ──────────────────────────────────────
+  'Queen Reactor':       'File:Queen Reactor.png',
+  'Matriarch Reactor':   'File:Matriarch Reactor.png',
+  'Bastion Cell':        'File:Bastion Cell.png',
+  'Bombardier Cell':     'File:Bombardier Cell.png',
+  'Leaper Pulse Unit':   'File:Leaper Pulse Unit.png',
+  'Rocketeer Driver':    'File:Rocketeer Driver.png',
+  'Vaporizer Regulator': 'File:Vaporizer Regulator.png',
+  'Turbine Compressor':  'File:Turbine Compressor.png',
+  'Assessor Matrix':     'File:Assessor Matrix.png',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -215,13 +226,15 @@ async function batchResolveImages(titles) {
 
 // ── SVG placeholder ────────────────────────────────────────────────────────────
 const CATEGORY_COLORS = {
-  weapons:    { bg: '#1a0a0a', border: '#ef4444', text: '#ef4444', emoji: '🔫' },
-  mods:       { bg: '#0a0f1a', border: '#3b82f6', text: '#3b82f6', emoji: '🔧' },
-  explosives: { bg: '#1a0d00', border: '#f97316', text: '#f97316', emoji: '💣' },
-  medicine:   { bg: '#001a0a', border: '#22c55e', text: '#22c55e', emoji: '💊' },
-  augments:   { bg: '#0d001a', border: '#a855f7', text: '#a855f7', emoji: '🧠' },
-  utility:    { bg: '#001a1a', border: '#06b6d4', text: '#06b6d4', emoji: '⚡' },
-  crafting:   { bg: '#1a1a00', border: '#eab308', text: '#eab308', emoji: '⚙' },
+  weapons:         { bg: '#1a0a0a', border: '#ef4444', text: '#ef4444', emoji: '🔫' },
+  mods:            { bg: '#0a0f1a', border: '#3b82f6', text: '#3b82f6', emoji: '🔧' },
+  explosives:      { bg: '#1a0d00', border: '#f97316', text: '#f97316', emoji: '💣' },
+  medicine:        { bg: '#001a0a', border: '#22c55e', text: '#22c55e', emoji: '💊' },
+  augments:        { bg: '#0d001a', border: '#a855f7', text: '#a855f7', emoji: '🧠' },
+  utility:         { bg: '#001a1a', border: '#06b6d4', text: '#06b6d4', emoji: '⚡' },
+  crafting:        { bg: '#1a1a00', border: '#eab308', text: '#eab308', emoji: '⚙' },
+  'arc-legendary': { bg: '#1a1000', border: '#f59e0b', text: '#f59e0b', emoji: '👑' },
+  'arc-epic':      { bg: '#0d0a1a', border: '#a855f7', text: '#a855f7', emoji: '⚡' },
 };
 
 function generateSvgPlaceholder(name, category) {
@@ -236,16 +249,22 @@ function generateSvgPlaceholder(name, category) {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 const BLUEPRINTS = require('../backend/src/blueprints');
+const ARC_PARTS  = require('../backend/src/arc-parts');
+
+// Normalise ARC parts to same shape used by blueprint processing
+const ARC_PART_ITEMS = ARC_PARTS.map(p => ({ name: p.name, category: `arc-${p.rarity}` }));
 
 async function main() {
   console.log('\n🎮 ARC Blueprint Tracker — Icon Download (arcraiders.wiki)\n');
   console.log(`Icons directory: ${ICONS_DIR}`);
   console.log(`Force re-download: ${FORCE}\n`);
 
-  // Which blueprints still need icons?
+  const allItems = [...BLUEPRINTS, ...ARC_PART_ITEMS];
+
+  // Which items still need icons?
   const pending = FORCE
-    ? BLUEPRINTS
-    : BLUEPRINTS.filter(bp => {
+    ? allItems
+    : allItems.filter(bp => {
         const slug = slugify(bp.name);
         return !fs.existsSync(path.join(ICONS_DIR, `${slug}.png`))
             && !fs.existsSync(path.join(ICONS_DIR, `${slug}.svg`));
@@ -255,7 +274,7 @@ async function main() {
     console.log('✅ All icons already present. Use --force to re-download.\n');
     return;
   }
-  console.log(`Fetching icons for ${pending.length} blueprint(s)…\n`);
+  console.log(`Fetching icons for ${pending.length} item(s)…\n`);
 
   // Collect the unique File: titles we need to resolve
   const titlesNeeded = [...new Set(

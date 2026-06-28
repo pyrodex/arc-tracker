@@ -399,6 +399,40 @@ app.get('/api/arc-parts/tracking/:characterId', (req, res) => {
   res.json(rows);
 });
 
+app.get('/api/reports/arc-parts', (req, res) => {
+  const rows = db.prepare(`
+    SELECT
+      ap.id   as part_id,
+      ap.name as part_name,
+      ap.slug,
+      ap.rarity,
+      ap.source,
+      SUM(apt.count) as total_count,
+      JSON_GROUP_ARRAY(
+        JSON_OBJECT(
+          'character_id',    c.id,
+          'character_name',  c.name,
+          'character_label', c.label,
+          'character_color', c.color,
+          'count',           apt.count
+        )
+      ) as character_breakdown
+    FROM arc_parts_tracking apt
+    JOIN arc_parts ap ON ap.id = apt.part_id
+    JOIN characters c  ON c.id = apt.character_id
+    WHERE apt.count > 0
+    GROUP BY ap.id
+    ORDER BY ap.sort_order, ap.name
+  `).all();
+
+  const result = rows.map(row => ({
+    ...row,
+    character_breakdown: JSON.parse(row.character_breakdown).filter(cb => cb.count > 0),
+  }));
+
+  res.json(result);
+});
+
 app.post('/api/arc-parts/tracking', (req, res) => {
   const { character_id, part_id, count } = req.body;
 

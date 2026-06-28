@@ -15,6 +15,7 @@ import type {
   ArcPartTrackingRecord,
   ArcPartTrackingMap,
   ArcPartCountUpdate,
+  ArcPartsReport,
 } from '../types';
 
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -180,6 +181,7 @@ export function useUpsertArcPartTracking() {
       }),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['arc-parts-tracking', variables.character_id] });
+      qc.invalidateQueries({ queryKey: ['reports', 'arc-parts'] });
     },
   });
 }
@@ -205,6 +207,14 @@ export function useExtrasReport() {
   return useQuery<ExtrasReport[]>({
     queryKey: ['reports', 'extras'],
     queryFn: () => apiFetch('/api/reports/extras'),
+    staleTime: 15_000,
+  });
+}
+
+export function useArcPartsReport() {
+  return useQuery<ArcPartsReport[]>({
+    queryKey: ['reports', 'arc-parts'],
+    queryFn: () => apiFetch('/api/reports/arc-parts'),
     staleTime: 15_000,
   });
 }
