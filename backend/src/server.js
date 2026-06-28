@@ -369,6 +369,63 @@ app.get('/api/reports/extras', (req, res) => {
   res.json(result);
 });
 
+// ── ARC Parts ──────────────────────────────────────────────────────────────────
+
+app.get('/api/arc-parts', (req, res) => {
+  const { rarity } = req.query;
+  let query = 'SELECT * FROM arc_parts';
+  const params = [];
+
+  if (rarity) {
+    query += ' WHERE rarity = ?';
+    params.push(rarity);
+  }
+  query += ' ORDER BY sort_order, name COLLATE NOCASE';
+
+  res.json(db.prepare(query).all(...params));
+});
+
+app.get('/api/arc-parts/tracking/:characterId', (req, res) => {
+  const characterId = parseInt(req.params.characterId, 10);
+  if (!characterId) return res.status(400).json({ error: 'invalid characterId' });
+
+  const rows = db.prepare(`
+    SELECT apt.*, ap.name as part_name, ap.slug, ap.rarity, ap.source
+    FROM arc_parts_tracking apt
+    JOIN arc_parts ap ON ap.id = apt.part_id
+    WHERE apt.character_id = ?
+  `).all(characterId);
+
+  res.json(rows);
+});
+
+app.post('/api/arc-parts/tracking', (req, res) => {
+  const { character_id, part_id, count } = req.body;
+
+  if (!Number.isInteger(character_id) || !Number.isInteger(part_id)) {
+    return res.status(400).json({ error: 'character_id and part_id must be integers' });
+  }
+  if (!Number.isInteger(count) || count < 0) {
+    return res.status(400).json({ error: 'count must be a non-negative integer' });
+  }
+
+  const countVal = Math.min(Math.max(0, count), 9999);
+
+  db.prepare(`
+    INSERT INTO arc_parts_tracking (character_id, part_id, count, updated_at)
+    VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(character_id, part_id) DO UPDATE SET
+      count      = excluded.count,
+      updated_at = excluded.updated_at
+  `).run(character_id, part_id, countVal);
+
+  const row = db.prepare(
+    'SELECT * FROM arc_parts_tracking WHERE character_id = ? AND part_id = ?'
+  ).get(character_id, part_id);
+
+  res.json(row);
+});
+
 // ── Health / debug ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   const bpCount = db.prepare('SELECT COUNT(*) as c FROM blueprints').get().c;

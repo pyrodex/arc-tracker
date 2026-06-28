@@ -11,6 +11,10 @@ import type {
   CreateCharacterPayload,
   UpdateCharacterPayload,
   TrackingUpdate,
+  ArcPart,
+  ArcPartTrackingRecord,
+  ArcPartTrackingMap,
+  ArcPartCountUpdate,
 } from '../types';
 
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -130,6 +134,52 @@ export function useBatchUpdateTracking() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tracking'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
+    },
+  });
+}
+
+// ── ARC Parts ──────────────────────────────────────────────────────────────────
+export function useArcParts(rarity?: string) {
+  const params = new URLSearchParams();
+  if (rarity && rarity !== 'all') params.set('rarity', rarity);
+  const search = params.toString();
+  return useQuery<ArcPart[]>({
+    queryKey: ['arc-parts', rarity ?? 'all'],
+    queryFn: () => apiFetch(`/api/arc-parts${search ? `?${search}` : ''}`),
+    staleTime: Infinity,
+  });
+}
+
+export function useArcPartsTracking(characterId: number | null) {
+  return useQuery<ArcPartTrackingRecord[]>({
+    queryKey: ['arc-parts-tracking', characterId],
+    queryFn: () => apiFetch(`/api/arc-parts/tracking/${characterId}`),
+    enabled: characterId !== null,
+    staleTime: 10_000,
+  });
+}
+
+export function useArcPartsTrackingMap(characterId: number | null) {
+  const query = useArcPartsTracking(characterId);
+  const map: ArcPartTrackingMap = {};
+  if (query.data) {
+    for (const record of query.data) {
+      map[record.part_id] = record;
+    }
+  }
+  return { ...query, trackingMap: map };
+}
+
+export function useUpsertArcPartTracking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (update: ArcPartCountUpdate) =>
+      apiFetch<ArcPartTrackingRecord>('/api/arc-parts/tracking', {
+        method: 'POST',
+        body: JSON.stringify(update),
+      }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['arc-parts-tracking', variables.character_id] });
     },
   });
 }
