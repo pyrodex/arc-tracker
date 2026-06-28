@@ -297,7 +297,20 @@ app.get('/api/reports/summary', (req, res) => {
     ORDER BY c.sort_order, c.created_at
   `).all(totalBlueprints);
 
-  res.json({ totalBlueprints, totalCharacters, characters: characterStats });
+  // Attach ARC parts totals per character
+  const arcPartTotals = db.prepare(`
+    SELECT character_id, COALESCE(SUM(count), 0) as total_arc_parts
+    FROM arc_parts_tracking
+    GROUP BY character_id
+  `).all();
+  const arcByChar = Object.fromEntries(arcPartTotals.map(r => [r.character_id, r.total_arc_parts]));
+
+  const characters = characterStats.map(c => ({
+    ...c,
+    total_arc_parts: arcByChar[c.id] ?? 0,
+  }));
+
+  res.json({ totalBlueprints, totalCharacters, characters });
 });
 
 app.get('/api/reports/unlearned', (req, res) => {

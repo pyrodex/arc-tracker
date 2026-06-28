@@ -61,6 +61,7 @@ export interface SummaryCharacter {
   learned_count: number;
   total_extras: number;
   total_blueprints: number;
+  total_arc_parts: number;
 }
 
 export interface Summary {
