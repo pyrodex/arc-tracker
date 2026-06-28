@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { BarChart3, AlertCircle, Package, ChevronDown, ChevronRight, Users } from 'lucide-react';
-import { useUnlearnedReport, useExtrasReport, useCharacters } from '../hooks/useApi';
-import type { UnlearnedBlueprint, ExtrasReport, CharacterLearnStatus, Character } from '../types';
+import { BarChart3, AlertCircle, Package, Cpu, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { useUnlearnedReport, useExtrasReport, useArcPartsReport, useCharacters } from '../hooks/useApi';
+import type { UnlearnedBlueprint, ExtrasReport, ArcPartsReport, CharacterLearnStatus, Character } from '../types';
 import { CategoryBadge } from '../components/CategoryIcon';
 import BlueprintIcon from '../components/BlueprintIcon';
+import ArcPartIcon from '../components/ArcPartIcon';
 
-type ReportTab = 'unlearned' | 'extras';
+type ReportTab = 'unlearned' | 'extras' | 'arc-parts';
 
 function CharacterFilter({
   characters,
@@ -62,10 +63,11 @@ export default function Reports() {
         <p className="text-arc-muted text-sm">Analyze blueprint collection gaps and extras across all characters.</p>
       </div>
 
-      <div className="flex gap-1 p-1 bg-arc-panel rounded-lg w-fit mb-6 border border-arc-border">
+      <div className="flex gap-1 p-1 bg-arc-panel rounded-lg w-fit mb-6 border border-arc-border flex-wrap">
         {([
-          { id: 'unlearned', label: 'Unlearned Blueprints', icon: AlertCircle },
-          { id: 'extras',    label: 'Extras Inventory',     icon: Package },
+          { id: 'unlearned',  label: 'Unlearned Blueprints', icon: AlertCircle },
+          { id: 'extras',     label: 'Extras Inventory',     icon: Package },
+          { id: 'arc-parts',  label: 'ARC Parts',            icon: Cpu },
         ] as const).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -86,6 +88,7 @@ export default function Reports() {
 
       {tab === 'unlearned' && <UnlearnedReport selectedCharId={selectedCharId} />}
       {tab === 'extras'    && <ExtrasInventory selectedCharId={selectedCharId} />}
+      {tab === 'arc-parts' && <ArcPartsInventory selectedCharId={selectedCharId} />}
     </div>
   );
 }
@@ -289,6 +292,120 @@ function ExtrasInventory({ selectedCharId }: { selectedCharId: number | null }) 
                         </span>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ArcPartsInventory({ selectedCharId }: { selectedCharId: number | null }) {
+  const { data, isLoading } = useArcPartsReport();
+  const { data: characters = [] } = useCharacters();
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  if (isLoading) return <LoadingState />;
+  if (!data || data.length === 0) return <EmptyState message="No ARC parts collected by any character yet." />;
+
+  const filtered = selectedCharId === null
+    ? data
+    : data
+        .filter(p => p.character_breakdown.some(cb => cb.character_id === selectedCharId && cb.count > 0))
+        .sort((a, b) => {
+          const aCount = a.character_breakdown.find(cb => cb.character_id === selectedCharId)?.count ?? 0;
+          const bCount = b.character_breakdown.find(cb => cb.character_id === selectedCharId)?.count ?? 0;
+          return bCount - aCount;
+        });
+
+  const selectedChar = selectedCharId !== null ? characters.find(c => c.id === selectedCharId) : null;
+
+  const totalCount = filtered.reduce((s, p) => {
+    if (selectedCharId === null) return s + p.total_count;
+    const cb = p.character_breakdown.find(c => c.character_id === selectedCharId);
+    return s + (cb?.count ?? 0);
+  }, 0);
+
+  const toggle = (id: number) => setExpanded(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  if (filtered.length === 0) {
+    return <EmptyState message="No ARC parts collected for the selected character." />;
+  }
+
+  const rarityOrder = { legendary: 0, epic: 1 };
+
+  return (
+    <div>
+      <p className="text-sm text-arc-muted mb-4">
+        <span className="text-arc-text font-semibold">{totalCount}</span> total part{totalCount !== 1 ? 's' : ''} across{' '}
+        <span className="text-arc-text font-semibold">{filtered.length}</span> type{filtered.length !== 1 ? 's' : ''}
+        {selectedChar ? <> for <span className="font-semibold" style={{ color: selectedChar.color }}>{selectedChar.name}</span></> : ''}.
+      </p>
+
+      <div className="card overflow-hidden divide-y divide-arc-border/50">
+        {[...filtered].sort((a, b) => (rarityOrder[a.rarity] ?? 9) - (rarityOrder[b.rarity] ?? 9)).map((part: ArcPartsReport) => {
+          const isOpen = expanded.has(part.part_id);
+          const displayCount = selectedCharId === null
+            ? part.total_count
+            : (part.character_breakdown.find(cb => cb.character_id === selectedCharId)?.count ?? 0);
+
+          const badgeClass = part.rarity === 'legendary'
+            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+            : 'bg-purple-500/15 text-purple-400 border border-purple-500/30';
+
+          return (
+            <div key={part.part_id}>
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-arc-hover/40 transition-colors text-left"
+                onClick={() => toggle(part.part_id)}
+              >
+                <ArcPartIcon slug={part.slug} name={part.part_name} rarity={part.rarity} size={40} />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-arc-text">{part.part_name}</span>
+                  <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded border hidden sm:inline-block ${badgeClass}`}>
+                    {part.rarity === 'legendary' ? '👑' : '⚡'} {part.rarity}
+                  </span>
+                  <p className="text-xs text-arc-dim mt-0.5">from {part.source}</p>
+                </div>
+                <span className={`badge text-sm font-bold px-3 shrink-0 ${badgeClass}`}>
+                  ×{displayCount}
+                </span>
+                {isOpen
+                  ? <ChevronDown  className="w-4 h-4 text-arc-muted shrink-0" />
+                  : <ChevronRight className="w-4 h-4 text-arc-muted shrink-0" />
+                }
+              </button>
+
+              {isOpen && (
+                <div className="bg-arc-bg/40 px-4 py-3 border-t border-arc-border/40">
+                  <div className="flex flex-wrap gap-3">
+                    {[...part.character_breakdown]
+                      .sort((a, b) => a.character_name.localeCompare(b.character_name))
+                      .map(cb => (
+                        <div
+                          key={cb.character_id}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg border"
+                          style={{ backgroundColor: cb.character_color + '15', borderColor: cb.character_color + '40' }}
+                        >
+                          <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cb.character_color }} />
+                          <span className="text-sm text-arc-muted">{cb.character_name}</span>
+                          {cb.character_label && (
+                            <span className="text-xs text-arc-dim">·{' '}
+                              {cb.character_label.split(',').map(l => l.trim()).filter(Boolean).join(', ')}
+                            </span>
+                          )}
+                          <span className="text-sm font-bold font-mono ml-1" style={{ color: cb.character_color }}>
+                            ×{cb.count}
+                          </span>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}

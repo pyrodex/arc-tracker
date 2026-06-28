@@ -135,6 +135,24 @@ export type ArcPartCountUpdate = {
   count: number;
 };
 
+export interface CharacterArcCount {
+  character_id: number;
+  character_name: string;
+  character_label: string | null;
+  character_color: string;
+  count: number;
+}
+
+export interface ArcPartsReport {
+  part_id: number;
+  part_name: string;
+  slug: string;
+  rarity: ArcPartRarity;
+  source: string;
+  total_count: number;
+  character_breakdown: CharacterArcCount[];
+}
+
 // ── Characters ─────────────────────────────────────────────────────────────────
 
 export type CreateCharacterPayload = {
