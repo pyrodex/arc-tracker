@@ -33,7 +33,7 @@ export default function Dashboard() {
     <div className="p-8 max-w-5xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-arc-text mb-1">Dashboard</h1>
-        <p className="text-arc-muted text-sm">Track your ARC Raiders blueprint collection across all characters.</p>
+        <p className="text-arc-muted text-sm">Track blueprints and ARC parts across all your characters.</p>
       </div>
 
       {/* Stats */}
@@ -48,7 +48,7 @@ export default function Dashboard() {
         <div className="card p-8 mb-8 border-dashed text-center">
           <Trophy className="w-8 h-8 text-arc-accent mx-auto mb-3" />
           <p className="text-arc-text font-medium mb-1">No characters yet</p>
-          <p className="text-arc-muted text-sm mb-4">Create your first character to start tracking blueprints.</p>
+          <p className="text-arc-muted text-sm mb-4">Create your first character to start tracking.</p>
           <button onClick={() => navigate('/characters')} className="btn-primary mx-auto">
             <Users className="w-4 h-4" /> Create Character
           </button>

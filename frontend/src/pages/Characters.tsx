@@ -43,7 +43,7 @@ export default function Characters() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-arc-text mb-1">Characters</h1>
-          <p className="text-arc-muted text-sm">Manage the characters you track blueprints for.</p>
+          <p className="text-arc-muted text-sm">Manage the characters you track blueprints and ARC parts for.</p>
         </div>
         <button onClick={() => setShowCreate(true)} className="btn-primary">
           <UserPlus className="w-4 h-4" /> Add Character
@@ -56,7 +56,7 @@ export default function Characters() {
         <div className="card p-12 text-center border-dashed">
           <Users className="w-10 h-10 text-arc-dim mx-auto mb-3" />
           <p className="text-arc-text font-medium">No characters yet</p>
-          <p className="text-arc-muted text-sm mt-1 mb-4">Add your first character to start tracking blueprints.</p>
+          <p className="text-arc-muted text-sm mt-1 mb-4">Add your first character to start tracking.</p>
           <button onClick={() => setShowCreate(true)} className="btn-primary mx-auto">
             <UserPlus className="w-4 h-4" /> Create Character
           </button>
@@ -174,7 +174,7 @@ export default function Characters() {
                   Delete <span style={{ color: deleteTarget.color }}>{deleteTarget.name}</span>?
                 </p>
                 <p className="text-xs text-arc-muted mt-1">
-                  All blueprint tracking data for this character will be permanently removed. This cannot be undone.
+                  All tracking data (blueprints and ARC parts) for this character will be permanently removed. This cannot be undone.
                 </p>
               </div>
             </div>

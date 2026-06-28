@@ -197,6 +197,10 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
 
+### v1.1.1
+- Fix browser tab title still showing "ARC Blueprint Tracker" (now "ARC Tracker")
+- Fix remaining "blueprint tracker" references in Dashboard subtitle, Characters page description, empty-state messages, and delete confirmation dialog
+
 ### v1.1.0
 - **ARC Parts tracking** — new section for Epic and Legendary drops (Queen Reactor, Matriarch Reactor, Bastion Cell, Bombardier Cell, Leaper Pulse Unit, Rocketeer Driver, Vaporizer Regulator, Turbine Compressor, Assessor Matrix)
 - **ARC Parts page** — per-character count tracking with +/– controls, rarity filter, search, and grouped Legendary/Epic display
