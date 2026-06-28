@@ -100,6 +100,43 @@ export interface CharacterExtras {
   extras: number;
 }
 
+// ── ARC Parts ──────────────────────────────────────────────────────────────────
+
+export type ArcPartRarity = 'epic' | 'legendary';
+
+export interface ArcPart {
+  id: number;
+  name: string;
+  slug: string;
+  rarity: ArcPartRarity;
+  source: string;
+  sort_order: number;
+}
+
+export interface ArcPartTrackingRecord {
+  id: number;
+  character_id: number;
+  part_id: number;
+  count: number;
+  updated_at: string;
+  part_name?: string;
+  slug?: string;
+  rarity?: ArcPartRarity;
+  source?: string;
+}
+
+export interface ArcPartTrackingMap {
+  [partId: number]: ArcPartTrackingRecord;
+}
+
+export type ArcPartCountUpdate = {
+  character_id: number;
+  part_id: number;
+  count: number;
+};
+
+// ── Characters ─────────────────────────────────────────────────────────────────
+
 export type CreateCharacterPayload = {
   name: string;
   label?: string;

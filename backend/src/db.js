@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 const BLUEPRINTS = require('./blueprints');
+const ARC_PARTS = require('./arc-parts');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 const DB_PATH = path.join(DATA_DIR, 'arc-tracker.db');
@@ -65,6 +66,29 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_tracking_char   ON blueprint_tracking(character_id);
     CREATE INDEX IF NOT EXISTS idx_tracking_bp     ON blueprint_tracking(blueprint_id);
     CREATE INDEX IF NOT EXISTS idx_blueprints_cat  ON blueprints(category);
+
+    CREATE TABLE IF NOT EXISTS arc_parts (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT    NOT NULL UNIQUE,
+      slug       TEXT    NOT NULL UNIQUE,
+      rarity     TEXT    NOT NULL,
+      source     TEXT    NOT NULL,
+      sort_order INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS arc_parts_tracking (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      character_id INTEGER NOT NULL,
+      part_id      INTEGER NOT NULL,
+      count        INTEGER DEFAULT 0,
+      updated_at   TEXT    DEFAULT (datetime('now')),
+      FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+      FOREIGN KEY (part_id)      REFERENCES arc_parts(id),
+      UNIQUE(character_id, part_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_arc_tracking_char ON arc_parts_tracking(character_id);
+    CREATE INDEX IF NOT EXISTS idx_arc_tracking_part ON arc_parts_tracking(part_id);
   `);
 }
 
@@ -110,6 +134,37 @@ function seedBlueprints() {
   if (after > before) console.log(`Seeded ${after - before} new blueprint(s) (total: ${after})`);
 }
 
+function seedArcParts() {
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO arc_parts (name, slug, rarity, source, sort_order)
+    VALUES (@name, @slug, @rarity, @source, @sort_order)
+  `);
+
+  const syncFields = db.prepare(`
+    UPDATE arc_parts
+    SET rarity = @rarity, source = @source
+    WHERE name = @name AND (rarity != @rarity OR source != @source)
+  `);
+
+  const upsertMany = db.transaction((parts) => {
+    parts.forEach((p) => {
+      insert.run({
+        name: p.name,
+        slug: slugify(p.name),
+        rarity: p.rarity,
+        source: p.source,
+        sort_order: p.sort_order,
+      });
+      syncFields.run({ name: p.name, rarity: p.rarity, source: p.source });
+    });
+  });
+
+  const before = db.prepare('SELECT COUNT(*) as c FROM arc_parts').get().c;
+  upsertMany(ARC_PARTS);
+  const after = db.prepare('SELECT COUNT(*) as c FROM arc_parts').get().c;
+  if (after > before) console.log(`Seeded ${after - before} new ARC part(s) (total: ${after})`);
+}
+
 function runMigrations() {
   const cols = db.pragma('table_info(characters)').map(c => c.name);
   if (!cols.includes('nomad_stash')) {
@@ -120,5 +175,6 @@ function runMigrations() {
 initSchema();
 runMigrations();
 seedBlueprints();
+seedArcParts();
 
 module.exports = db;

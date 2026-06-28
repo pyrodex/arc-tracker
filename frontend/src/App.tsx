@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Characters from './pages/Characters';
 import Blueprints from './pages/Blueprints';
+import ArcParts from './pages/ArcParts';
 import Reports from './pages/Reports';
 
 export default function App() {
@@ -13,6 +14,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="characters" element={<Characters />} />
           <Route path="blueprints" element={<Blueprints />} />
+          <Route path="arc-parts" element={<ArcParts />} />
           <Route path="reports" element={<Reports />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

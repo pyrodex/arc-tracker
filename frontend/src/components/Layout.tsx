@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, BarChart3, Cpu } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useTheme } from '../hooks/useTheme';
 
@@ -7,6 +7,7 @@ const navItems = [
   { to: '/',           label: 'Dashboard',  icon: LayoutDashboard, end: true },
   { to: '/characters', label: 'Characters', icon: Users },
   { to: '/blueprints', label: 'Blueprints', icon: BookOpen },
+  { to: '/arc-parts',  label: 'ARC Parts',  icon: Cpu },
   { to: '/reports',    label: 'Reports',    icon: BarChart3 },
 ];
 
@@ -81,12 +82,12 @@ export default function Layout() {
             <ThemeToggle mode={mode} setMode={setMode} />
           </div>
           <p className="text-[10px] text-arc-dim text-center">
-            Data: <a
-              href="https://arcraiders.wiki/wiki/Blueprints"
+            <a
+              href="https://github.com/pyrodex/arc-blueprint-tracker"
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-arc-accent transition-colors"
-            >arcraiders.wiki</a>
+            >GitHub Project</a>
           </p>
           <p className="text-[10px] text-arc-dim/50 text-center tabular-nums">
             v{__APP_VERSION__}
