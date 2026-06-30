@@ -73,6 +73,7 @@ function initSchema() {
       slug       TEXT    NOT NULL UNIQUE,
       rarity     TEXT    NOT NULL,
       source     TEXT    NOT NULL,
+      sell_value INTEGER DEFAULT 0,
       sort_order INTEGER DEFAULT 0
     );
 
@@ -136,14 +137,14 @@ function seedBlueprints() {
 
 function seedArcParts() {
   const insert = db.prepare(`
-    INSERT OR IGNORE INTO arc_parts (name, slug, rarity, source, sort_order)
-    VALUES (@name, @slug, @rarity, @source, @sort_order)
+    INSERT OR IGNORE INTO arc_parts (name, slug, rarity, source, sell_value, sort_order)
+    VALUES (@name, @slug, @rarity, @source, @sell_value, @sort_order)
   `);
 
   const syncFields = db.prepare(`
     UPDATE arc_parts
-    SET rarity = @rarity, source = @source
-    WHERE name = @name AND (rarity != @rarity OR source != @source)
+    SET rarity = @rarity, source = @source, sell_value = @sell_value
+    WHERE name = @name AND (rarity != @rarity OR source != @source OR sell_value != @sell_value)
   `);
 
   const upsertMany = db.transaction((parts) => {
@@ -153,9 +154,10 @@ function seedArcParts() {
         slug: slugify(p.name),
         rarity: p.rarity,
         source: p.source,
+        sell_value: p.sell_value ?? 0,
         sort_order: p.sort_order,
       });
-      syncFields.run({ name: p.name, rarity: p.rarity, source: p.source });
+      syncFields.run({ name: p.name, rarity: p.rarity, source: p.source, sell_value: p.sell_value ?? 0 });
     });
   });
 
@@ -166,9 +168,14 @@ function seedArcParts() {
 }
 
 function runMigrations() {
-  const cols = db.pragma('table_info(characters)').map(c => c.name);
-  if (!cols.includes('nomad_stash')) {
+  const charCols = db.pragma('table_info(characters)').map(c => c.name);
+  if (!charCols.includes('nomad_stash')) {
     db.exec('ALTER TABLE characters ADD COLUMN nomad_stash INTEGER DEFAULT 0');
+  }
+
+  const arcCols = db.pragma('table_info(arc_parts)').map(c => c.name);
+  if (!arcCols.includes('sell_value')) {
+    db.exec('ALTER TABLE arc_parts ADD COLUMN sell_value INTEGER DEFAULT 0');
   }
 }
 

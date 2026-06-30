@@ -60,6 +60,11 @@ export default function ArcParts() {
     [parts, trackingMap],
   );
 
+  const totalValue = useMemo(
+    () => parts.reduce((sum, p) => sum + (trackingMap[p.id]?.count ?? 0) * p.sell_value, 0),
+    [parts, trackingMap],
+  );
+
   const legendaryCount = parts.filter(p => p.rarity === 'legendary').length;
   const epicCount      = parts.filter(p => p.rarity === 'epic').length;
 
@@ -81,9 +86,14 @@ export default function ArcParts() {
             <p className="text-xs text-arc-dim mt-0.5">Epic &amp; Legendary drops from elite ARC enemies</p>
           </div>
           {activeChar && totalCollected > 0 && (
-            <span className="text-sm text-arc-muted">
-              <span className="text-arc-text font-medium">{totalCollected}</span> total collected
-            </span>
+            <div className="text-right">
+              <p className="text-sm text-arc-muted">
+                <span className="text-arc-text font-medium">{totalCollected}</span> collected
+              </p>
+              <p className="text-sm font-semibold text-arc-extra tabular-nums">
+                {totalValue.toLocaleString()} total value
+              </p>
+            </div>
           )}
         </div>
 

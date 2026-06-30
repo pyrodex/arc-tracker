@@ -111,6 +111,7 @@ export interface ArcPart {
   slug: string;
   rarity: ArcPartRarity;
   source: string;
+  sell_value: number;
   sort_order: number;
 }
 
