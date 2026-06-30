@@ -3,6 +3,10 @@
 # CVE-2026-9679, and CVE-2026-12151 (June 2026 Node.js security release).
 FROM node:22.23.0-alpine AS frontend-builder
 
+# Upgrade npm to 11.18.0 which bundles @sigstore/core@3.2.1, fixing CVE-2026-48758.
+# npm 10.9.8 (shipped with Node 22.23.0) bundles @sigstore/core@3.1.0 (vulnerable).
+RUN npm install -g npm@11.18.0
+
 WORKDIR /build/frontend
 
 # Install deps first (layer cache)
@@ -20,6 +24,9 @@ FROM node:22.23.0-alpine AS backend-builder
 # Build tools required to compile better-sqlite3 native addon
 RUN apk add --no-cache python3 make g++
 
+# Upgrade npm to 11.18.0 — fixes CVE-2026-48758 (@sigstore/core@3.1.0 → 3.2.1).
+RUN npm install -g npm@11.18.0
+
 WORKDIR /build/backend
 
 COPY backend/package.json backend/package-lock.json* ./
@@ -28,6 +35,11 @@ RUN npm install --omit=dev --prefer-offline
 
 # ── Stage 3: Production image ──────────────────────────────────────────────────
 FROM node:22.23.0-alpine AS runner
+
+# Upgrade npm to 11.18.0 — fixes CVE-2026-48758 (@sigstore/core@3.1.0 → 3.2.1).
+# npm is never invoked at runtime, but upgrading removes the Trivy finding for
+# the vulnerable @sigstore/core version bundled in npm 10.9.8.
+RUN npm install -g npm@11.18.0
 
 # Security: don't run as root
 RUN addgroup -g 1001 -S arcapp && adduser -u 1001 -S arcapp -G arcapp
