@@ -52,8 +52,6 @@ function initSchema() {
       created_at   TEXT    DEFAULT (datetime('now'))
     );
 
-    CREATE INDEX IF NOT EXISTS idx_characters_parent ON characters(parent_id);
-
     CREATE TABLE IF NOT EXISTS blueprint_tracking (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       character_id INTEGER NOT NULL,
@@ -183,6 +181,10 @@ function runMigrations() {
 
   if (!charCols.includes('parent_id')) {
     db.exec('ALTER TABLE characters ADD COLUMN parent_id INTEGER REFERENCES characters(id) ON DELETE SET NULL');
+  }
+
+  const updatedCharCols = db.pragma('table_info(characters)').map(c => c.name);
+  if (updatedCharCols.includes('parent_id')) {
     db.exec('CREATE INDEX IF NOT EXISTS idx_characters_parent ON characters(parent_id)');
   }
 }
