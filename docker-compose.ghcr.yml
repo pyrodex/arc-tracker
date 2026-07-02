@@ -6,7 +6,7 @@
 #   docker compose -f docker-compose.ghcr.yml up -d
 #
 # Pin to a specific release:
-#   IMAGE_TAG=v1.1.1 docker compose -f docker-compose.ghcr.yml up -d
+#   IMAGE_TAG=v1.2.0 docker compose -f docker-compose.ghcr.yml up -d
 
 services:
   arc-tracker:
