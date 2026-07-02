@@ -120,6 +120,34 @@ app.get('/api/blueprints/categories', (req, res) => {
 });
 
 // Characters
+
+function parseParentId(value) {
+  if (value === null || value === undefined || value === '') return null;
+  const id = parseInt(value, 10);
+  return id > 0 ? id : null;
+}
+
+function validateParentId(parentId, characterId) {
+  if (parentId === null) return null;
+
+  if (characterId && parentId === characterId) {
+    return 'a character cannot be its own parent';
+  }
+
+  const parent = db.prepare('SELECT id, parent_id FROM characters WHERE id = ?').get(parentId);
+  if (!parent) return 'parent character not found';
+  if (parent.parent_id !== null) return 'parent must be a top-level character';
+
+  if (characterId) {
+    const hasChildren = db.prepare(
+      'SELECT 1 FROM characters WHERE parent_id = ? LIMIT 1'
+    ).get(characterId);
+    if (hasChildren) return 'characters with children must remain top-level';
+  }
+
+  return null;
+}
+
 app.get('/api/characters', (req, res) => {
   const characters = db.prepare(
     'SELECT * FROM characters ORDER BY sort_order, created_at'
@@ -128,14 +156,18 @@ app.get('/api/characters', (req, res) => {
 });
 
 app.post('/api/characters', (req, res) => {
-  const { name, label, notes, color, sort_order, nomad_stash } = req.body;
+  const { name, label, notes, color, sort_order, nomad_stash, parent_id } = req.body;
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
   }
 
+  const parsedParentId = parseParentId(parent_id);
+  const parentError = validateParentId(parsedParentId, null);
+  if (parentError) return res.status(400).json({ error: parentError });
+
   const result = db.prepare(`
-    INSERT INTO characters (name, label, notes, color, sort_order, nomad_stash)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO characters (name, label, notes, color, sort_order, nomad_stash, parent_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(
     name.trim().slice(0, 64),
     label ? label.trim().slice(0, 32) : null,
@@ -143,6 +175,7 @@ app.post('/api/characters', (req, res) => {
     /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#3b82f6',
     typeof sort_order === 'number' ? sort_order : 0,
     Number.isInteger(nomad_stash) && nomad_stash >= 0 ? nomad_stash : 0,
+    parsedParentId,
   );
 
   const character = db.prepare('SELECT * FROM characters WHERE id = ?').get(result.lastInsertRowid);
@@ -156,12 +189,16 @@ app.put('/api/characters/:id', (req, res) => {
   const existing = db.prepare('SELECT id FROM characters WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'character not found' });
 
-  const { name, label, notes, color, sort_order, nomad_stash } = req.body;
+  const { name, label, notes, color, sort_order, nomad_stash, parent_id } = req.body;
   if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
     return res.status(400).json({ error: 'name must be a non-empty string' });
   }
 
   const current = db.prepare('SELECT * FROM characters WHERE id = ?').get(id);
+
+  const parsedParentId = parent_id !== undefined ? parseParentId(parent_id) : current.parent_id;
+  const parentError = validateParentId(parsedParentId, id);
+  if (parentError) return res.status(400).json({ error: parentError });
 
   db.prepare(`
     UPDATE characters SET
@@ -170,7 +207,8 @@ app.put('/api/characters/:id', (req, res) => {
       notes       = ?,
       color       = ?,
       sort_order  = ?,
-      nomad_stash = ?
+      nomad_stash = ?,
+      parent_id   = ?
     WHERE id = ?
   `).run(
     name ? name.trim().slice(0, 64) : current.name,
@@ -179,6 +217,7 @@ app.put('/api/characters/:id', (req, res) => {
     /^#[0-9a-fA-F]{6}$/.test(color) ? color : current.color,
     typeof sort_order === 'number' ? sort_order : current.sort_order,
     Number.isInteger(nomad_stash) && nomad_stash >= 0 ? nomad_stash : current.nomad_stash ?? 0,
+    parsedParentId,
     id,
   );
 

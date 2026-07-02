@@ -48,8 +48,11 @@ function initSchema() {
       color        TEXT    NOT NULL DEFAULT '#3b82f6',
       sort_order   INTEGER DEFAULT 0,
       nomad_stash  INTEGER DEFAULT 0,
+      parent_id    INTEGER REFERENCES characters(id) ON DELETE SET NULL,
       created_at   TEXT    DEFAULT (datetime('now'))
     );
+
+    CREATE INDEX IF NOT EXISTS idx_characters_parent ON characters(parent_id);
 
     CREATE TABLE IF NOT EXISTS blueprint_tracking (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -176,6 +179,11 @@ function runMigrations() {
   const arcCols = db.pragma('table_info(arc_parts)').map(c => c.name);
   if (!arcCols.includes('sell_value')) {
     db.exec('ALTER TABLE arc_parts ADD COLUMN sell_value INTEGER DEFAULT 0');
+  }
+
+  if (!charCols.includes('parent_id')) {
+    db.exec('ALTER TABLE characters ADD COLUMN parent_id INTEGER REFERENCES characters(id) ON DELETE SET NULL');
+    db.exec('CREATE INDEX IF NOT EXISTS idx_characters_parent ON characters(parent_id)');
   }
 }
 
