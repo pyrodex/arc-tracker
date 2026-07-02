@@ -1,9 +1,37 @@
 import { useState } from 'react';
 import { UserPlus, Pencil, Trash2, Users, Minus, Plus, AlertTriangle, BookCheck, BookX, Layers, Cpu } from 'lucide-react';
-import type { Character } from '../types';
+import type { Character, SummaryCharacter } from '../types';
 import { useCharacters, useCreateCharacter, useUpdateCharacter, useDeleteCharacter, useSummary } from '../hooks/useApi';
 import Modal from '../components/Modal';
 import CharacterForm from '../components/CharacterForm';
+
+type CharacterGroup = {
+  parent: Character;
+  children: Character[];
+};
+
+function groupCharactersByParent(characters: Character[]): CharacterGroup[] {
+  const idSet = new Set(characters.map(c => c.id));
+  const childrenByParent = new Map<number, Character[]>();
+
+  for (const char of characters) {
+    if (char.parent_id != null && idSet.has(char.parent_id)) {
+      const siblings = childrenByParent.get(char.parent_id) ?? [];
+      siblings.push(char);
+      childrenByParent.set(char.parent_id, siblings);
+    }
+  }
+
+  const parents = characters
+    .filter(c => c.parent_id == null || !idSet.has(c.parent_id))
+    .sort((a, b) => a.sort_order - b.sort_order || a.created_at.localeCompare(b.created_at));
+
+  return parents.map(parent => ({
+    parent,
+    children: (childrenByParent.get(parent.id) ?? [])
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  }));
+}
 
 function LabelBadges({ label, color }: { label: string | null; color: string }) {
   if (!label) return null;
@@ -23,6 +51,117 @@ function LabelBadges({ label, color }: { label: string | null; color: string }) 
   );
 }
 
+function CharacterStats({ stats }: { stats: SummaryCharacter }) {
+  const missing = stats.total_blueprints - stats.learned_count;
+  return (
+    <div className="flex items-center gap-2.5 mt-1.5">
+      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400" title="Blueprints learned">
+        <BookCheck className="w-3 h-3" />{stats.learned_count}
+      </span>
+      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-arc-muted" title="Blueprints not yet learned">
+        <BookX className="w-3 h-3" />{missing}
+      </span>
+      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400" title="Spare blueprints">
+        <Layers className="w-3 h-3" />{stats.total_extras}
+      </span>
+      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-400" title="ARC Parts collected">
+        <Cpu className="w-3 h-3" />{stats.total_arc_parts}
+        {stats.arc_parts_value > 0 && (
+          <span className="text-arc-extra font-medium">
+            ({stats.arc_parts_value.toLocaleString()})
+          </span>
+        )}
+      </span>
+    </div>
+  );
+}
+
+interface CharacterRowProps {
+  char: Character;
+  stats?: SummaryCharacter;
+  nested?: boolean;
+  parentName?: string;
+  onEdit: (char: Character) => void;
+  onDelete: (char: Character) => void;
+  onNomadStashChange: (id: number, nomad_stash: number) => void;
+  nomadStashPending: boolean;
+}
+
+function CharacterRow({
+  char,
+  stats,
+  nested,
+  parentName,
+  onEdit,
+  onDelete,
+  onNomadStashChange,
+  nomadStashPending,
+}: CharacterRowProps) {
+  const avatarSize = nested ? 'w-8 h-8 text-base' : 'w-10 h-10 text-lg';
+
+  return (
+    <div className={`card p-4 flex items-center gap-4 hover:border-arc-muted/40 transition-colors ${nested ? 'bg-arc-bg/30' : ''}`}>
+      <div
+        className={`${avatarSize} rounded-lg shrink-0 flex items-center justify-center font-bold`}
+        style={{ backgroundColor: char.color + '20', border: `1px solid ${char.color}40`, color: char.color }}
+      >
+        {char.name.charAt(0).toUpperCase()}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap mb-1">
+          <span className={`font-medium text-arc-text ${nested ? 'text-sm' : ''}`}>{char.name}</span>
+          {nested && parentName && (
+            <span className="text-[10px] text-arc-dim">under {parentName}</span>
+          )}
+        </div>
+        <LabelBadges label={char.label} color={char.color} />
+        {char.notes && <p className="text-xs text-arc-dim mt-1 truncate">{char.notes}</p>}
+        {stats && <CharacterStats stats={stats} />}
+        <p className="text-[10px] text-arc-dim mt-0.5">
+          Created {new Date(char.created_at).toLocaleDateString()}
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3 shrink-0">
+        <div className="flex flex-col items-center gap-0.5">
+          <span className="text-[10px] font-medium text-arc-muted uppercase tracking-wide">Nomad Stash</span>
+          <div className="flex items-center gap-1">
+            <button
+              className="btn-ghost p-1 rounded disabled:opacity-40"
+              title="Decrease Nomad Stash"
+              disabled={char.nomad_stash <= 0 || nomadStashPending}
+              onClick={() => onNomadStashChange(char.id, Math.max(0, char.nomad_stash - 1))}
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </button>
+            <span className="min-w-[2rem] text-center text-sm font-semibold text-arc-text tabular-nums">
+              {char.nomad_stash}
+            </span>
+            <button
+              className="btn-ghost p-1 rounded"
+              title="Increase Nomad Stash"
+              disabled={nomadStashPending}
+              onClick={() => onNomadStashChange(char.id, char.nomad_stash + 1)}
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button onClick={() => onEdit(char)} className="btn-ghost p-2" title="Edit">
+            <Pencil className="w-4 h-4" />
+          </button>
+          <button onClick={() => onDelete(char)} className="btn-danger p-2" title="Delete">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Characters() {
   const { data: characters = [], isLoading } = useCharacters();
   const { data: summary } = useSummary();
@@ -33,6 +172,8 @@ export default function Characters() {
   const statsById = Object.fromEntries(
     (summary?.characters ?? []).map(s => [s.id, s])
   );
+
+  const groups = groupCharactersByParent(characters);
 
   const [showCreate, setShowCreate]   = useState(false);
   const [editTarget, setEditTarget]   = useState<Character | null>(null);
@@ -64,87 +205,35 @@ export default function Characters() {
       )}
 
       {characters.length > 0 && (
-        <div className="space-y-3">
-          {characters.map(char => (
-            <div key={char.id} className="card p-4 flex items-center gap-4 hover:border-arc-muted/40 transition-colors">
-              <div
-                className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center text-lg font-bold"
-                style={{ backgroundColor: char.color + '20', border: `1px solid ${char.color}40`, color: char.color }}
-              >
-                {char.name.charAt(0).toUpperCase()}
-              </div>
+        <div className="space-y-4">
+          {groups.map(({ parent, children }) => (
+            <div key={parent.id} className="space-y-2">
+              <CharacterRow
+                char={parent}
+                stats={statsById[parent.id]}
+                onEdit={setEditTarget}
+                onDelete={setDeleteTarget}
+                onNomadStashChange={(id, nomad_stash) => updateChar.mutate({ id, nomad_stash })}
+                nomadStashPending={updateChar.isPending}
+              />
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <span className="font-medium text-arc-text">{char.name}</span>
+              {children.length > 0 && (
+                <div className="ml-6 pl-4 border-l border-arc-border/40 space-y-2">
+                  {children.map(child => (
+                    <CharacterRow
+                      key={child.id}
+                      char={child}
+                      stats={statsById[child.id]}
+                      nested
+                      parentName={parent.name}
+                      onEdit={setEditTarget}
+                      onDelete={setDeleteTarget}
+                      onNomadStashChange={(id, nomad_stash) => updateChar.mutate({ id, nomad_stash })}
+                      nomadStashPending={updateChar.isPending}
+                    />
+                  ))}
                 </div>
-                <LabelBadges label={char.label} color={char.color} />
-                {char.notes && <p className="text-xs text-arc-dim mt-1 truncate">{char.notes}</p>}
-                {statsById[char.id] && (() => {
-                  const s = statsById[char.id];
-                  const missing = s.total_blueprints - s.learned_count;
-                  return (
-                    <div className="flex items-center gap-2.5 mt-1.5">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400" title="Blueprints learned">
-                        <BookCheck className="w-3 h-3" />{s.learned_count}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-arc-muted" title="Blueprints not yet learned">
-                        <BookX className="w-3 h-3" />{missing}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400" title="Spare blueprints">
-                        <Layers className="w-3 h-3" />{s.total_extras}
-                      </span>
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-400" title="ARC Parts collected">
-                        <Cpu className="w-3 h-3" />{s.total_arc_parts}
-                        {s.arc_parts_value > 0 && (
-                          <span className="text-arc-extra font-medium">
-                            ({s.arc_parts_value.toLocaleString()})
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  );
-                })()}
-                <p className="text-[10px] text-arc-dim mt-0.5">
-                  Created {new Date(char.created_at).toLocaleDateString()}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3 shrink-0">
-                <div className="flex flex-col items-center gap-0.5">
-                  <span className="text-[10px] font-medium text-arc-muted uppercase tracking-wide">Nomad Stash</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      className="btn-ghost p-1 rounded disabled:opacity-40"
-                      title="Decrease Nomad Stash"
-                      disabled={char.nomad_stash <= 0 || updateChar.isPending}
-                      onClick={() => updateChar.mutate({ id: char.id, nomad_stash: Math.max(0, char.nomad_stash - 1) })}
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="min-w-[2rem] text-center text-sm font-semibold text-arc-text tabular-nums">
-                      {char.nomad_stash}
-                    </span>
-                    <button
-                      className="btn-ghost p-1 rounded"
-                      title="Increase Nomad Stash"
-                      disabled={updateChar.isPending}
-                      onClick={() => updateChar.mutate({ id: char.id, nomad_stash: char.nomad_stash + 1 })}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button onClick={() => setEditTarget(char)} className="btn-ghost p-2" title="Edit">
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button onClick={() => setDeleteTarget(char)} className="btn-danger p-2" title="Delete">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
           ))}
         </div>
@@ -152,6 +241,7 @@ export default function Characters() {
 
       <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Add Character">
         <CharacterForm
+          allCharacters={characters}
           onSubmit={async (payload) => { await createChar.mutateAsync(payload); setShowCreate(false); }}
           onCancel={() => setShowCreate(false)}
           loading={createChar.isPending}
@@ -162,6 +252,7 @@ export default function Characters() {
         {editTarget && (
           <CharacterForm
             initial={editTarget}
+            allCharacters={characters}
             onSubmit={async (payload) => { await updateChar.mutateAsync({ id: editTarget.id, ...payload }); setEditTarget(null); }}
             onCancel={() => setEditTarget(null)}
             loading={updateChar.isPending}

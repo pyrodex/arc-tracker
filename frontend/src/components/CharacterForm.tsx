@@ -12,6 +12,7 @@ const PRESET_LABELS = ['Wipe', 'Non-Wipe', 'Mule', 'PvP', 'PvE', 'HC', 'Leveling
 
 interface Props {
   initial?: Character;
+  allCharacters?: Character[];
   onSubmit: (payload: CreateCharacterPayload) => void;
   onCancel: () => void;
   loading?: boolean;
@@ -27,12 +28,22 @@ function joinLabels(labels: string[]): string | undefined {
   return joined || undefined;
 }
 
-export default function CharacterForm({ initial, onSubmit, onCancel, loading }: Props) {
+export default function CharacterForm({ initial, allCharacters = [], onSubmit, onCancel, loading }: Props) {
   const [name, setName]     = useState(initial?.name ?? '');
   const [labels, setLabels] = useState<string[]>(parseLabels(initial?.label));
   const [customLabel, setCustomLabel] = useState('');
   const [notes, setNotes]   = useState(initial?.notes ?? '');
   const [color, setColor]   = useState(initial?.color ?? '#3b82f6');
+  const [parentId, setParentId] = useState<number | null>(initial?.parent_id ?? null);
+
+  const hasChildren = initial
+    ? allCharacters.some(c => c.parent_id === initial.id)
+    : false;
+
+  const eligibleParents = allCharacters.filter(c =>
+    c.parent_id == null &&
+    c.id !== initial?.id
+  );
 
   useEffect(() => {
     if (initial) {
@@ -40,6 +51,7 @@ export default function CharacterForm({ initial, onSubmit, onCancel, loading }: 
       setLabels(parseLabels(initial.label));
       setNotes(initial.notes ?? '');
       setColor(initial.color);
+      setParentId(initial.parent_id ?? null);
     }
   }, [initial]);
 
@@ -62,6 +74,7 @@ export default function CharacterForm({ initial, onSubmit, onCancel, loading }: 
       label: joinLabels(labels),
       notes: notes.trim(),
       color,
+      parent_id: hasChildren ? null : parentId,
     });
   };
 
@@ -79,6 +92,28 @@ export default function CharacterForm({ initial, onSubmit, onCancel, loading }: 
           autoFocus
         />
       </div>
+
+      {eligibleParents.length > 0 && (
+        <div>
+          <label className="block text-xs font-medium text-arc-muted mb-1.5">Parent Character</label>
+          {hasChildren ? (
+            <p className="text-xs text-arc-dim">
+              This character has linked alts and must remain top-level.
+            </p>
+          ) : (
+            <select
+              className="input"
+              value={parentId ?? ''}
+              onChange={e => setParentId(e.target.value ? Number(e.target.value) : null)}
+            >
+              <option value="">None (top-level)</option>
+              {eligibleParents.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
 
       <div>
         <label className="block text-xs font-medium text-arc-muted mb-1.5">Labels</label>
