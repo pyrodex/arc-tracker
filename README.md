@@ -19,6 +19,7 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 
 ### Characters
 - **Multi-character support** — add as many characters as you need
+- **Parent/child hierarchy** *(new in v1.2.0)* — link alts and mules under a main character; the Characters page groups parents with nested children sorted A→Z
 - **Multi-select labels** — assign one or more labels per character from presets (Wipe, Non-Wipe, Mule, PvP, PvE, HC, Leveling, Trade) or create custom labels
 - **Color coding** — pick from preset colors or a custom color picker; colors appear throughout the UI
 - **Notes** — optional free-text notes per character
@@ -60,7 +61,7 @@ docker compose -f docker-compose.ghcr.yml up -d
 Pin to a specific release:
 
 ```bash
-IMAGE_TAG=v1.1.1 docker compose -f docker-compose.ghcr.yml up -d
+IMAGE_TAG=v1.2.0 docker compose -f docker-compose.ghcr.yml up -d
 ```
 
 Open <http://localhost:3001>
@@ -133,8 +134,8 @@ arc-tracker/
 | GET | `/api/blueprints` | All blueprints (query: `?category=weapons&in_game=true`) |
 | GET | `/api/blueprints/categories` | Category list with counts |
 | GET | `/api/characters` | All characters |
-| POST | `/api/characters` | Create a character |
-| PUT | `/api/characters/:id` | Update a character (supports `nomad_stash`) |
+| POST | `/api/characters` | Create a character (supports `parent_id`) |
+| PUT | `/api/characters/:id` | Update a character (supports `parent_id`, `nomad_stash`) |
 | DELETE | `/api/characters/:id` | Delete a character and all its tracking data |
 | GET | `/api/tracking/:characterId` | All blueprint tracking records for a character |
 | POST | `/api/tracking` | Upsert a single blueprint tracking record |
@@ -196,6 +197,14 @@ Blueprint and ARC parts data sourced from [arcraiders.wiki](https://arcraiders.w
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
+
+### v1.2.0
+- **Character parent/child hierarchy** — link alts and mules under a top-level parent via a new `parent_id` field; Characters page shows parents with nested children sorted alphabetically
+- **Character form** — parent dropdown to assign or change a character's parent
+- **Database migration** — existing databases automatically gain the `parent_id` column on startup
+
+### v1.1.2
+- Dependency and lock file maintenance
 
 ### v1.1.1
 - Fix browser tab title still showing "ARC Blueprint Tracker" (now "ARC Tracker")
