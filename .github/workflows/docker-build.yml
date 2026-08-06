@@ -41,7 +41,30 @@ jobs:
 
       - name: Audit frontend
         working-directory: frontend
-        run: npm install --ignore-scripts && npm audit --audit-level=high
+        run: |
+          npm install --ignore-scripts
+          # GHSA-qwww-vcr4-c8h2: the npm registry advisory database still lists
+          # react-router 7.12.0-8.2.0 as affected, but the GitHub Advisory Database
+          # already marks 7.18.2 as patched. The advisory only impacts unstable RSC
+          # APIs, which this project does not use. The filter below can be removed
+          # once the npm registry syncs the corrected advisory range.
+          npm audit --json 2>/dev/null | node -e "
+            var d = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+            var ignored = ['GHSA-qwww-vcr4-c8h2'];
+            var bad = Object.values(d.vulnerabilities || {}).filter(function(v) {
+              if (!['high', 'critical'].includes(v.severity)) return false;
+              return (v.via || []).filter(function(x) { return x && x.url; })
+                .some(function(x) {
+                  return !ignored.some(function(id) { return x.url.includes(id); });
+                });
+            });
+            if (bad.length) {
+              process.stderr.write('Unignored high/critical vulnerabilities:\n');
+              bad.forEach(function(v) { process.stderr.write('  ' + v.severity + ': ' + v.name + '\n'); });
+              process.exit(1);
+            }
+            console.log('npm audit passed.');
+          "
 
   # ── Build each platform on a native runner ───────────────────────────────────
   build:
