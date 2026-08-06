@@ -5,6 +5,7 @@ const fs = require('fs');
 const Database = require('better-sqlite3');
 const BLUEPRINTS = require('./blueprints');
 const ARC_PARTS = require('./arc-parts');
+const WORKSHOP_STATIONS = require('./workshop');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 const DB_PATH = path.join(DATA_DIR, 'arc-tracker.db');
@@ -91,6 +92,64 @@ function initSchema() {
 
     CREATE INDEX IF NOT EXISTS idx_arc_tracking_char ON arc_parts_tracking(character_id);
     CREATE INDEX IF NOT EXISTS idx_arc_tracking_part ON arc_parts_tracking(part_id);
+
+    CREATE TABLE IF NOT EXISTS workshop_stations (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT    NOT NULL UNIQUE,
+      slug       TEXT    NOT NULL UNIQUE,
+      sort_order INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS workshop_materials (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT    NOT NULL UNIQUE,
+      slug       TEXT    NOT NULL UNIQUE,
+      sort_order INTEGER DEFAULT 0
+    );
+
+    -- item_type/item_id is a lightweight polymorphic reference: 'material' points
+    -- at workshop_materials, 'arc_part' points at the existing arc_parts table so
+    -- items tracked in both places (e.g. Bastion Cell) share one count.
+    CREATE TABLE IF NOT EXISTS workshop_requirements (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      station_id   INTEGER NOT NULL,
+      level        INTEGER NOT NULL,
+      item_type    TEXT    NOT NULL CHECK (item_type IN ('material', 'arc_part')),
+      item_id      INTEGER NOT NULL,
+      qty_required INTEGER NOT NULL,
+      sort_order   INTEGER DEFAULT 0,
+      FOREIGN KEY (station_id) REFERENCES workshop_stations(id),
+      UNIQUE(station_id, level, item_type, item_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_workshop_req_station ON workshop_requirements(station_id);
+
+    CREATE TABLE IF NOT EXISTS workshop_material_tracking (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      character_id INTEGER NOT NULL,
+      material_id  INTEGER NOT NULL,
+      count        INTEGER DEFAULT 0,
+      updated_at   TEXT    DEFAULT (datetime('now')),
+      FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+      FOREIGN KEY (material_id) REFERENCES workshop_materials(id),
+      UNIQUE(character_id, material_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_workshop_mat_tracking_char ON workshop_material_tracking(character_id);
+    CREATE INDEX IF NOT EXISTS idx_workshop_mat_tracking_mat  ON workshop_material_tracking(material_id);
+
+    CREATE TABLE IF NOT EXISTS workshop_station_progress (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      character_id INTEGER NOT NULL,
+      station_id   INTEGER NOT NULL,
+      level        INTEGER DEFAULT 0,
+      updated_at   TEXT    DEFAULT (datetime('now')),
+      FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+      FOREIGN KEY (station_id) REFERENCES workshop_stations(id),
+      UNIQUE(character_id, station_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_workshop_progress_char ON workshop_station_progress(character_id);
   `);
 }
 
@@ -168,6 +227,78 @@ function seedArcParts() {
   if (after > before) console.log(`Seeded ${after - before} new ARC part(s) (total: ${after})`);
 }
 
+function seedWorkshop() {
+  const insertStation = db.prepare(`
+    INSERT OR IGNORE INTO workshop_stations (name, slug, sort_order)
+    VALUES (@name, @slug, @sort_order)
+  `);
+  const getStationByName = db.prepare('SELECT id FROM workshop_stations WHERE name = ?');
+
+  const insertMaterial = db.prepare(`
+    INSERT OR IGNORE INTO workshop_materials (name, slug, sort_order)
+    VALUES (@name, @slug, @sort_order)
+  `);
+  const getMaterialByName = db.prepare('SELECT id FROM workshop_materials WHERE name = ?');
+  const getArcPartByName = db.prepare('SELECT id FROM arc_parts WHERE name = ?');
+
+  const insertRequirement = db.prepare(`
+    INSERT OR IGNORE INTO workshop_requirements
+      (station_id, level, item_type, item_id, qty_required, sort_order)
+    VALUES (@station_id, @level, @item_type, @item_id, @qty_required, @sort_order)
+  `);
+  const syncRequirement = db.prepare(`
+    UPDATE workshop_requirements SET qty_required = @qty_required
+    WHERE station_id = @station_id AND level = @level AND item_type = @item_type AND item_id = @item_id
+      AND qty_required != @qty_required
+  `);
+
+  let materialSortOrder = 0;
+
+  const seedAll = db.transaction((stations) => {
+    stations.forEach((station, sIdx) => {
+      insertStation.run({ name: station.name, slug: slugify(station.name), sort_order: station.sort_order ?? sIdx * 10 });
+      const stationRow = getStationByName.get(station.name);
+
+      station.levels.forEach(({ level, materials }) => {
+        materials.forEach((mat, mIdx) => {
+          const arcPart = getArcPartByName.get(mat.name);
+          let itemType;
+          let itemId;
+
+          if (arcPart) {
+            itemType = 'arc_part';
+            itemId = arcPart.id;
+          } else {
+            let materialRow = getMaterialByName.get(mat.name);
+            if (!materialRow) {
+              insertMaterial.run({ name: mat.name, slug: slugify(mat.name), sort_order: materialSortOrder++ });
+              materialRow = getMaterialByName.get(mat.name);
+            }
+            itemType = 'material';
+            itemId = materialRow.id;
+          }
+
+          const reqData = {
+            station_id: stationRow.id,
+            level,
+            item_type: itemType,
+            item_id: itemId,
+            qty_required: mat.qty,
+            sort_order: mIdx,
+          };
+          insertRequirement.run(reqData);
+          syncRequirement.run(reqData);
+        });
+      });
+    });
+  });
+
+  const before = db.prepare('SELECT COUNT(*) as c FROM workshop_requirements').get().c;
+  seedAll(WORKSHOP_STATIONS);
+  const after = db.prepare('SELECT COUNT(*) as c FROM workshop_requirements').get().c;
+  if (after > before) console.log(`Seeded ${after - before} workshop requirement row(s)`);
+}
+
 function runMigrations() {
   const charCols = db.pragma('table_info(characters)').map(c => c.name);
   if (!charCols.includes('nomad_stash')) {
@@ -193,5 +324,6 @@ initSchema();
 runMigrations();
 seedBlueprints();
 seedArcParts();
+seedWorkshop();
 
 module.exports = db;

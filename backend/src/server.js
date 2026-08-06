@@ -522,6 +522,157 @@ app.post('/api/arc-parts/tracking', (req, res) => {
   res.json(row);
 });
 
+// ── Workshop ───────────────────────────────────────────────────────────────────
+
+app.get('/api/workshop/stations', (req, res) => {
+  const stations = db.prepare('SELECT * FROM workshop_stations ORDER BY sort_order, name COLLATE NOCASE').all();
+
+  const requirements = db.prepare(`
+    SELECT
+      r.station_id, r.level, r.item_type, r.item_id, r.qty_required, r.sort_order,
+      CASE WHEN r.item_type = 'arc_part' THEN ap.name ELSE wm.name END as item_name,
+      CASE WHEN r.item_type = 'arc_part' THEN ap.slug ELSE wm.slug END as item_slug,
+      ap.rarity as item_rarity,
+      ap.source as item_source
+    FROM workshop_requirements r
+    LEFT JOIN arc_parts ap ON r.item_type = 'arc_part' AND ap.id = r.item_id
+    LEFT JOIN workshop_materials wm ON r.item_type = 'material' AND wm.id = r.item_id
+    ORDER BY r.station_id, r.level, r.sort_order
+  `).all();
+
+  const result = stations.map(station => {
+    const stationReqs = requirements.filter(r => r.station_id === station.id);
+    const levels = [...new Set(stationReqs.map(r => r.level))]
+      .sort((a, b) => a - b)
+      .map(level => ({
+        level,
+        requirements: stationReqs
+          .filter(r => r.level === level)
+          .map(r => ({
+            item_type: r.item_type,
+            item_id: r.item_id,
+            name: r.item_name,
+            slug: r.item_slug,
+            rarity: r.item_rarity,
+            source: r.item_source,
+            qty_required: r.qty_required,
+          })),
+      }));
+    return { ...station, levels };
+  });
+
+  res.json(result);
+});
+
+app.get('/api/workshop/progress/:characterId', (req, res) => {
+  const characterId = parseInt(req.params.characterId, 10);
+  if (!characterId) return res.status(400).json({ error: 'invalid characterId' });
+
+  const rows = db.prepare(
+    'SELECT station_id, level FROM workshop_station_progress WHERE character_id = ?'
+  ).all(characterId);
+
+  res.json(rows);
+});
+
+app.post('/api/workshop/progress', (req, res) => {
+  const { character_id, station_id, level } = req.body;
+
+  if (!Number.isInteger(character_id) || !Number.isInteger(station_id)) {
+    return res.status(400).json({ error: 'character_id and station_id must be integers' });
+  }
+  if (!Number.isInteger(level) || level < 0 || level > 3) {
+    return res.status(400).json({ error: 'level must be an integer between 0 and 3' });
+  }
+
+  db.prepare(`
+    INSERT INTO workshop_station_progress (character_id, station_id, level, updated_at)
+    VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(character_id, station_id) DO UPDATE SET
+      level      = excluded.level,
+      updated_at = excluded.updated_at
+  `).run(character_id, station_id, level);
+
+  const row = db.prepare(
+    'SELECT * FROM workshop_station_progress WHERE character_id = ? AND station_id = ?'
+  ).get(character_id, station_id);
+
+  res.json(row);
+});
+
+app.get('/api/workshop/materials/tracking/:characterId', (req, res) => {
+  const characterId = parseInt(req.params.characterId, 10);
+  if (!characterId) return res.status(400).json({ error: 'invalid characterId' });
+
+  const rows = db.prepare(`
+    SELECT wmt.*, wm.name as material_name, wm.slug
+    FROM workshop_material_tracking wmt
+    JOIN workshop_materials wm ON wm.id = wmt.material_id
+    WHERE wmt.character_id = ?
+  `).all(characterId);
+
+  res.json(rows);
+});
+
+app.post('/api/workshop/materials/tracking', (req, res) => {
+  const { character_id, material_id, count } = req.body;
+
+  if (!Number.isInteger(character_id) || !Number.isInteger(material_id)) {
+    return res.status(400).json({ error: 'character_id and material_id must be integers' });
+  }
+  if (!Number.isInteger(count) || count < 0) {
+    return res.status(400).json({ error: 'count must be a non-negative integer' });
+  }
+
+  const countVal = Math.min(Math.max(0, count), 9999);
+
+  db.prepare(`
+    INSERT INTO workshop_material_tracking (character_id, material_id, count, updated_at)
+    VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(character_id, material_id) DO UPDATE SET
+      count      = excluded.count,
+      updated_at = excluded.updated_at
+  `).run(character_id, material_id, countVal);
+
+  const row = db.prepare(
+    'SELECT * FROM workshop_material_tracking WHERE character_id = ? AND material_id = ?'
+  ).get(character_id, material_id);
+
+  res.json(row);
+});
+
+app.get('/api/reports/workshop-materials', (req, res) => {
+  const rows = db.prepare(`
+    SELECT
+      wm.id as material_id,
+      wm.name as material_name,
+      wm.slug,
+      SUM(wmt.count) as total_count,
+      JSON_GROUP_ARRAY(
+        JSON_OBJECT(
+          'character_id',    c.id,
+          'character_name',  c.name,
+          'character_label', c.label,
+          'character_color', c.color,
+          'count',           wmt.count
+        )
+      ) as character_breakdown
+    FROM workshop_material_tracking wmt
+    JOIN workshop_materials wm ON wm.id = wmt.material_id
+    JOIN characters c ON c.id = wmt.character_id
+    WHERE wmt.count > 0
+    GROUP BY wm.id
+    ORDER BY wm.name COLLATE NOCASE
+  `).all();
+
+  const result = rows.map(row => ({
+    ...row,
+    character_breakdown: JSON.parse(row.character_breakdown).filter(cb => cb.count > 0),
+  }));
+
+  res.json(result);
+});
+
 // ── Health / debug ─────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   const bpCount = db.prepare('SELECT COUNT(*) as c FROM blueprints').get().c;
