@@ -1,12 +1,13 @@
 import { useState } from 'react';
-import { BarChart3, AlertCircle, Package, Cpu, ChevronDown, ChevronRight, Users } from 'lucide-react';
-import { useUnlearnedReport, useExtrasReport, useArcPartsReport, useCharacters } from '../hooks/useApi';
-import type { UnlearnedBlueprint, ExtrasReport, ArcPartsReport, CharacterLearnStatus, Character } from '../types';
+import { BarChart3, AlertCircle, Package, Cpu, Wrench, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { useUnlearnedReport, useExtrasReport, useArcPartsReport, useWorkshopMaterialsReport, useCharacters } from '../hooks/useApi';
+import type { UnlearnedBlueprint, ExtrasReport, ArcPartsReport, WorkshopMaterialsReport, CharacterLearnStatus, Character } from '../types';
 import { CategoryBadge } from '../components/CategoryIcon';
 import BlueprintIcon from '../components/BlueprintIcon';
 import ArcPartIcon from '../components/ArcPartIcon';
+import WorkshopMaterialIcon from '../components/WorkshopMaterialIcon';
 
-type ReportTab = 'unlearned' | 'extras' | 'arc-parts';
+type ReportTab = 'unlearned' | 'extras' | 'arc-parts' | 'workshop-materials';
 
 function CharacterFilter({
   characters,
@@ -65,9 +66,10 @@ export default function Reports() {
 
       <div className="flex gap-1 p-1 bg-arc-panel rounded-lg w-fit mb-6 border border-arc-border flex-wrap">
         {([
-          { id: 'unlearned',  label: 'Unlearned Blueprints', icon: AlertCircle },
-          { id: 'extras',     label: 'Extras Inventory',     icon: Package },
-          { id: 'arc-parts',  label: 'ARC Parts',            icon: Cpu },
+          { id: 'unlearned',          label: 'Unlearned Blueprints', icon: AlertCircle },
+          { id: 'extras',             label: 'Extras Inventory',     icon: Package },
+          { id: 'arc-parts',          label: 'ARC Parts',            icon: Cpu },
+          { id: 'workshop-materials', label: 'Workshop Materials',   icon: Wrench },
         ] as const).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -86,9 +88,10 @@ export default function Reports() {
         onChange={setSelectedCharId}
       />
 
-      {tab === 'unlearned' && <UnlearnedReport selectedCharId={selectedCharId} />}
-      {tab === 'extras'    && <ExtrasInventory selectedCharId={selectedCharId} />}
-      {tab === 'arc-parts' && <ArcPartsInventory selectedCharId={selectedCharId} />}
+      {tab === 'unlearned'          && <UnlearnedReport selectedCharId={selectedCharId} />}
+      {tab === 'extras'             && <ExtrasInventory selectedCharId={selectedCharId} />}
+      {tab === 'arc-parts'          && <ArcPartsInventory selectedCharId={selectedCharId} />}
+      {tab === 'workshop-materials' && <WorkshopMaterialsInventory selectedCharId={selectedCharId} />}
     </div>
   );
 }
@@ -431,6 +434,107 @@ function ArcPartsInventory({ selectedCharId }: { selectedCharId: number | null }
                           )}
                         </div>
                       ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WorkshopMaterialsInventory({ selectedCharId }: { selectedCharId: number | null }) {
+  const { data, isLoading } = useWorkshopMaterialsReport();
+  const { data: characters = [] } = useCharacters();
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  if (isLoading) return <LoadingState />;
+  if (!data || data.length === 0) return <EmptyState message="No workshop materials collected by any character yet." />;
+
+  const filtered = selectedCharId === null
+    ? data
+    : data
+        .filter(m => m.character_breakdown.some(cb => cb.character_id === selectedCharId && cb.count > 0))
+        .sort((a, b) => {
+          const aCount = a.character_breakdown.find(cb => cb.character_id === selectedCharId)?.count ?? 0;
+          const bCount = b.character_breakdown.find(cb => cb.character_id === selectedCharId)?.count ?? 0;
+          return bCount - aCount;
+        });
+
+  const selectedChar = selectedCharId !== null ? characters.find(c => c.id === selectedCharId) : null;
+
+  const totalCount = filtered.reduce((s, m) => {
+    if (selectedCharId === null) return s + m.total_count;
+    return s + (m.character_breakdown.find(cb => cb.character_id === selectedCharId)?.count ?? 0);
+  }, 0);
+
+  const toggle = (id: number) => setExpanded(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  if (filtered.length === 0) {
+    return <EmptyState message="No workshop materials collected for the selected character." />;
+  }
+
+  return (
+    <div>
+      <p className="text-sm text-arc-muted mb-4">
+        <span className="text-arc-text font-semibold">{totalCount}</span> material{totalCount !== 1 ? 's' : ''} across{' '}
+        <span className="text-arc-text font-semibold">{filtered.length}</span> type{filtered.length !== 1 ? 's' : ''}
+        {selectedChar ? <> for <span className="font-semibold" style={{ color: selectedChar.color }}>{selectedChar.name}</span></> : ''}.
+      </p>
+
+      <div className="card overflow-hidden divide-y divide-arc-border/50">
+        {filtered.map((material: WorkshopMaterialsReport) => {
+          const isOpen = expanded.has(material.material_id);
+          const displayCount = selectedCharId === null
+            ? material.total_count
+            : (material.character_breakdown.find(cb => cb.character_id === selectedCharId)?.count ?? 0);
+
+          return (
+            <div key={material.material_id}>
+              <button
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-arc-hover/40 transition-colors text-left"
+                onClick={() => toggle(material.material_id)}
+              >
+                <WorkshopMaterialIcon slug={material.slug} name={material.material_name} size={40} />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-arc-text">{material.material_name}</span>
+                </div>
+                <span className="badge bg-sky-500/15 text-sky-400 border border-sky-500/30 text-sm font-bold px-3 shrink-0">
+                  ×{displayCount}
+                </span>
+                {isOpen
+                  ? <ChevronDown  className="w-4 h-4 text-arc-muted shrink-0" />
+                  : <ChevronRight className="w-4 h-4 text-arc-muted shrink-0" />
+                }
+              </button>
+
+              {isOpen && (
+                <div className="bg-arc-bg/40 px-4 py-3 border-t border-arc-border/40">
+                  <div className="flex flex-wrap gap-3">
+                    {[...material.character_breakdown].sort((a, b) => a.character_name.localeCompare(b.character_name)).map(cb => (
+                      <div
+                        key={cb.character_id}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg border"
+                        style={{ backgroundColor: cb.character_color + '15', borderColor: cb.character_color + '40' }}
+                      >
+                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cb.character_color }} />
+                        <span className="text-sm text-arc-muted">{cb.character_name}</span>
+                        {cb.character_label && (
+                          <span className="text-xs text-arc-dim">·{' '}
+                            {cb.character_label.split(',').map(l => l.trim()).filter(Boolean).join(', ')}
+                          </span>
+                        )}
+                        <span className="text-sm font-bold font-mono ml-1" style={{ color: cb.character_color }}>
+                          ×{cb.count}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
