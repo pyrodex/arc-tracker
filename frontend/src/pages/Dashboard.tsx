@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, BarChart3, ChevronRight, Trophy, Package, Cpu } from 'lucide-react';
+import { Users, BookOpen, BarChart3, ChevronRight, Trophy, Package, Cpu, Wrench } from 'lucide-react';
 import { useSummary, useCharacters } from '../hooks/useApi';
 
 function ProgressBar({ value, max, color = 'rgb(var(--arc-accent))' }: { value: number; max: number; color?: string }) {
@@ -105,9 +105,10 @@ export default function Dashboard() {
       )}
 
       {/* Quick nav */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <QuickNav icon={<BookOpen className="w-5 h-5" />} title="Track Blueprints" desc="View and update learned/extra status per character"          onClick={() => navigate('/blueprints')} color="text-arc-accent"  />
         <QuickNav icon={<Cpu      className="w-5 h-5" />} title="ARC Parts"        desc="Track Epic and Legendary drops per character"                onClick={() => navigate('/arc-parts')}  color="text-purple-400" />
+        <QuickNav icon={<Wrench   className="w-5 h-5" />} title="Workshop"         desc="Station upgrade requirements and material stockpiles"       onClick={() => navigate('/workshop')}   color="text-sky-400"    />
         <QuickNav icon={<BarChart3 className="w-5 h-5" />} title="Reports"         desc="Unlearned blueprints, extras, and ARC parts across all characters" onClick={() => navigate('/reports')} color="text-arc-extra"  />
       </div>
     </div>

@@ -134,6 +134,45 @@ const NAME_TO_FILE = {
   'Vaporizer Regulator': 'File:Vaporizer Regulator.png',
   'Turbine Compressor':  'File:Turbine Compressor.png',
   'Assessor Matrix':     'File:Assessor Matrix.png',
+
+  // ── Workshop materials ──────────────────────────────────────────────────────
+  'ARC Alloy':                        'File:ARC Alloy.png',
+  'ARC Circuitry':                    'File:ARC Circuitry.png',
+  'ARC Motion Core':                  'File:ARC Motion Core.png',
+  'ARC Powercell':                    'File:ARC Powercell.png',
+  'Advanced Electrical Components':   'File:Advanced Electrical Components.png',
+  'Advanced Mechanical Components':   'File:Advanced Mechanical Components.png',
+  'Antiseptic':                       'File:Antiseptic.png',
+  'Chemicals':                        'File:Chemicals.png',
+  'Cracked Bioscanner':               'File:Cracked Bioscanner.png',
+  'Crude Explosives':                 'File:Crude Explosives.png',
+  'Damaged Heat Sink':                'File:Damaged Heat Sink.png',
+  'Durable Cloth':                    'File:Durable Cloth.png',
+  'Electrical Components':            'File:Electrical Components.png',
+  'Explosive Compound':               'File:Explosive Compound.png',
+  'Fabric':                           'File:Fabric.png',
+  'Fireball Burner':                  'File:Fireball Burner.png',
+  'Fried Motherboard':                'File:Fried Motherboard.png',
+  'Hornet Driver':                    'File:Hornet Driver.png',
+  'Industrial Battery':               'File:Industrial Battery.png',
+  'Laboratory Reagents':              'File:Laboratory Reagents.png',
+  'Mechanical Components':            'File:Mechanical Components.png',
+  'Metal Parts':                      'File:Metal Parts.png',
+  'Motor':                            'File:Motor.png',
+  'Plastic Parts':                    'File:Plastic Parts.png',
+  'Pop Trigger':                      'File:Pop Trigger.png',
+  'Power Cable':                      'File:Power Cable.png',
+  'Rubber Parts':                     'File:Rubber Parts.png',
+  'Rusted Gear':                      'File:Rusted Gear.png',
+  'Rusted Shut Medical Kit':          'File:Rusted Shut Medical Kit.png',
+  'Rusted Tools':                     'File:Rusted Tools.png',
+  'Sentinel Firing Core':             'File:Sentinel Firing Core.png',
+  'Snitch Scanner':                   'File:Snitch Scanner.png',
+  'Surveyor Vault':                   'File:Surveyor Vault.png',
+  'Synthesized Fuel':                 'File:Synthesized Fuel.png',
+  'Tick Pod':                         'File:Tick Pod.png',
+  'Toaster':                          'File:Toaster.png',
+  'Wasp Driver':                      'File:Wasp Driver.png',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -235,6 +274,7 @@ const CATEGORY_COLORS = {
   crafting:        { bg: '#1a1a00', border: '#eab308', text: '#eab308', emoji: '⚙' },
   'arc-legendary': { bg: '#1a1000', border: '#f59e0b', text: '#f59e0b', emoji: '👑' },
   'arc-epic':      { bg: '#0d0a1a', border: '#a855f7', text: '#a855f7', emoji: '⚡' },
+  'workshop-material': { bg: '#001a1f', border: '#38bdf8', text: '#38bdf8', emoji: '⚙' },
 };
 
 function generateSvgPlaceholder(name, category) {
@@ -248,18 +288,32 @@ function generateSvgPlaceholder(name, category) {
 }
 
 // ── Main ───────────────────────────────────────────────────────────────────────
-const BLUEPRINTS = require('../backend/src/blueprints');
-const ARC_PARTS  = require('../backend/src/arc-parts');
+const BLUEPRINTS       = require('../backend/src/blueprints');
+const ARC_PARTS        = require('../backend/src/arc-parts');
+const WORKSHOP_STATIONS = require('../backend/src/workshop');
 
 // Normalise ARC parts to same shape used by blueprint processing
 const ARC_PART_ITEMS = ARC_PARTS.map(p => ({ name: p.name, category: `arc-${p.rarity}` }));
+
+// Workshop materials, excluding any that are already Epic ARC parts (e.g.
+// Bastion Cell) — those already have an entry above via ARC_PART_ITEMS.
+const arcPartNames = new Set(ARC_PARTS.map(p => p.name));
+const workshopMaterialNames = new Set();
+for (const station of WORKSHOP_STATIONS) {
+  for (const { materials } of station.levels) {
+    for (const mat of materials) {
+      if (!arcPartNames.has(mat.name)) workshopMaterialNames.add(mat.name);
+    }
+  }
+}
+const WORKSHOP_MATERIAL_ITEMS = [...workshopMaterialNames].map(name => ({ name, category: 'workshop-material' }));
 
 async function main() {
   console.log('\n🎮 ARC Tracker — Icon Download (arcraiders.wiki)\n');
   console.log(`Icons directory: ${ICONS_DIR}`);
   console.log(`Force re-download: ${FORCE}\n`);
 
-  const allItems = [...BLUEPRINTS, ...ARC_PART_ITEMS];
+  const allItems = [...BLUEPRINTS, ...ARC_PART_ITEMS, ...WORKSHOP_MATERIAL_ITEMS];
 
   // Which items still need icons?
   const pending = FORCE

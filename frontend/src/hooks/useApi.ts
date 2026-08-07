@@ -16,6 +16,14 @@ import type {
   ArcPartTrackingMap,
   ArcPartCountUpdate,
   ArcPartsReport,
+  WorkshopStation,
+  WorkshopStationProgress,
+  WorkshopStationProgressMap,
+  WorkshopProgressUpdate,
+  WorkshopMaterialTrackingRecord,
+  WorkshopMaterialTrackingMap,
+  WorkshopMaterialCountUpdate,
+  WorkshopMaterialsReport,
 } from '../types';
 
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -183,6 +191,92 @@ export function useUpsertArcPartTracking() {
       qc.invalidateQueries({ queryKey: ['arc-parts-tracking', variables.character_id] });
       qc.invalidateQueries({ queryKey: ['reports', 'arc-parts'] });
     },
+  });
+}
+
+// ── Workshop ───────────────────────────────────────────────────────────────────
+export function useWorkshopStations() {
+  return useQuery<WorkshopStation[]>({
+    queryKey: ['workshop-stations'],
+    queryFn: () => apiFetch('/api/workshop/stations'),
+    staleTime: Infinity,
+  });
+}
+
+export function useWorkshopProgress(characterId: number | null) {
+  return useQuery<WorkshopStationProgress[]>({
+    queryKey: ['workshop-progress', characterId],
+    queryFn: () => apiFetch(`/api/workshop/progress/${characterId}`),
+    enabled: characterId !== null,
+    staleTime: 10_000,
+  });
+}
+
+export function useWorkshopProgressMap(characterId: number | null) {
+  const query = useWorkshopProgress(characterId);
+  const map: WorkshopStationProgressMap = {};
+  if (query.data) {
+    for (const record of query.data) {
+      map[record.station_id] = record.level;
+    }
+  }
+  return { ...query, progressMap: map };
+}
+
+export function useUpsertWorkshopProgress() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (update: WorkshopProgressUpdate) =>
+      apiFetch<WorkshopStationProgress>('/api/workshop/progress', {
+        method: 'POST',
+        body: JSON.stringify(update),
+      }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['workshop-progress', variables.character_id] });
+    },
+  });
+}
+
+export function useWorkshopMaterialsTracking(characterId: number | null) {
+  return useQuery<WorkshopMaterialTrackingRecord[]>({
+    queryKey: ['workshop-materials-tracking', characterId],
+    queryFn: () => apiFetch(`/api/workshop/materials/tracking/${characterId}`),
+    enabled: characterId !== null,
+    staleTime: 10_000,
+  });
+}
+
+export function useWorkshopMaterialsTrackingMap(characterId: number | null) {
+  const query = useWorkshopMaterialsTracking(characterId);
+  const map: WorkshopMaterialTrackingMap = {};
+  if (query.data) {
+    for (const record of query.data) {
+      map[record.material_id] = record;
+    }
+  }
+  return { ...query, trackingMap: map };
+}
+
+export function useUpsertWorkshopMaterialTracking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (update: WorkshopMaterialCountUpdate) =>
+      apiFetch<WorkshopMaterialTrackingRecord>('/api/workshop/materials/tracking', {
+        method: 'POST',
+        body: JSON.stringify(update),
+      }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['workshop-materials-tracking', variables.character_id] });
+      qc.invalidateQueries({ queryKey: ['reports', 'workshop-materials'] });
+    },
+  });
+}
+
+export function useWorkshopMaterialsReport() {
+  return useQuery<WorkshopMaterialsReport[]>({
+    queryKey: ['reports', 'workshop-materials'],
+    queryFn: () => apiFetch('/api/reports/workshop-materials'),
+    staleTime: 15_000,
   });
 }
 

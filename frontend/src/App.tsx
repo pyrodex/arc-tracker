@@ -4,6 +4,7 @@ import Dashboard from './pages/Dashboard';
 import Characters from './pages/Characters';
 import Blueprints from './pages/Blueprints';
 import ArcParts from './pages/ArcParts';
+import Workshop from './pages/Workshop';
 import Reports from './pages/Reports';
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
           <Route path="characters" element={<Characters />} />
           <Route path="blueprints" element={<Blueprints />} />
           <Route path="arc-parts" element={<ArcParts />} />
+          <Route path="workshop" element={<Workshop />} />
           <Route path="reports" element={<Reports />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

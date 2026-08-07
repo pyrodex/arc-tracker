@@ -39,10 +39,21 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 - **Character switcher** — per-character counts, switching without leaving the page
 - **Grouped sections** — Legendary parts at the top, Epic parts below
 
+### Workshop *(new in v1.3.0)*
+- **6 upgradable stations** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Workshop) — Gunsmith, Gear Bench, Medical Lab, Explosives Station, Utility Station, and Refiner (the free, non-upgradable Workbench is intentionally excluded)
+- **Per-level requirements** — exact material lists for levels 1–3 of every station
+- **Per-character station levels** — mark each station's current level for a character with one click; completed levels are badged "Built", the next one is badged "Next"
+- **Material stockpile tracking** — track how many of each required material a character currently holds, with +/– controls or direct input
+- **Acquired vs. required progress** — every requirement shows total acquired across *all* characters against the amount needed, turning green once you have enough
+- **Quick "which character has it" reference** — each material lists every character currently holding a nonzero amount, so you know where to pull materials from before upgrading
+- **Shared ARC part counts** — requirements that are also Epic ARC parts (Bastion Cell, Bombardier Cell, Leaper Pulse Unit, Rocketeer Driver) reuse the same count tracked on the ARC Parts page instead of double-counting
+- **Search** — filter stations/materials by name
+
 ### Reports
 - **Unlearned Blueprints** — collapsible rows showing which blueprints are missing for at least one character; expand any row to see each character's ✓/✗ status with name and labels
 - **Extras Inventory** — total extras per blueprint sorted by count; expand to drill down into which characters hold extras and how many
 - **ARC Parts Inventory** *(new in v1.1.0)* — total ARC parts collected per part type; expand to see per-character counts with rarity badges and source enemy info; sorted Legendary-first
+- **Workshop Materials** *(new in v1.3.0)* — total workshop materials collected per material type; expand to see per-character counts
 
 ### UI & Themes
 - **Dark, Light, and System/Auto** color schemes — toggle between dark (default), light, or follow the OS preference; choice persisted in `localStorage`
@@ -110,11 +121,13 @@ arc-tracker/
 │       ├── server.js          Express API + static file serving
 │       ├── db.js              better-sqlite3 setup, schema, seed, and migrations
 │       ├── blueprints.js      Seed data (83 blueprints)
-│       └── arc-parts.js       Seed data (9 Epic/Legendary ARC parts)
+│       ├── arc-parts.js       Seed data (9 Epic/Legendary ARC parts)
+│       └── workshop.js        Seed data (6 stations × 3 levels of material requirements)
 ├── frontend/
 │   └── src/
-│       ├── pages/             Dashboard, Characters, Blueprints, ArcParts, Reports
+│       ├── pages/             Dashboard, Characters, Blueprints, ArcParts, Workshop, Reports
 │       ├── components/        BlueprintCard, BlueprintIcon, ArcPartCard, ArcPartIcon,
+│       │                      WorkshopStationCard, WorkshopMaterialIcon,
 │       │                      CategoryIcon, CharacterForm, Layout, Modal, ThemeToggle, …
 │       ├── hooks/
 │       │   ├── useApi.ts      TanStack Query hooks for all API calls
@@ -143,10 +156,16 @@ arc-tracker/
 | GET | `/api/arc-parts` | All ARC parts (query: `?rarity=epic\|legendary`) |
 | GET | `/api/arc-parts/tracking/:characterId` | ARC parts counts for a character |
 | POST | `/api/arc-parts/tracking` | Upsert an ARC part count for a character |
+| GET | `/api/workshop/stations` | All workshop stations with per-level material requirements |
+| GET | `/api/workshop/progress/:characterId` | Current station levels for a character |
+| POST | `/api/workshop/progress` | Upsert a station's current level (0–3) for a character |
+| GET | `/api/workshop/materials/tracking/:characterId` | Workshop material counts for a character |
+| POST | `/api/workshop/materials/tracking` | Upsert a workshop material count for a character |
 | GET | `/api/reports/summary` | Dashboard summary stats (per-character learned, extras, and ARC parts counts) |
 | GET | `/api/reports/unlearned` | Unlearned blueprints with per-character status |
 | GET | `/api/reports/extras` | Extras by blueprint with character breakdown |
 | GET | `/api/reports/arc-parts` | ARC parts collected with per-character breakdown |
+| GET | `/api/reports/workshop-materials` | Workshop materials collected with per-character breakdown |
 | POST | `/api/icons/refresh` | Trigger a background icon re-download |
 | GET | `/health` | Server health check (status, blueprint/character counts, uptime) |
 | GET | `/icons/:slug.png` | Item icon PNG |
@@ -197,6 +216,14 @@ Blueprint and ARC parts data sourced from [arcraiders.wiki](https://arcraiders.w
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
+
+### v1.3.0
+- **Workshop** — new side-nav section tracking upgrade requirements for the Workshop's 6 upgradable stations (Gunsmith, Gear Bench, Medical Lab, Explosives Station, Utility Station, Refiner), seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Workshop); the free, non-upgradable Workbench is excluded
+- **Per-level requirements** — exact material lists for levels 1–3 of every station, with per-character "current level" tracking (Built / Next badges)
+- **Material stockpile tracking** — per-character counts for every required material, with acquired-vs-required progress shown across all characters combined
+- **Quick character reference** — each material shows which characters currently hold it and how many, so you always know where to pull from
+- **Shared ARC part counts** — the 4 requirement items that are also Epic ARC parts reuse the existing ARC Parts tracking instead of a duplicate counter
+- **Reports: Workshop Materials tab** — cross-character inventory view for all tracked workshop materials
 
 ### v1.2.0
 - **Character parent/child hierarchy** — link alts and mules under a top-level parent via a new `parent_id` field; Characters page shows parents with nested children sorted alphabetically

@@ -160,6 +160,84 @@ export interface ArcPartsReport {
   character_breakdown: CharacterArcCount[];
 }
 
+// ── Workshop ───────────────────────────────────────────────────────────────────
+
+export type WorkshopItemType = 'material' | 'arc_part';
+
+export interface WorkshopRequirement {
+  item_type: WorkshopItemType;
+  item_id: number;
+  name: string;
+  slug: string;
+  rarity: ArcPartRarity | null;
+  source: string | null;
+  qty_required: number;
+}
+
+export interface WorkshopLevel {
+  level: number;
+  requirements: WorkshopRequirement[];
+}
+
+export interface WorkshopStation {
+  id: number;
+  name: string;
+  slug: string;
+  sort_order: number;
+  levels: WorkshopLevel[];
+}
+
+export interface WorkshopStationProgress {
+  station_id: number;
+  level: number;
+}
+
+export interface WorkshopStationProgressMap {
+  [stationId: number]: number;
+}
+
+export type WorkshopProgressUpdate = {
+  character_id: number;
+  station_id: number;
+  level: number;
+};
+
+export interface WorkshopMaterialTrackingRecord {
+  id: number;
+  character_id: number;
+  material_id: number;
+  count: number;
+  updated_at: string;
+  material_name?: string;
+  slug?: string;
+}
+
+export interface WorkshopMaterialTrackingMap {
+  [materialId: number]: WorkshopMaterialTrackingRecord;
+}
+
+export type WorkshopMaterialCountUpdate = {
+  character_id: number;
+  material_id: number;
+  count: number;
+};
+
+export interface WorkshopCharacterCount {
+  character_id: number;
+  character_name: string;
+  character_label: string | null;
+  character_color: string;
+  count: number;
+}
+
+export interface WorkshopMaterialsReport {
+  material_id: number;
+  material_name: string;
+  slug: string;
+  total_count: number;
+  character_breakdown: WorkshopCharacterCount[];
+}
+
 // ── Characters ─────────────────────────────────────────────────────────────────
 
 export type CreateCharacterPayload = {
