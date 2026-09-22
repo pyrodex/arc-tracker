@@ -24,6 +24,13 @@ import type {
   WorkshopMaterialTrackingMap,
   WorkshopMaterialCountUpdate,
   WorkshopMaterialsReport,
+  WeaponMod,
+  WeaponModCatalog,
+  GunConfig,
+  GunConfigsReport,
+  CreateGunConfigPayload,
+  UpdateGunConfigPayload,
+  WeaponPriceCatalog,
 } from '../types';
 
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -276,6 +283,101 @@ export function useWorkshopMaterialsReport() {
   return useQuery<WorkshopMaterialsReport[]>({
     queryKey: ['reports', 'workshop-materials'],
     queryFn: () => apiFetch('/api/reports/workshop-materials'),
+    staleTime: 15_000,
+  });
+}
+
+// ── Gun configurations ─────────────────────────────────────────────────────────
+export function useWeaponMods() {
+  return useQuery<WeaponModCatalog>({
+    queryKey: ['weapon-mods'],
+    queryFn: () => apiFetch('/api/weapon-mods'),
+    staleTime: 60_000,
+  });
+}
+
+export function useUpdateModPrice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, sell_value }: { id: number; sell_value: number }) =>
+      apiFetch<WeaponMod>(`/api/weapon-mods/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ sell_value }),
+      }),
+    // A mod price feeds every config's value, so refresh configs and reports too.
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['weapon-mods'] });
+      qc.invalidateQueries({ queryKey: ['gun-configs'] });
+      qc.invalidateQueries({ queryKey: ['reports', 'gun-configs'] });
+    },
+  });
+}
+
+export function useWeaponPrices() {
+  return useQuery<WeaponPriceCatalog>({
+    queryKey: ['weapon-prices'],
+    queryFn: () => apiFetch('/api/weapon-prices'),
+    staleTime: Infinity, // seeded reference data; never changes at runtime
+  });
+}
+
+export function useGunConfigs(characterId: number | null) {
+  return useQuery<GunConfig[]>({
+    queryKey: ['gun-configs', characterId],
+    queryFn: () => apiFetch(`/api/gun-configs/${characterId}`),
+    enabled: characterId !== null,
+    staleTime: 10_000,
+  });
+}
+
+function invalidateConfigs(qc: ReturnType<typeof useQueryClient>, characterId?: number) {
+  qc.invalidateQueries({ queryKey: ['gun-configs', characterId] });
+  qc.invalidateQueries({ queryKey: ['reports', 'gun-configs'] });
+}
+
+export function useCreateGunConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateGunConfigPayload) =>
+      apiFetch<GunConfig>('/api/gun-configs', { method: 'POST', body: JSON.stringify(payload) }),
+    onSuccess: (_, variables) => invalidateConfigs(qc, variables.character_id),
+  });
+}
+
+export function useUpdateGunConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...payload }: { id: number } & UpdateGunConfigPayload) =>
+      apiFetch<GunConfig>(`/api/gun-configs/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    onSuccess: (config) => invalidateConfigs(qc, config.character_id),
+  });
+}
+
+export function useSetGunConfigQuantity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, delta, quantity }: { id: number; delta?: number; quantity?: number }) =>
+      apiFetch<GunConfig>(`/api/gun-configs/${id}/quantity`, {
+        method: 'PATCH',
+        body: JSON.stringify(delta !== undefined ? { delta } : { quantity }),
+      }),
+    onSuccess: (config) => invalidateConfigs(qc, config.character_id),
+  });
+}
+
+export function useDeleteGunConfig() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id }: { id: number; characterId: number }) =>
+      apiFetch<void>(`/api/gun-configs/${id}`, { method: 'DELETE' }),
+    onSuccess: (_, variables) => invalidateConfigs(qc, variables.characterId),
+  });
+}
+
+export function useGunConfigsReport() {
+  return useQuery<GunConfigsReport>({
+    queryKey: ['reports', 'gun-configs'],
+    queryFn: () => apiFetch('/api/reports/gun-configs'),
     staleTime: 15_000,
   });
 }

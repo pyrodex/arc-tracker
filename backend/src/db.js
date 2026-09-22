@@ -6,6 +6,8 @@ const Database = require('better-sqlite3');
 const BLUEPRINTS = require('./blueprints');
 const ARC_PARTS = require('./arc-parts');
 const WORKSHOP_STATIONS = require('./workshop');
+const { WEAPON_MODS, MOD_SLOTS } = require('./weapon-mods');
+const WEAPON_PRICES = require('./weapon-prices');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 const DB_PATH = path.join(DATA_DIR, 'arc-tracker.db');
@@ -150,6 +152,72 @@ function initSchema() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_workshop_progress_char ON workshop_station_progress(character_id);
+
+    -- Gun mod catalog. A superset of the 'mods' blueprints: it also carries the
+    -- tier I mods and the loot-only mods, neither of which has a blueprint row.
+    -- blueprint_id is NULL for anything that cannot be crafted.
+    CREATE TABLE IF NOT EXISTS weapon_mods (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT    NOT NULL UNIQUE,
+      slug         TEXT    NOT NULL UNIQUE,
+      slot         TEXT    NOT NULL CHECK (slot IN ('muzzle','underbarrel','stock','magazine','tech')),
+      variant      TEXT,
+      craftable    INTEGER DEFAULT 1,
+      blueprint_id INTEGER REFERENCES blueprints(id),
+      sell_value   INTEGER DEFAULT 0,
+      sort_order   INTEGER DEFAULT 0
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_weapon_mods_slot ON weapon_mods(slot);
+
+    -- A specific build: a weapon at a tier, owned by one character, with a
+    -- quantity and the weapon's own value at that tier. Mod values come from
+    -- the catalog; weapon value is per-config because it varies by tier.
+    CREATE TABLE IF NOT EXISTS gun_configs (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      character_id  INTEGER NOT NULL,
+      blueprint_id  INTEGER NOT NULL,
+      name          TEXT,
+      tier          INTEGER CHECK (tier IS NULL OR (tier >= 1 AND tier <= 4)),
+      quantity      INTEGER DEFAULT 0,
+      weapon_value  INTEGER DEFAULT 0,
+      notes         TEXT,
+      created_at    TEXT    DEFAULT (datetime('now')),
+      updated_at    TEXT    DEFAULT (datetime('now')),
+      FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+      FOREIGN KEY (blueprint_id) REFERENCES blueprints(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_gun_configs_char ON gun_configs(character_id);
+
+    -- UNIQUE(config_id, slot) is what enforces "one mod per slot" — the rule
+    -- lives in the schema so the API cannot drift from it.
+    CREATE TABLE IF NOT EXISTS gun_config_mods (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      config_id INTEGER NOT NULL,
+      mod_id    INTEGER NOT NULL,
+      slot      TEXT    NOT NULL,
+      FOREIGN KEY (config_id) REFERENCES gun_configs(id) ON DELETE CASCADE,
+      FOREIGN KEY (mod_id)    REFERENCES weapon_mods(id),
+      UNIQUE(config_id, slot),
+      UNIQUE(config_id, mod_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_gun_config_mods_config ON gun_config_mods(config_id);
+
+    -- Seeded weapon sale prices per tier. tier 0 means "cannot be upgraded"
+    -- and holds the weapon's single price; 0 rather than NULL because SQLite
+    -- treats NULLs as distinct in a UNIQUE index.
+    -- A build stores its own weapon_value, so this table is a default source,
+    -- never written to by the app.
+    CREATE TABLE IF NOT EXISTS weapon_prices (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      blueprint_id INTEGER NOT NULL,
+      tier         INTEGER NOT NULL,
+      sell_value   INTEGER NOT NULL,
+      FOREIGN KEY (blueprint_id) REFERENCES blueprints(id),
+      UNIQUE(blueprint_id, tier)
+    );
   `);
 }
 
@@ -299,6 +367,105 @@ function seedWorkshop() {
   if (after > before) console.log(`Seeded ${after - before} workshop requirement row(s)`);
 }
 
+function seedWeaponMods() {
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO weapon_mods
+      (name, slug, slot, variant, craftable, blueprint_id, sell_value, sort_order)
+    VALUES
+      (@name, @slug, @slot, @variant, @craftable, @blueprint_id, @sell_value, @sort_order)
+  `);
+
+  // Backfill a seeded price onto rows that don't have one yet. This covers
+  // databases seeded before prices were available, without touching a price
+  // the user has already entered.
+  const backfillValue = db.prepare(`
+    UPDATE weapon_mods SET sell_value = @sell_value
+    WHERE name = @name AND sell_value = 0 AND @sell_value != 0
+  `);
+
+  // Sync structural fields only. sell_value is user-editable — never overwrite it.
+  const syncFields = db.prepare(`
+    UPDATE weapon_mods
+    SET slot = @slot, variant = @variant, craftable = @craftable,
+        blueprint_id = @blueprint_id, sort_order = @sort_order
+    WHERE name = @name
+      AND (slot != @slot
+           OR variant IS NOT @variant
+           OR craftable != @craftable
+           OR blueprint_id IS NOT @blueprint_id
+           OR sort_order != @sort_order)
+  `);
+
+  const getBlueprintByName = db.prepare("SELECT id FROM blueprints WHERE name = ? AND category = 'mods'");
+  const slotOrder = MOD_SLOTS.map(s => s.slot);
+
+  const upsertMany = db.transaction((mods) => {
+    mods.forEach((mod, i) => {
+      // Craftable mods point back at their blueprint row so the app treats a
+      // mod and its blueprint as one item. Tier I mods are craftable in game
+      // but have no blueprint seeded, so the lookup simply misses and the
+      // reference stays NULL — which is correct, not an error.
+      const blueprint = mod.craftable ? getBlueprintByName.get(mod.name) : null;
+      const row = {
+        name: mod.name,
+        slug: slugify(mod.name),
+        slot: mod.slot,
+        variant: mod.variant ?? null,
+        craftable: mod.craftable ? 1 : 0,
+        blueprint_id: blueprint ? blueprint.id : null,
+        sell_value: mod.value ?? 0,
+        sort_order: slotOrder.indexOf(mod.slot) * 100 + i,
+      };
+      insert.run(row);
+      syncFields.run(row);
+      backfillValue.run(row);
+    });
+  });
+
+  const before = db.prepare('SELECT COUNT(*) as c FROM weapon_mods').get().c;
+  upsertMany(WEAPON_MODS);
+  const after = db.prepare('SELECT COUNT(*) as c FROM weapon_mods').get().c;
+  if (after > before) console.log(`Seeded ${after - before} new weapon mod(s) (total: ${after})`);
+}
+
+function seedWeaponPrices() {
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO weapon_prices (blueprint_id, tier, sell_value)
+    VALUES (@blueprint_id, @tier, @sell_value)
+  `);
+
+  // Prices are reference data, so corrections to the seed propagate. Nothing
+  // in the app writes here — a build keeps its own weapon_value.
+  const sync = db.prepare(`
+    UPDATE weapon_prices SET sell_value = @sell_value
+    WHERE blueprint_id = @blueprint_id AND tier = @tier AND sell_value != @sell_value
+  `);
+
+  const getWeaponByName = db.prepare("SELECT id FROM blueprints WHERE name = ? AND category = 'weapons'");
+
+  const seedAll = db.transaction((weapons) => {
+    for (const weapon of weapons) {
+      const row = getWeaponByName.get(weapon.name);
+      if (!row) continue; // weapon not in the blueprint seed — skip rather than fail
+
+      const entries = weapon.tiers
+        ? weapon.tiers.map((sell_value, i) => ({ tier: i + 1, sell_value }))
+        : [{ tier: 0, sell_value: weapon.flat }];
+
+      for (const entry of entries) {
+        const data = { blueprint_id: row.id, ...entry };
+        insert.run(data);
+        sync.run(data);
+      }
+    }
+  });
+
+  const before = db.prepare('SELECT COUNT(*) as c FROM weapon_prices').get().c;
+  seedAll(WEAPON_PRICES);
+  const after = db.prepare('SELECT COUNT(*) as c FROM weapon_prices').get().c;
+  if (after > before) console.log(`Seeded ${after - before} weapon price row(s) (total: ${after})`);
+}
+
 function runMigrations() {
   const charCols = db.pragma('table_info(characters)').map(c => c.name);
   if (!charCols.includes('nomad_stash')) {
@@ -325,5 +492,7 @@ runMigrations();
 seedBlueprints();
 seedArcParts();
 seedWorkshop();
+seedWeaponMods();
+seedWeaponPrices();
 
 module.exports = db;

@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { BarChart3, AlertCircle, Package, Cpu, Wrench, ChevronDown, ChevronRight, Users } from 'lucide-react';
-import { useUnlearnedReport, useExtrasReport, useArcPartsReport, useWorkshopMaterialsReport, useCharacters } from '../hooks/useApi';
+import { BarChart3, AlertCircle, Package, Cpu, Wrench, ChevronDown, ChevronRight, Users, Crosshair } from 'lucide-react';
+import { useUnlearnedReport, useExtrasReport, useArcPartsReport, useWorkshopMaterialsReport, useCharacters, useGunConfigsReport } from '../hooks/useApi';
 import type { UnlearnedBlueprint, ExtrasReport, ArcPartsReport, WorkshopMaterialsReport, CharacterLearnStatus, Character } from '../types';
 import { CategoryBadge } from '../components/CategoryIcon';
 import BlueprintIcon from '../components/BlueprintIcon';
 import ArcPartIcon from '../components/ArcPartIcon';
 import WorkshopMaterialIcon from '../components/WorkshopMaterialIcon';
 
-type ReportTab = 'unlearned' | 'extras' | 'arc-parts' | 'workshop-materials';
+type ReportTab = 'unlearned' | 'extras' | 'arc-parts' | 'workshop-materials' | 'loadouts';
 
 function CharacterFilter({
   characters,
@@ -70,6 +70,7 @@ export default function Reports() {
           { id: 'extras',             label: 'Extras Inventory',     icon: Package },
           { id: 'arc-parts',          label: 'ARC Parts',            icon: Cpu },
           { id: 'workshop-materials', label: 'Workshop Materials',   icon: Wrench },
+          { id: 'loadouts',           label: 'Loadouts',             icon: Crosshair },
         ] as const).map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -92,6 +93,7 @@ export default function Reports() {
       {tab === 'extras'             && <ExtrasInventory selectedCharId={selectedCharId} />}
       {tab === 'arc-parts'          && <ArcPartsInventory selectedCharId={selectedCharId} />}
       {tab === 'workshop-materials' && <WorkshopMaterialsInventory selectedCharId={selectedCharId} />}
+      {tab === 'loadouts'           && <LoadoutsReport selectedCharId={selectedCharId} />}
     </div>
   );
 }
@@ -551,6 +553,143 @@ function LoadingState() {
     <div className="text-center py-12">
       <div className="inline-block w-6 h-6 border-2 border-arc-accent/30 border-t-arc-accent rounded-full animate-spin mb-3" />
       <p className="text-arc-muted text-sm">Loading report…</p>
+    </div>
+  );
+}
+
+// ── Loadouts ───────────────────────────────────────────────────────────────────
+
+const ROMAN = ['', 'I', 'II', 'III', 'IV'];
+
+function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
+  const { data, isLoading } = useGunConfigsReport();
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  if (isLoading) return <EmptyState message="Loading loadouts…" />;
+  if (!data) return <EmptyState message="No loadout data available." />;
+
+  const rows = selectedCharId === null
+    ? data.characters
+    : data.characters.filter(r => r.character_id === selectedCharId);
+
+  const withBuilds = rows.filter(r => r.config_count > 0);
+  if (withBuilds.length === 0) {
+    return <EmptyState message="No gun builds tracked yet. Create one on the Loadouts page." />;
+  }
+
+  // Totals follow the filter so a single-character view doesn't show global sums.
+  const totals = withBuilds.reduce(
+    (acc, r) => ({
+      config_count: acc.config_count + r.config_count,
+      total_guns: acc.total_guns + r.total_guns,
+      total_value: acc.total_value + r.total_value,
+    }),
+    { config_count: 0, total_guns: 0, total_value: 0 },
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Summary tiles */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Builds', value: totals.config_count },
+          { label: 'Guns held', value: totals.total_guns },
+          { label: 'Total value', value: totals.total_value, accent: true },
+        ].map(({ label, value, accent }) => (
+          <div key={label} className="card p-4">
+            <p className="text-[10px] text-arc-dim uppercase tracking-wider">{label}</p>
+            <p className={`text-xl font-semibold tabular-nums mt-1 ${accent ? 'text-arc-extra' : 'text-arc-text'}`}>
+              {value.toLocaleString()}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Per character */}
+      <div className="space-y-3">
+        {withBuilds.map(row => {
+          const isOpen = expanded === row.character_id;
+          return (
+            <div key={row.character_id} className="card overflow-hidden">
+              <button
+                onClick={() => setExpanded(isOpen ? null : row.character_id)}
+                className="w-full flex items-center gap-3 p-4 text-left hover:bg-arc-hover transition-colors"
+              >
+                {isOpen
+                  ? <ChevronDown className="w-4 h-4 text-arc-dim shrink-0" />
+                  : <ChevronRight className="w-4 h-4 text-arc-dim shrink-0" />}
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: row.character_color }} />
+                <span className="font-medium text-arc-text">{row.character_name}</span>
+                {row.character_label && (
+                  <span className="text-xs text-arc-dim">{row.character_label}</span>
+                )}
+                <span className="ml-auto flex items-center gap-4 text-sm">
+                  <span className="text-arc-muted tabular-nums">
+                    {row.config_count} build{row.config_count === 1 ? '' : 's'}
+                  </span>
+                  <span className="text-arc-muted tabular-nums">
+                    {row.total_guns} gun{row.total_guns === 1 ? '' : 's'}
+                  </span>
+                  <span className="text-arc-extra font-semibold tabular-nums">
+                    {row.total_value.toLocaleString()}
+                  </span>
+                </span>
+              </button>
+
+              {isOpen && (
+                <div className="border-t border-arc-border divide-y divide-arc-border">
+                  {row.configs.map(cfg => (
+                    <div key={cfg.id} className="p-4 flex items-start gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-arc-text">
+                          {cfg.weapon_name}
+                          {cfg.tier != null && (
+                            <span className="ml-1.5 text-[10px] font-bold text-arc-accent">
+                              {ROMAN[cfg.tier] ?? cfg.tier}
+                            </span>
+                          )}
+                          {cfg.name && <span className="text-arc-dim"> · {cfg.name}</span>}
+                        </p>
+                        <p className="text-xs text-arc-dim mt-0.5">
+                          {cfg.mods.length === 0
+                            ? 'No mods'
+                            : cfg.mods.map(m => m.name).join(', ')}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-arc-muted tabular-nums">
+                          {cfg.quantity} × {cfg.unit_value.toLocaleString()}
+                        </p>
+                        <p className="text-sm text-arc-extra font-semibold tabular-nums">
+                          {cfg.total_value.toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Which weapons get built most — global, so only in the unfiltered view. */}
+      {selectedCharId === null && data.weapons.length > 0 && (
+        <div className="card p-4">
+          <h3 className="text-sm font-semibold text-arc-text mb-3">Most-built weapons</h3>
+          <div className="space-y-1.5">
+            {data.weapons.map(w => (
+              <div key={w.blueprint_id} className="flex items-center gap-3 text-sm">
+                <span className="text-arc-muted flex-1 truncate">{w.weapon_name}</span>
+                <span className="text-xs text-arc-dim tabular-nums">
+                  {w.config_count} build{w.config_count === 1 ? '' : 's'}
+                </span>
+                <span className="text-arc-text tabular-nums w-12 text-right">{w.total_guns}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

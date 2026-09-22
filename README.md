@@ -49,11 +49,26 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 - **Shared ARC part counts** — requirements that are also Epic ARC parts (Bastion Cell, Bombardier Cell, Leaper Pulse Unit, Rocketeer Driver) reuse the same count tracked on the ARC Parts page instead of double-counting
 - **Search** — filter stations/materials by name
 
+### Loadouts *(new in v1.4.0)*
+- **Gun builds per character** — define a build as a weapon at a tier (I–IV) plus the mods bolted onto it, then track how many of that exact build a character holds
+- **39-mod catalog** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Weapon_Mods) — a deliberate superset of the 25 craftable `mods` blueprints, adding the tier I mods (craftable at Gunsmith 1 but never seeded as blueprints) and the 4 loot-only mods that have no blueprint at all: Silencer III, Horizontal Grip, Kinetic Converter, Anvil Splitter
+- **One mod per slot** — muzzle, underbarrel, magazine, stock and tech; enforced by a `UNIQUE(config_id, slot)` index so the API cannot drift from the rule. Shotgun chokes share the muzzle slot and the three magazine sizes share the magazine slot, exactly as the game treats them
+- **Seeded prices** — mod sale prices and weapon sale prices (per tier) are seeded from the individual item pages on [arcraiders.wiki](https://arcraiders.wiki); picking a weapon and tier auto-fills its value, and any figure can be overridden per build. Entered prices are never overwritten by re-seeding
+- **Value tracking** — a build shows `weapon + mods` as a unit value and `unit × quantity` as a total
+- **Unpriced-item warning** — a build whose weapon or mods still have no price is flagged, so a total is never quietly understated
+- **Quantity steppers** — +/– controls or direct entry for how many of a build you hold
+- **Craftable vs. loot-only** — loot-only mods are marked ◆ throughout, since they can't be produced at the Gunsmith
+
+> **Note on prices:** the wiki's *index* pages carry no prices — only the individual weapon and mod pages do, so values are seeded from those. Two gaps are left deliberately blank rather than guessed: **Canto** (its page states it has upgrade tiers but shows a single untiered figure, and every weapon's price ladder differs, so the tiers can't be inferred) and **Extended Medium Mag I** (no coin value anywhere on its page). Both are entered by hand; unpriced items count as zero and are flagged in the UI.
+>
+> **Bettina** is worth spot-checking against the game. Every other weapon draws from one shared ladder (2,900 → 5,000 → 7,000 → 10,000 → 13,000 → 17,000 → 22,000 → 27,000); Bettina alone uses 8,000/11,000/14,000/18,000. The figures are what the page says, but a lone outlier in a rigid pattern is what a wiki typo looks like.
+
 ### Reports
 - **Unlearned Blueprints** — collapsible rows showing which blueprints are missing for at least one character; expand any row to see each character's ✓/✗ status with name and labels
 - **Extras Inventory** — total extras per blueprint sorted by count; expand to drill down into which characters hold extras and how many
 - **ARC Parts Inventory** *(new in v1.1.0)* — total ARC parts collected per part type; expand to see per-character counts with rarity badges and source enemy info; sorted Legendary-first
 - **Workshop Materials** *(new in v1.3.0)* — total workshop materials collected per material type; expand to see per-character counts
+- **Loadouts** *(new in v1.4.0)* — builds, guns held and total value per character; expand a character to see every build with its mods and value, plus a most-built-weapons breakdown across all characters
 
 ### UI & Themes
 - **Dark, Light, and System/Auto** color schemes — toggle between dark (default), light, or follow the OS preference; choice persisted in `localStorage`
@@ -122,11 +137,15 @@ arc-tracker/
 │       ├── db.js              better-sqlite3 setup, schema, seed, and migrations
 │       ├── blueprints.js      Seed data (83 blueprints)
 │       ├── arc-parts.js       Seed data (9 Epic/Legendary ARC parts)
-│       └── workshop.js        Seed data (6 stations × 3 levels of material requirements)
+│       ├── workshop.js        Seed data (6 stations × 3 levels of material requirements)
+│       ├── weapon-mods.js     Seed data (39 gun mods across 5 slots, incl. loot-only)
+│       └── weapon-prices.js   Seed data (weapon sale prices per tier)
 ├── frontend/
 │   └── src/
-│       ├── pages/             Dashboard, Characters, Blueprints, ArcParts, Workshop, Reports
+│       ├── pages/             Dashboard, Characters, Blueprints, ArcParts, Workshop,
+│       │                      Loadouts, Reports
 │       ├── components/        BlueprintCard, BlueprintIcon, ArcPartCard, ArcPartIcon,
+│       │                      GunConfigCard, GunConfigEditor,
 │       │                      WorkshopStationCard, WorkshopMaterialIcon,
 │       │                      CategoryIcon, CharacterForm, Layout, Modal, ThemeToggle, …
 │       ├── hooks/
@@ -161,6 +180,15 @@ arc-tracker/
 | POST | `/api/workshop/progress` | Upsert a station's current level (0–3) for a character |
 | GET | `/api/workshop/materials/tracking/:characterId` | Workshop material counts for a character |
 | POST | `/api/workshop/materials/tracking` | Upsert a workshop material count for a character |
+| GET | `/api/weapon-mods` | Gun mod catalog with slot metadata and seeded prices |
+| PUT | `/api/weapon-mods/:id` | Override a mod's sell value |
+| GET | `/api/weapon-prices` | Seeded weapon sale prices by weapon and tier |
+| GET | `/api/gun-configs/:characterId` | Gun builds for a character, with derived value totals |
+| POST | `/api/gun-configs` | Create a build (validates weapon, tier 1–4, one mod per slot) |
+| PUT | `/api/gun-configs/:id` | Update a build; omitting `mod_ids` leaves mods untouched, `[]` strips them |
+| PATCH | `/api/gun-configs/:id/quantity` | Adjust quantity by `delta` or set it outright |
+| DELETE | `/api/gun-configs/:id` | Delete a build and its mods |
+| GET | `/api/reports/gun-configs` | Builds per character with counts, values, and weapon breakdown |
 | GET | `/api/reports/summary` | Dashboard summary stats (per-character learned, extras, and ARC parts counts) |
 | GET | `/api/reports/unlearned` | Unlearned blueprints with per-character status |
 | GET | `/api/reports/extras` | Extras by blueprint with character breakdown |
@@ -216,6 +244,15 @@ Blueprint and ARC parts data sourced from [arcraiders.wiki](https://arcraiders.w
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
+
+### v1.4.0
+- **Loadouts** — new side-nav section for tracking specific gun builds per character: a weapon at a tier (I–IV) plus one mod per slot, with a quantity counter and value totals
+- **Weapon mod catalog** — 39 mods seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Weapon_Mods), a superset of the 25 craftable `mods` blueprints. Adds the tier I mods (craftable at Gunsmith 1, never seeded as blueprints) and the 4 loot-only mods with no blueprint: Silencer III, Horizontal Grip, Kinetic Converter, Anvil Splitter. Craftable mods cross-reference their blueprint row by name, the same way workshop requirements reference ARC parts
+- **Slot enforcement** — one mod per muzzle / underbarrel / magazine / stock / tech slot, enforced by a `UNIQUE(config_id, slot)` index rather than in application code. Shotgun chokes occupy the muzzle slot and the three magazine sizes share the magazine slot
+- **Seeded prices** — mod sale prices and per-tier weapon sale prices seeded from the individual item pages on [arcraiders.wiki](https://arcraiders.wiki) (the index pages carry none). Choosing a weapon and tier auto-fills its value; any figure can be overridden per build, and re-seeding never overwrites an entered price. Canto's tiers and Extended Medium Mag I are left blank rather than guessed — the wiki has no figures for them
+- **Value tracking** — builds show unit value (`weapon + mods`) and `unit × quantity`. Builds with unpriced items are flagged so totals aren't silently understated
+- **Reports: Loadouts tab** — builds, guns held and total value per character, with a most-built-weapons breakdown
+- **Database migration** — existing databases gain the `weapon_mods`, `gun_configs` and `gun_config_mods` tables on startup; re-seeding preserves user-entered mod prices
 
 ### v1.3.0
 - **Workshop** — new side-nav section tracking upgrade requirements for the Workshop's 6 upgradable stations (Gunsmith, Gear Bench, Medical Lab, Explosives Station, Utility Station, Refiner), seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Workshop); the free, non-upgradable Workbench is excluded
