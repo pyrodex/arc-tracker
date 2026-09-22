@@ -238,6 +238,127 @@ export interface WorkshopMaterialsReport {
   character_breakdown: WorkshopCharacterCount[];
 }
 
+// ── Gun configurations ─────────────────────────────────────────────────────────
+
+export type ModSlot = 'muzzle' | 'underbarrel' | 'stock' | 'magazine' | 'tech';
+
+/** Narrows a slot to a weapon family — shotgun muzzles, magazine sizes. */
+export type ModVariant = 'shotgun' | 'light' | 'medium';
+
+export interface ModSlotMeta {
+  slot: ModSlot;
+  label: string;
+  sort_order: number;
+}
+
+export interface WeaponMod {
+  id: number;
+  name: string;
+  slug: string;
+  slot: ModSlot;
+  variant: ModVariant | null;
+  craftable: 0 | 1;
+  /** null for loot-only mods and for tier I mods that have no seeded blueprint. */
+  blueprint_id: number | null;
+  blueprint_slug: string | null;
+  sell_value: number;
+  sort_order: number;
+}
+
+export interface WeaponModCatalog {
+  slots: ModSlotMeta[];
+  mods: WeaponMod[];
+}
+
+/** A mod as it appears attached to a config (catalog fields, no join noise). */
+export interface ConfigMod {
+  id: number;
+  name: string;
+  slug: string;
+  slot: ModSlot;
+  variant: ModVariant | null;
+  craftable: 0 | 1;
+  sell_value: number;
+}
+
+export interface GunConfig {
+  id: number;
+  character_id: number;
+  blueprint_id: number;
+  name: string | null;
+  tier: number | null;
+  quantity: number;
+  weapon_value: number;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  weapon_name: string;
+  weapon_slug: string;
+  mods: ConfigMod[];
+  /** Derived server-side: sum of attached mod prices. */
+  mods_value: number;
+  /** Derived server-side: weapon_value + mods_value. */
+  unit_value: number;
+  /** Derived server-side: unit_value × quantity. */
+  total_value: number;
+  /** Seeded wiki price for this weapon at this tier; null when unknown. */
+  catalog_weapon_value: number | null;
+}
+
+/** Seeded weapon sale prices: blueprint id → tier → value. Tier 0 = untiered. */
+export interface WeaponPriceCatalog {
+  prices: Record<number, Record<number, number>>;
+  rows: Array<{
+    blueprint_id: number;
+    tier: number;
+    sell_value: number;
+    weapon_name: string;
+  }>;
+}
+
+export type CreateGunConfigPayload = {
+  character_id: number;
+  blueprint_id: number;
+  name?: string | null;
+  tier?: number | null;
+  quantity?: number;
+  weapon_value?: number;
+  notes?: string | null;
+  mod_ids?: number[];
+};
+
+/** Omitting mod_ids leaves the attached mods untouched; [] strips them. */
+export type UpdateGunConfigPayload = Partial<Omit<CreateGunConfigPayload, 'character_id'>>;
+
+export interface GunConfigCharacterReport {
+  character_id: number;
+  character_name: string;
+  character_label: string | null;
+  character_color: string;
+  config_count: number;
+  total_guns: number;
+  total_value: number;
+  configs: GunConfig[];
+}
+
+export interface GunConfigWeaponReport {
+  blueprint_id: number;
+  weapon_name: string;
+  weapon_slug: string;
+  config_count: number;
+  total_guns: number;
+}
+
+export interface GunConfigsReport {
+  characters: GunConfigCharacterReport[];
+  weapons: GunConfigWeaponReport[];
+  totals: {
+    config_count: number;
+    total_guns: number;
+    total_value: number;
+  };
+}
+
 // ── Characters ─────────────────────────────────────────────────────────────────
 
 export type CreateCharacterPayload = {

@@ -1,5 +1,5 @@
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, BarChart3, Cpu, Wrench } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, BarChart3, Cpu, Wrench, Crosshair } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import { useTheme } from '../hooks/useTheme';
 
@@ -9,6 +9,7 @@ const navItems = [
   { to: '/blueprints', label: 'Blueprints', icon: BookOpen },
   { to: '/arc-parts',  label: 'ARC Parts',  icon: Cpu },
   { to: '/workshop',   label: 'Workshop',   icon: Wrench },
+  { to: '/loadouts',   label: 'Loadouts',   icon: Crosshair },
   { to: '/reports',    label: 'Reports',    icon: BarChart3 },
 ];
 
