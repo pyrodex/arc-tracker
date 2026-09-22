@@ -254,6 +254,15 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 - **Reports: Loadouts tab** — builds, guns held and total value per character, with a most-built-weapons breakdown
 - **Database migration** — existing databases gain the `weapon_mods`, `gun_configs` and `gun_config_mods` tables on startup; re-seeding preserves user-entered mod prices
 
+**Security**
+- **`qs` advisories patched** — `body-parser` 1.20.6 → 1.20.8, which moves to `qs` ~6.16.0 and resolves [GHSA-x5fp-wj9c-mxmx](https://github.com/advisories/GHSA-x5fp-wj9c-mxmx) (array-limit bypass) and [GHSA-4mjr-xmp4-gh2g](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) (DoS via attacker-controlled `isBuffer`). Both were reachable — `express.json()` and the query parser run on every request. `express@4.22.3` already required the patched `qs`, but `body-parser` pinned the vulnerable one and kept it hoisted
+- **Container CVEs cleared** — Node base image bumped to 22.23.2-alpine (undici 6.28.0, patching CVE-2026-15157, CVE-2026-16728 and CVE-2026-16729), and npm removed from the production runner stage, since it is never invoked at runtime but its bundled dependencies (`ip-address`, `brace-expansion`, `tar`) were raising HIGH/MEDIUM Trivy findings with no exploitable surface. Stale `.trivyignore` suppressions dropped
+
+**Dependencies**
+- Backend: `compression` 1.7.4 → 1.8.2, `express` 4.22.2 → 4.22.3, `morgan` 1.10.0 → 1.12.0
+- Frontend: `@tanstack/react-query` 5.101.4 → 5.102.8, `react-router-dom` 7.18.2 → 7.18.3, `postcss` 8.5.25 → 8.5.28, `autoprefixer` 10.5.4 → 10.5.5
+- Lock files refreshed to keep resolved versions in sync with `package.json`
+
 ### v1.3.0
 - **Workshop** — new side-nav section tracking upgrade requirements for the Workshop's 6 upgradable stations (Gunsmith, Gear Bench, Medical Lab, Explosives Station, Utility Station, Refiner), seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Workshop); the free, non-upgradable Workbench is excluded
 - **Per-level requirements** — exact material lists for levels 1–3 of every station, with per-character "current level" tracking (Built / Next badges)
