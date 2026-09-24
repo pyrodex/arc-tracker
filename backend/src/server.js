@@ -350,10 +350,33 @@ app.get('/api/reports/summary', (req, res) => {
     arcPartTotals.map(r => [r.character_id, { total_arc_parts: r.total_arc_parts, arc_parts_value: r.arc_parts_value }])
   );
 
+  // Attach gun build totals per character. The mods subquery collapses each
+  // build's attached mods to one value first, so the outer SUM can't multiply
+  // a build's quantity by its row count once a build has several mods.
+  const loadoutTotals = db.prepare(`
+    SELECT
+      gc.character_id,
+      COUNT(gc.id)                                                              as config_count,
+      COALESCE(SUM(gc.quantity), 0)                                             as total_guns,
+      COALESCE(SUM(gc.quantity * (gc.weapon_value + COALESCE(m.mods_value, 0))), 0) as loadout_value
+    FROM gun_configs gc
+    LEFT JOIN (
+      SELECT gcm.config_id, SUM(wm.sell_value) as mods_value
+      FROM gun_config_mods gcm
+      JOIN weapon_mods wm ON wm.id = gcm.mod_id
+      GROUP BY gcm.config_id
+    ) m ON m.config_id = gc.id
+    GROUP BY gc.character_id
+  `).all();
+  const loadoutByChar = Object.fromEntries(loadoutTotals.map(r => [r.character_id, r]));
+
   const characters = characterStats.map(c => ({
     ...c,
     total_arc_parts:  arcByChar[c.id]?.total_arc_parts  ?? 0,
     arc_parts_value:  arcByChar[c.id]?.arc_parts_value  ?? 0,
+    config_count:     loadoutByChar[c.id]?.config_count  ?? 0,
+    total_guns:       loadoutByChar[c.id]?.total_guns    ?? 0,
+    loadout_value:    loadoutByChar[c.id]?.loadout_value ?? 0,
   }));
 
   res.json({ totalBlueprints, totalCharacters, characters });
@@ -993,9 +1016,28 @@ app.get('/api/reports/gun-configs', (req, res) => {
     ORDER BY total_guns DESC, b.name COLLATE NOCASE
   `).all();
 
+  // Which mods are actually in use, and on how many guns. build_count counts
+  // distinct builds; gun_count weights by how many of each build is held, so a
+  // mod on one build you own 14 of outranks a mod on three builds you own once.
+  const modUsage = db.prepare(`
+    SELECT
+      wm.id as mod_id, wm.name as mod_name, wm.slug, wm.slot, wm.variant,
+      wm.craftable, wm.sell_value,
+      COUNT(gcm.config_id)                  as build_count,
+      COALESCE(SUM(gc.quantity), 0)         as gun_count,
+      COALESCE(SUM(gc.quantity), 0) * wm.sell_value as total_value
+    FROM gun_config_mods gcm
+    JOIN weapon_mods wm ON wm.id = gcm.mod_id
+    JOIN gun_configs gc ON gc.id = gcm.config_id
+    GROUP BY wm.id
+    ORDER BY gun_count DESC, build_count DESC, wm.name COLLATE NOCASE
+  `).all();
+
   res.json({
     characters: rows,
     weapons: weaponBreakdown,
+    mods: modUsage,
+    slots: MOD_SLOTS,
     totals: {
       config_count: rows.reduce((s, r) => s + r.config_count, 0),
       total_guns: rows.reduce((s, r) => s + r.total_guns, 0),

@@ -68,7 +68,7 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 - **Extras Inventory** — total extras per blueprint sorted by count; expand to drill down into which characters hold extras and how many
 - **ARC Parts Inventory** *(new in v1.1.0)* — total ARC parts collected per part type; expand to see per-character counts with rarity badges and source enemy info; sorted Legendary-first
 - **Workshop Materials** *(new in v1.3.0)* — total workshop materials collected per material type; expand to see per-character counts
-- **Loadouts** *(new in v1.4.0)* — builds, guns held and total value per character; expand a character to see every build with its mods and value, plus a most-built-weapons breakdown across all characters
+- **Loadouts** *(new in v1.4.0)* — builds, guns held and total value per character; expand a character to see every build with its mods and value, plus most-built-weapons and mod-usage breakdowns across all characters
 
 ### UI & Themes
 - **Dark, Light, and System/Auto** color schemes — toggle between dark (default), light, or follow the OS preference; choice persisted in `localStorage`
@@ -188,8 +188,8 @@ arc-tracker/
 | PUT | `/api/gun-configs/:id` | Update a build; omitting `mod_ids` leaves mods untouched, `[]` strips them |
 | PATCH | `/api/gun-configs/:id/quantity` | Adjust quantity by `delta` or set it outright |
 | DELETE | `/api/gun-configs/:id` | Delete a build and its mods |
-| GET | `/api/reports/gun-configs` | Builds per character with counts, values, and weapon breakdown |
-| GET | `/api/reports/summary` | Dashboard summary stats (per-character learned, extras, and ARC parts counts) |
+| GET | `/api/reports/gun-configs` | Builds per character with counts, values, and weapon/mod breakdowns |
+| GET | `/api/reports/summary` | Dashboard summary stats (per-character learned, extras, ARC parts, and loadout counts/value) |
 | GET | `/api/reports/unlearned` | Unlearned blueprints with per-character status |
 | GET | `/api/reports/extras` | Extras by blueprint with character breakdown |
 | GET | `/api/reports/arc-parts` | ARC parts collected with per-character breakdown |
@@ -244,6 +244,11 @@ Blueprint and ARC parts data sourced from [arcraiders.wiki](https://arcraiders.w
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
+
+### v1.4.1
+- **Dashboard: Loadouts** — a Guns stat tile (guns held, with build count and total value), per-character gun counts on the progress cards alongside extras and ARC parts, and a Loadouts quick-nav tile so all five pages are reachable from the Dashboard
+- **Reports: mod usage** — which mods are actually in use, grouped by slot and ranked by guns carried rather than builds, so a mod on one build you hold 14 of outranks one on three builds you hold once. Loot-only mods marked ◆, per-slot bars scaled within their slot
+- **Summary endpoint** — `/api/reports/summary` now carries per-character `config_count`, `total_guns` and `loadout_value`, so the Dashboard still loads from a single call
 
 ### v1.4.0
 - **Loadouts** — new side-nav section for tracking specific gun builds per character: a weapon at a tier (I–IV) plus one mod per slot, with a quantity counter and value totals

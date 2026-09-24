@@ -673,7 +673,8 @@ function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
         })}
       </div>
 
-      {/* Which weapons get built most — global, so only in the unfiltered view. */}
+      {/* Weapon and mod breakdowns are aggregated across every character, so
+          they only make sense in the unfiltered view. */}
       {selectedCharId === null && data.weapons.length > 0 && (
         <div className="card p-4">
           <h3 className="text-sm font-semibold text-arc-text mb-3">Most-built weapons</h3>
@@ -687,6 +688,62 @@ function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
                 <span className="text-arc-text tabular-nums w-12 text-right">{w.total_guns}</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {selectedCharId === null && data.mods.length > 0 && (
+        <div className="card p-4">
+          <h3 className="text-sm font-semibold text-arc-text mb-1">Mod usage</h3>
+          <p className="text-xs text-arc-dim mb-3">
+            Guns carrying each mod, counting how many of every build you hold — so the mods
+            worth keeping in production sort to the top.
+          </p>
+
+          <div className="space-y-4">
+            {data.slots.map(slot => {
+              const mods = data.mods.filter(m => m.slot === slot.slot);
+              if (!mods.length) return null;
+              const slotMax = Math.max(...mods.map(m => m.gun_count), 1);
+
+              return (
+                <div key={slot.slot}>
+                  <h4 className="text-[11px] font-semibold uppercase tracking-wider text-arc-muted mb-2">
+                    {slot.label}
+                  </h4>
+                  <div className="space-y-1.5">
+                    {mods.map(mod => (
+                      <div key={mod.mod_id} className="flex items-center gap-3 text-sm">
+                        <span className="text-arc-muted flex-1 min-w-0 truncate" title={mod.mod_name}>
+                          {mod.mod_name}
+                          {!mod.craftable && (
+                            <span className="text-amber-400 ml-1" title="Loot-only — can't be crafted">◆</span>
+                          )}
+                        </span>
+
+                        {/* Bar is scaled within its slot: slots have very
+                            different totals, so a global scale would flatten
+                            every row outside the busiest one. */}
+                        <span className="hidden sm:block w-24 h-1.5 bg-arc-border rounded-full overflow-hidden shrink-0">
+                          <span
+                            className="block h-full bg-sky-400/70 rounded-full"
+                            style={{ width: `${(mod.gun_count / slotMax) * 100}%` }}
+                          />
+                        </span>
+
+                        <span className="text-xs text-arc-dim tabular-nums w-16 text-right shrink-0">
+                          {mod.build_count} build{mod.build_count === 1 ? '' : 's'}
+                        </span>
+                        <span className="text-arc-text tabular-nums w-10 text-right shrink-0">{mod.gun_count}</span>
+                        <span className="text-arc-extra tabular-nums w-20 text-right shrink-0 hidden sm:inline">
+                          {mod.sell_value === 0 ? '—' : mod.total_value.toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
