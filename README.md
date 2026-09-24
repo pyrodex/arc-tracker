@@ -249,6 +249,9 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
 
+### v1.5.1
+- **Build ordering** — builds now sort by weapon name, then by per-gun value high to low, so every build of a weapon sits together with the best one first. Previously they appeared in creation order, which scattered builds of the same weapon as soon as you had a few. Quantity deliberately doesn't affect the order: a one-off top-tier build outranks a stack of base guns worth more in total. The Loadouts page and the Loadouts report use the same ordering
+
 ### v1.5.0
 - **All 24 weapons** — the weapon list came from the `weapons` blueprints, which covers only the 17 guns that have a blueprint to find. Seven more are unlocked purely by levelling the Gunsmith and had no way into a loadout at all: Hairpin, Ferro, Stitcher, Kettle and Rattler (Gunsmith 1), Arpeggio (Gunsmith 2) and Renegade (Gunsmith 3). All seven now appear, with their wiki sale prices
 - **Weapon catalog** — a new `weapons` table holding all 24 with class, rarity and Gunsmith level, cross-referencing a blueprint where one exists. The Blueprints page is unchanged: the seven Gunsmith weapons have no blueprint to learn, so they stay off it
