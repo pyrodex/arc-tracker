@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Minus, Plus, Pencil, Trash2, AlertCircle } from 'lucide-react';
+import { Minus, Plus, Pencil, Trash2, AlertCircle, Copy } from 'lucide-react';
 import type { GunConfig, ModSlotMeta } from '../types';
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV'];
@@ -10,11 +10,12 @@ interface Props {
   onQuantity: (id: number, delta: number) => void;
   onSetQuantity: (id: number, quantity: number) => void;
   onEdit: (config: GunConfig) => void;
+  onCopy: (config: GunConfig) => void;
   onDelete: (config: GunConfig) => void;
 }
 
 export default function GunConfigCard({
-  config, slots, onQuantity, onSetQuantity, onEdit, onDelete,
+  config, slots, onQuantity, onSetQuantity, onEdit, onCopy, onDelete,
 }: Props) {
   const [draftQty, setDraftQty] = useState<string | null>(null);
 
@@ -54,6 +55,14 @@ export default function GunConfigCard({
         <div className="flex items-center gap-1 shrink-0">
           <button onClick={() => onEdit(config)} className="btn-ghost p-1.5" aria-label="Edit build">
             <Pencil className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => onCopy(config)}
+            className="btn-ghost p-1.5"
+            aria-label="Copy to a new build"
+            title="Copy to a new build"
+          >
+            <Copy className="w-3.5 h-3.5" />
           </button>
           <button onClick={() => onDelete(config)} className="btn-ghost p-1.5 hover:text-red-400" aria-label="Delete build">
             <Trash2 className="w-3.5 h-3.5" />

@@ -8,6 +8,7 @@ const ARC_PARTS = require('./arc-parts');
 const WORKSHOP_STATIONS = require('./workshop');
 const { WEAPON_MODS, MOD_SLOTS } = require('./weapon-mods');
 const WEAPON_PRICES = require('./weapon-prices');
+const { WEAPONS, WEAPON_CLASSES } = require('./weapons');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 const DB_PATH = path.join(DATA_DIR, 'arc-tracker.db');
@@ -170,13 +171,30 @@ function initSchema() {
 
     CREATE INDEX IF NOT EXISTS idx_weapon_mods_slot ON weapon_mods(slot);
 
+    -- Weapon catalog. A superset of the 'weapons' blueprints: it also carries
+    -- the seven guns unlocked by levelling the Gunsmith, which have no
+    -- blueprint. blueprint_id is NULL for those.
+    CREATE TABLE IF NOT EXISTS weapons (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      name           TEXT    NOT NULL UNIQUE,
+      slug           TEXT    NOT NULL UNIQUE,
+      class          TEXT    NOT NULL,
+      rarity         TEXT,
+      gunsmith_level INTEGER,
+      tiered         INTEGER DEFAULT 1,
+      blueprint_id   INTEGER REFERENCES blueprints(id),
+      sort_order     INTEGER DEFAULT 0
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_weapons_class ON weapons(class);
+
     -- A specific build: a weapon at a tier, owned by one character, with a
     -- quantity and the weapon's own value at that tier. Mod values come from
     -- the catalog; weapon value is per-config because it varies by tier.
     CREATE TABLE IF NOT EXISTS gun_configs (
       id            INTEGER PRIMARY KEY AUTOINCREMENT,
       character_id  INTEGER NOT NULL,
-      blueprint_id  INTEGER NOT NULL,
+      weapon_id     INTEGER NOT NULL,
       name          TEXT,
       tier          INTEGER CHECK (tier IS NULL OR (tier >= 1 AND tier <= 4)),
       quantity      INTEGER DEFAULT 0,
@@ -185,7 +203,7 @@ function initSchema() {
       created_at    TEXT    DEFAULT (datetime('now')),
       updated_at    TEXT    DEFAULT (datetime('now')),
       FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
-      FOREIGN KEY (blueprint_id) REFERENCES blueprints(id)
+      FOREIGN KEY (weapon_id)    REFERENCES weapons(id)
     );
 
     CREATE INDEX IF NOT EXISTS idx_gun_configs_char ON gun_configs(character_id);
@@ -211,12 +229,12 @@ function initSchema() {
     -- A build stores its own weapon_value, so this table is a default source,
     -- never written to by the app.
     CREATE TABLE IF NOT EXISTS weapon_prices (
-      id           INTEGER PRIMARY KEY AUTOINCREMENT,
-      blueprint_id INTEGER NOT NULL,
-      tier         INTEGER NOT NULL,
-      sell_value   INTEGER NOT NULL,
-      FOREIGN KEY (blueprint_id) REFERENCES blueprints(id),
-      UNIQUE(blueprint_id, tier)
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      weapon_id  INTEGER NOT NULL,
+      tier       INTEGER NOT NULL,
+      sell_value INTEGER NOT NULL,
+      FOREIGN KEY (weapon_id) REFERENCES weapons(id),
+      UNIQUE(weapon_id, tier)
     );
   `);
 }
@@ -428,20 +446,154 @@ function seedWeaponMods() {
   if (after > before) console.log(`Seeded ${after - before} new weapon mod(s) (total: ${after})`);
 }
 
+function seedWeapons() {
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO weapons
+      (name, slug, class, rarity, gunsmith_level, tiered, blueprint_id, sort_order)
+    VALUES
+      (@name, @slug, @class, @rarity, @gunsmith_level, @tiered, @blueprint_id, @sort_order)
+  `);
+
+  const sync = db.prepare(`
+    UPDATE weapons
+    SET class = @class, rarity = @rarity, gunsmith_level = @gunsmith_level,
+        tiered = @tiered, blueprint_id = @blueprint_id, sort_order = @sort_order
+    WHERE name = @name
+  `);
+
+  const getBlueprintByName = db.prepare("SELECT id FROM blueprints WHERE name = ? AND category = 'weapons'");
+
+  const upsertMany = db.transaction((weapons) => {
+    weapons.forEach((weapon, i) => {
+      // Seven weapons are Gunsmith-unlocked and have no blueprint; the lookup
+      // simply misses for those and blueprint_id stays NULL, which is correct.
+      const blueprint = getBlueprintByName.get(weapon.name);
+      const row = {
+        name: weapon.name,
+        slug: slugify(weapon.name),
+        class: weapon.class,
+        rarity: weapon.rarity ?? null,
+        gunsmith_level: weapon.gunsmith_level ?? null,
+        tiered: weapon.tiered ? 1 : 0,
+        blueprint_id: blueprint ? blueprint.id : null,
+        sort_order: WEAPON_CLASSES.indexOf(weapon.class) * 100 + i,
+      };
+      insert.run(row);
+      sync.run(row);
+    });
+  });
+
+  const before = db.prepare('SELECT COUNT(*) as c FROM weapons').get().c;
+  upsertMany(WEAPONS);
+  const after = db.prepare('SELECT COUNT(*) as c FROM weapons').get().c;
+  if (after > before) console.log(`Seeded ${after - before} new weapon(s) (total: ${after})`);
+}
+
+/**
+ * Moves gun_configs and weapon_prices off blueprint_id and onto weapon_id.
+ *
+ * Databases created by v1.4.x reference blueprints directly, which cannot
+ * express the seven Gunsmith-unlocked weapons. Both tables are rebuilt rather
+ * than altered, because SQLite cannot retarget a foreign key in place.
+ *
+ * Must run after seedWeapons(), since the mapping goes through weapons.blueprint_id.
+ */
+function migrateToWeaponCatalog() {
+  const configCols = db.pragma('table_info(gun_configs)').map(c => c.name);
+  const priceCols = db.pragma('table_info(weapon_prices)').map(c => c.name);
+  const configNeedsMigration = configCols.includes('blueprint_id');
+  const priceNeedsMigration = priceCols.includes('blueprint_id');
+  if (!configNeedsMigration && !priceNeedsMigration) return;
+
+  // Foreign keys must be disabled outside a transaction, and the table swap
+  // would otherwise trip the gun_config_mods cascade.
+  db.pragma('foreign_keys = OFF');
+  try {
+    db.transaction(() => {
+      if (configNeedsMigration) {
+        db.exec(`
+          CREATE TABLE gun_configs_migrated (
+            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            character_id  INTEGER NOT NULL,
+            weapon_id     INTEGER NOT NULL,
+            name          TEXT,
+            tier          INTEGER CHECK (tier IS NULL OR (tier >= 1 AND tier <= 4)),
+            quantity      INTEGER DEFAULT 0,
+            weapon_value  INTEGER DEFAULT 0,
+            notes         TEXT,
+            created_at    TEXT    DEFAULT (datetime('now')),
+            updated_at    TEXT    DEFAULT (datetime('now')),
+            FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+            FOREIGN KEY (weapon_id)    REFERENCES weapons(id)
+          );
+
+          -- Ids are preserved so gun_config_mods keeps pointing at the right
+          -- builds. The join is an inner join on purpose: every weapon
+          -- blueprint has a catalog row, so a build that failed to map would
+          -- indicate a seed problem, and silently keeping it with a dangling
+          -- reference would be worse than losing it loudly in testing.
+          INSERT INTO gun_configs_migrated
+            (id, character_id, weapon_id, name, tier, quantity, weapon_value, notes, created_at, updated_at)
+          SELECT gc.id, gc.character_id, w.id, gc.name, gc.tier, gc.quantity,
+                 gc.weapon_value, gc.notes, gc.created_at, gc.updated_at
+          FROM gun_configs gc
+          JOIN weapons w ON w.blueprint_id = gc.blueprint_id;
+
+          DROP TABLE gun_configs;
+          ALTER TABLE gun_configs_migrated RENAME TO gun_configs;
+          CREATE INDEX IF NOT EXISTS idx_gun_configs_char ON gun_configs(character_id);
+        `);
+      }
+
+      if (priceNeedsMigration) {
+        // Pure seed data — rebuilt empty and re-seeded rather than mapped.
+        db.exec(`
+          DROP TABLE weapon_prices;
+          CREATE TABLE weapon_prices (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            weapon_id  INTEGER NOT NULL,
+            tier       INTEGER NOT NULL,
+            sell_value INTEGER NOT NULL,
+            FOREIGN KEY (weapon_id) REFERENCES weapons(id),
+            UNIQUE(weapon_id, tier)
+          );
+        `);
+      }
+    })();
+  } finally {
+    db.pragma('foreign_keys = ON');
+  }
+
+  const orphans = db.prepare(`
+    SELECT COUNT(*) as c FROM gun_config_mods gcm
+    LEFT JOIN gun_configs gc ON gc.id = gcm.config_id
+    WHERE gc.id IS NULL
+  `).get().c;
+  if (orphans > 0) {
+    db.prepare(`
+      DELETE FROM gun_config_mods
+      WHERE config_id NOT IN (SELECT id FROM gun_configs)
+    `).run();
+    console.warn(`Migration: removed ${orphans} mod row(s) whose build did not map to a weapon.`);
+  }
+
+  console.log('Migrated gun configs and weapon prices to the weapon catalog.');
+}
+
 function seedWeaponPrices() {
   const insert = db.prepare(`
-    INSERT OR IGNORE INTO weapon_prices (blueprint_id, tier, sell_value)
-    VALUES (@blueprint_id, @tier, @sell_value)
+    INSERT OR IGNORE INTO weapon_prices (weapon_id, tier, sell_value)
+    VALUES (@weapon_id, @tier, @sell_value)
   `);
 
   // Prices are reference data, so corrections to the seed propagate. Nothing
   // in the app writes here — a build keeps its own weapon_value.
   const sync = db.prepare(`
     UPDATE weapon_prices SET sell_value = @sell_value
-    WHERE blueprint_id = @blueprint_id AND tier = @tier AND sell_value != @sell_value
+    WHERE weapon_id = @weapon_id AND tier = @tier AND sell_value != @sell_value
   `);
 
-  const getWeaponByName = db.prepare("SELECT id FROM blueprints WHERE name = ? AND category = 'weapons'");
+  const getWeaponByName = db.prepare('SELECT id FROM weapons WHERE name = ?');
 
   const seedAll = db.transaction((weapons) => {
     for (const weapon of weapons) {
@@ -453,7 +605,7 @@ function seedWeaponPrices() {
         : [{ tier: 0, sell_value: weapon.flat }];
 
       for (const entry of entries) {
-        const data = { blueprint_id: row.id, ...entry };
+        const data = { weapon_id: row.id, ...entry };
         insert.run(data);
         sync.run(data);
       }
@@ -493,6 +645,10 @@ seedBlueprints();
 seedArcParts();
 seedWorkshop();
 seedWeaponMods();
+// Order matters: the catalog must exist before builds can be pointed at it,
+// and prices are keyed by catalog id.
+seedWeapons();
+migrateToWeaponCatalog();
 seedWeaponPrices();
 
 module.exports = db;

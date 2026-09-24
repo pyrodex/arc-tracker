@@ -2,8 +2,8 @@ import { useCallback, useMemo, useState } from 'react';
 import { Plus, Coins, Crosshair } from 'lucide-react';
 import type { GunConfig } from '../types';
 import {
-  useBlueprints,
   useCharacters,
+  useWeapons,
   useWeaponMods,
   useWeaponPrices,
   useGunConfigs,
@@ -18,13 +18,14 @@ import GunConfigEditor from '../components/GunConfigEditor';
 
 export default function Loadouts() {
   const { data: characters = [] } = useCharacters();
-  const { data: weapons = [] } = useBlueprints('weapons');
+  const { data: weaponCatalog } = useWeapons();
   const { data: catalog } = useWeaponMods();
   const { data: priceCatalog } = useWeaponPrices();
 
   const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<GunConfig | null>(null);
+  const [copying, setCopying] = useState<GunConfig | null>(null);
   const [showPrices, setShowPrices] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -59,12 +60,28 @@ export default function Loadouts() {
 
   const openEditor = (config: GunConfig | null) => {
     setEditing(config);
+    setCopying(null);
     setSaveError(null);
     setEditorOpen(true);
   };
 
+  // Copy opens the same editor prefilled but in create mode, so the original
+  // is never touched and every field stays adjustable before saving.
+  const openCopy = useCallback((config: GunConfig) => {
+    setEditing(null);
+    setCopying(config);
+    setSaveError(null);
+    setEditorOpen(true);
+  }, []);
+
+  const closeEditor = () => {
+    setEditorOpen(false);
+    setEditing(null);
+    setCopying(null);
+  };
+
   const handleSave = (payload: {
-    blueprint_id: number;
+    weapon_id: number;
     name: string | null;
     tier: number | null;
     weapon_value: number;
@@ -74,7 +91,7 @@ export default function Loadouts() {
   }) => {
     setSaveError(null);
     const onError = (err: Error) => setSaveError(err.message);
-    const onSuccess = () => { setEditorOpen(false); setEditing(null); };
+    const onSuccess = () => closeEditor();
 
     if (editing) {
       updateConfig.mutate({ id: editing.id, ...payload }, { onSuccess, onError });
@@ -223,6 +240,7 @@ export default function Loadouts() {
                 onQuantity={handleQuantity}
                 onSetQuantity={handleSetQuantity}
                 onEdit={openEditor}
+                onCopy={openCopy}
                 onDelete={handleDelete}
               />
             ))}
@@ -233,11 +251,12 @@ export default function Loadouts() {
       {catalog && (
         <GunConfigEditor
           open={editorOpen}
-          onClose={() => { setEditorOpen(false); setEditing(null); }}
+          onClose={closeEditor}
           catalog={catalog}
           priceCatalog={priceCatalog}
-          weapons={weapons}
+          weaponCatalog={weaponCatalog}
           config={editing}
+          copyFrom={copying}
           saving={createConfig.isPending || updateConfig.isPending}
           error={saveError}
           onSave={handleSave}

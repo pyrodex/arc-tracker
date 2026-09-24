@@ -51,6 +51,8 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 
 ### Loadouts *(new in v1.4.0)*
 - **Gun builds per character** — define a build as a weapon at a tier (I–IV) plus the mods bolted onto it, then track how many of that exact build a character holds
+- **All 24 weapons** *(v1.5.0)* — including the seven unlocked by levelling the Gunsmith rather than by finding a blueprint (Hairpin, Ferro, Stitcher, Kettle, Rattler, Arpeggio, Renegade), grouped by weapon class in the picker
+- **Copy to new** *(v1.5.0)* — duplicate a build and adjust what differs, instead of rebuilding a similar loadout from scratch
 - **39-mod catalog** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Weapon_Mods) — a deliberate superset of the 25 craftable `mods` blueprints, adding the tier I mods (craftable at Gunsmith 1 but never seeded as blueprints) and the 4 loot-only mods that have no blueprint at all: Silencer III, Horizontal Grip, Kinetic Converter, Anvil Splitter
 - **One mod per slot** — muzzle, underbarrel, magazine, stock and tech; enforced by a `UNIQUE(config_id, slot)` index so the API cannot drift from the rule. Shotgun chokes share the muzzle slot and the three magazine sizes share the magazine slot, exactly as the game treats them
 - **Seeded prices** — mod sale prices and weapon sale prices (per tier) are seeded from the individual item pages on [arcraiders.wiki](https://arcraiders.wiki); picking a weapon and tier auto-fills its value, and any figure can be overridden per build. Entered prices are never overwritten by re-seeding
@@ -139,7 +141,8 @@ arc-tracker/
 │       ├── arc-parts.js       Seed data (9 Epic/Legendary ARC parts)
 │       ├── workshop.js        Seed data (6 stations × 3 levels of material requirements)
 │       ├── weapon-mods.js     Seed data (39 gun mods across 5 slots, incl. loot-only)
-│       └── weapon-prices.js   Seed data (weapon sale prices per tier)
+│       ├── weapon-prices.js   Seed data (weapon sale prices per tier)
+│       └── weapons.js        Seed data (24 weapons incl. 7 Gunsmith-unlocked)
 ├── frontend/
 │   └── src/
 │       ├── pages/             Dashboard, Characters, Blueprints, ArcParts, Workshop,
@@ -182,6 +185,7 @@ arc-tracker/
 | POST | `/api/workshop/materials/tracking` | Upsert a workshop material count for a character |
 | GET | `/api/weapon-mods` | Gun mod catalog with slot metadata and seeded prices |
 | PUT | `/api/weapon-mods/:id` | Override a mod's sell value |
+| GET | `/api/weapons` | Weapon catalog (all 24, incl. Gunsmith-unlocked) with class metadata |
 | GET | `/api/weapon-prices` | Seeded weapon sale prices by weapon and tier |
 | GET | `/api/gun-configs/:characterId` | Gun builds for a character, with derived value totals |
 | POST | `/api/gun-configs` | Create a build (validates weapon, tier 1–4, one mod per slot) |
@@ -244,6 +248,14 @@ Blueprint and ARC parts data sourced from [arcraiders.wiki](https://arcraiders.w
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
+
+### v1.5.0
+- **All 24 weapons** — the weapon list came from the `weapons` blueprints, which covers only the 17 guns that have a blueprint to find. Seven more are unlocked purely by levelling the Gunsmith and had no way into a loadout at all: Hairpin, Ferro, Stitcher, Kettle and Rattler (Gunsmith 1), Arpeggio (Gunsmith 2) and Renegade (Gunsmith 3). All seven now appear, with their wiki sale prices
+- **Weapon catalog** — a new `weapons` table holding all 24 with class, rarity and Gunsmith level, cross-referencing a blueprint where one exists. The Blueprints page is unchanged: the seven Gunsmith weapons have no blueprint to learn, so they stay off it
+- **Copy to new build** — duplicate an existing build from its card, prefilled with the same weapon, tier, mods and value, then change what differs. Quantity starts at zero and the original is untouched
+- **Weapon picker grouped by class** — assault rifles, battle rifles, SMGs, shotguns, pistols, hand cannons, LMGs, snipers and specials, with Gunsmith-unlocked guns labelled
+- **Tier disabled for legendaries** — Aphelion, Dolabra, Equalizer and Jupiter can't be upgraded, so the tier field greys out and explains why instead of accepting a meaningless value
+- **Database migration** — `gun_configs` and `weapon_prices` move from `blueprint_id` to `weapon_id`. Existing builds are remapped through the catalog, keeping their ids so attached mods follow
 
 ### v1.4.1
 - **Dashboard: Loadouts** — a Guns stat tile (guns held, with build count and total value), per-character gun counts on the progress cards alongside extras and ARC parts, and a Loadouts quick-nav tile so all five pages are reachable from the Dashboard

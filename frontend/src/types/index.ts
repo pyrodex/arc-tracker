@@ -287,10 +287,35 @@ export interface ConfigMod {
   sell_value: number;
 }
 
+export type WeaponClass =
+  | 'Assault Rifle' | 'Battle Rifle' | 'SMG' | 'Shotgun' | 'Pistol'
+  | 'Hand Cannon' | 'LMG' | 'Sniper Rifle' | 'Special';
+
+export interface Weapon {
+  id: number;
+  name: string;
+  slug: string;
+  class: WeaponClass;
+  rarity: string | null;
+  /** Gunsmith level needed to craft tier I, or null if not craftable there. */
+  gunsmith_level: number | null;
+  /** 0 for Legendary weapons, which cannot be upgraded. */
+  tiered: 0 | 1;
+  /** null for the seven weapons unlocked by the Gunsmith with no blueprint. */
+  blueprint_id: number | null;
+  blueprint_slug: string | null;
+  sort_order: number;
+}
+
+export interface WeaponCatalog {
+  classes: WeaponClass[];
+  weapons: Weapon[];
+}
+
 export interface GunConfig {
   id: number;
   character_id: number;
-  blueprint_id: number;
+  weapon_id: number;
   name: string | null;
   tier: number | null;
   quantity: number;
@@ -300,6 +325,12 @@ export interface GunConfig {
   updated_at: string;
   weapon_name: string;
   weapon_slug: string;
+  weapon_class: WeaponClass;
+  weapon_rarity: string | null;
+  gunsmith_level: number | null;
+  tiered: 0 | 1;
+  /** The weapon's blueprint, if it has one. Null for Gunsmith-unlocked guns. */
+  blueprint_id: number | null;
   mods: ConfigMod[];
   /** Derived server-side: sum of attached mod prices. */
   mods_value: number;
@@ -311,11 +342,11 @@ export interface GunConfig {
   catalog_weapon_value: number | null;
 }
 
-/** Seeded weapon sale prices: blueprint id → tier → value. Tier 0 = untiered. */
+/** Seeded weapon sale prices: weapon id → tier → value. Tier 0 = untiered. */
 export interface WeaponPriceCatalog {
   prices: Record<number, Record<number, number>>;
   rows: Array<{
-    blueprint_id: number;
+    weapon_id: number;
     tier: number;
     sell_value: number;
     weapon_name: string;
@@ -324,7 +355,7 @@ export interface WeaponPriceCatalog {
 
 export type CreateGunConfigPayload = {
   character_id: number;
-  blueprint_id: number;
+  weapon_id: number;
   name?: string | null;
   tier?: number | null;
   quantity?: number;
@@ -348,9 +379,10 @@ export interface GunConfigCharacterReport {
 }
 
 export interface GunConfigWeaponReport {
-  blueprint_id: number;
+  weapon_id: number;
   weapon_name: string;
   weapon_slug: string;
+  weapon_class: WeaponClass;
   config_count: number;
   total_guns: number;
 }

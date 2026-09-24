@@ -31,6 +31,7 @@ import type {
   CreateGunConfigPayload,
   UpdateGunConfigPayload,
   WeaponPriceCatalog,
+  WeaponCatalog,
 } from '../types';
 
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -310,6 +311,16 @@ export function useUpdateModPrice() {
       qc.invalidateQueries({ queryKey: ['gun-configs'] });
       qc.invalidateQueries({ queryKey: ['reports', 'gun-configs'] });
     },
+  });
+}
+
+// The weapon picker reads this rather than the blueprints table, because seven
+// weapons are unlocked at the Gunsmith and have no blueprint.
+export function useWeapons() {
+  return useQuery<WeaponCatalog>({
+    queryKey: ['weapons'],
+    queryFn: () => apiFetch('/api/weapons'),
+    staleTime: Infinity,
   });
 }
 
