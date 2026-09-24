@@ -842,15 +842,33 @@ function validateWeapon(weaponId) {
   return weapon ? null : 'weapon_id must reference a weapon';
 }
 
+/**
+ * Builds sort by weapon name, then by unit value high to low — so every build
+ * of a weapon sits together, best build first.
+ *
+ * Sorted here rather than in SQL because unit_value is derived in loadConfig
+ * from the weapon value plus the attached mod prices. Ordering in SQL would
+ * mean a second expression for the same number, free to drift from the one the
+ * UI shows.
+ *
+ * localeCompare so 'Il Toro' sorts next to 'Jupiter' rather than after every
+ * lowercase-free ASCII comparison, and id as a final tiebreak so two identical
+ * builds keep a stable order between requests.
+ */
+function compareConfigs(a, b) {
+  const byName = a.weapon_name.localeCompare(b.weapon_name, undefined, { sensitivity: 'base' });
+  if (byName !== 0) return byName;
+  if (b.unit_value !== a.unit_value) return b.unit_value - a.unit_value;
+  return a.id - b.id;
+}
+
 app.get('/api/gun-configs/:characterId', (req, res) => {
   const characterId = parseInt(req.params.characterId, 10);
   if (!characterId) return res.status(400).json({ error: 'invalid characterId' });
 
-  const ids = db.prepare(
-    'SELECT id FROM gun_configs WHERE character_id = ? ORDER BY created_at, id'
-  ).all(characterId);
+  const ids = db.prepare('SELECT id FROM gun_configs WHERE character_id = ?').all(characterId);
 
-  res.json(ids.map(r => loadConfig(r.id)));
+  res.json(ids.map(r => loadConfig(r.id)).sort(compareConfigs));
 });
 
 app.post('/api/gun-configs', (req, res) => {
@@ -998,13 +1016,15 @@ app.delete('/api/gun-configs/:id', (req, res) => {
 
 app.get('/api/reports/gun-configs', (req, res) => {
   const characters = db.prepare('SELECT * FROM characters ORDER BY sort_order, created_at').all();
-  const configIds = db.prepare('SELECT id, character_id FROM gun_configs ORDER BY created_at, id').all();
+  const configIds = db.prepare('SELECT id, character_id FROM gun_configs').all();
 
   const byCharacter = new Map(characters.map(c => [c.id, []]));
   for (const { id, character_id } of configIds) {
     const config = loadConfig(id);
     if (byCharacter.has(character_id)) byCharacter.get(character_id).push(config);
   }
+  // Same ordering as the Loadouts page, so a build is in the same place in both.
+  for (const configs of byCharacter.values()) configs.sort(compareConfigs);
 
   const rows = characters.map(c => {
     const configs = byCharacter.get(c.id) ?? [];
