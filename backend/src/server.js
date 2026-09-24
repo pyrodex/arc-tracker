@@ -699,6 +699,7 @@ app.get('/api/reports/workshop-materials', (req, res) => {
 // ── Gun configurations ─────────────────────────────────────────────────────────
 
 const { MOD_SLOTS } = require('./weapon-mods');
+const { WEAPON_CLASSES } = require('./weapons');
 const VALID_SLOTS = new Set(MOD_SLOTS.map(s => s.slot));
 
 // Mod catalog. Craftable mods carry their blueprint id so the UI can link a mod
@@ -735,9 +736,11 @@ app.put('/api/weapon-mods/:id', (req, res) => {
 // the weapon plus its mods; total_value multiplies that by the quantity held.
 function loadConfig(id) {
   const config = db.prepare(`
-    SELECT gc.*, b.name as weapon_name, b.slug as weapon_slug
+    SELECT gc.*, w.name as weapon_name, w.slug as weapon_slug,
+           w.class as weapon_class, w.rarity as weapon_rarity,
+           w.gunsmith_level, w.tiered, w.blueprint_id
     FROM gun_configs gc
-    JOIN blueprints b ON b.id = gc.blueprint_id
+    JOIN weapons w ON w.id = gc.weapon_id
     WHERE gc.id = ?
   `).get(id);
   if (!config) return null;
@@ -762,7 +765,7 @@ function loadConfig(id) {
     // What the wiki says this weapon sells for at this tier, so the UI can
     // show when a build's stored value has been overridden. null when the
     // wiki has no figure (Canto).
-    catalog_weapon_value: seededWeaponValue(config.blueprint_id, config.tier),
+    catalog_weapon_value: seededWeaponValue(config.weapon_id, config.tier),
   };
 }
 
@@ -794,19 +797,32 @@ function resolveMods(modIds) {
   return { rows };
 }
 
-// Seeded weapon prices, keyed for the UI as { [blueprintId]: { [tier]: value } }
+// Weapon catalog. Includes the seven Gunsmith-unlocked guns that have no
+// blueprint, which is why the picker reads this rather than the blueprints table.
+app.get('/api/weapons', (req, res) => {
+  const weapons = db.prepare(`
+    SELECT w.*, b.slug as blueprint_slug
+    FROM weapons w
+    LEFT JOIN blueprints b ON b.id = w.blueprint_id
+    ORDER BY w.sort_order, w.name COLLATE NOCASE
+  `).all();
+
+  res.json({ classes: WEAPON_CLASSES, weapons });
+});
+
+// Seeded weapon prices, keyed for the UI as { [weaponId]: { [tier]: value } }
 // with tier 0 meaning the weapon cannot be upgraded.
 app.get('/api/weapon-prices', (req, res) => {
   const rows = db.prepare(`
-    SELECT wp.blueprint_id, wp.tier, wp.sell_value, b.name as weapon_name
+    SELECT wp.weapon_id, wp.tier, wp.sell_value, w.name as weapon_name
     FROM weapon_prices wp
-    JOIN blueprints b ON b.id = wp.blueprint_id
-    ORDER BY b.name COLLATE NOCASE, wp.tier
+    JOIN weapons w ON w.id = wp.weapon_id
+    ORDER BY w.name COLLATE NOCASE, wp.tier
   `).all();
 
   const byWeapon = {};
   for (const row of rows) {
-    (byWeapon[row.blueprint_id] ??= {})[row.tier] = row.sell_value;
+    (byWeapon[row.weapon_id] ??= {})[row.tier] = row.sell_value;
   }
 
   res.json({ prices: byWeapon, rows });
@@ -814,16 +830,16 @@ app.get('/api/weapon-prices', (req, res) => {
 
 // The seeded price for a weapon at a tier, or null when unknown (Canto has no
 // per-tier breakdown on the wiki, so it has no rows).
-function seededWeaponValue(blueprintId, tier) {
+function seededWeaponValue(weaponId, tier) {
   const row = db.prepare(
-    'SELECT sell_value FROM weapon_prices WHERE blueprint_id = ? AND tier = ?'
-  ).get(blueprintId, tier ?? 0);
+    'SELECT sell_value FROM weapon_prices WHERE weapon_id = ? AND tier = ?'
+  ).get(weaponId, tier ?? 0);
   return row ? row.sell_value : null;
 }
 
-function validateWeapon(blueprintId) {
-  const weapon = db.prepare("SELECT id FROM blueprints WHERE id = ? AND category = 'weapons'").get(blueprintId);
-  return weapon ? null : 'blueprint_id must reference a weapon blueprint';
+function validateWeapon(weaponId) {
+  const weapon = db.prepare('SELECT id FROM weapons WHERE id = ?').get(weaponId);
+  return weapon ? null : 'weapon_id must reference a weapon';
 }
 
 app.get('/api/gun-configs/:characterId', (req, res) => {
@@ -838,16 +854,16 @@ app.get('/api/gun-configs/:characterId', (req, res) => {
 });
 
 app.post('/api/gun-configs', (req, res) => {
-  const { character_id, blueprint_id, name, tier, quantity, weapon_value, notes, mod_ids } = req.body;
+  const { character_id, weapon_id, name, tier, quantity, weapon_value, notes, mod_ids } = req.body;
 
-  if (!Number.isInteger(character_id) || !Number.isInteger(blueprint_id)) {
-    return res.status(400).json({ error: 'character_id and blueprint_id must be integers' });
+  if (!Number.isInteger(character_id) || !Number.isInteger(weapon_id)) {
+    return res.status(400).json({ error: 'character_id and weapon_id must be integers' });
   }
   if (!db.prepare('SELECT 1 FROM characters WHERE id = ?').get(character_id)) {
     return res.status(404).json({ error: 'character not found' });
   }
 
-  const weaponError = validateWeapon(blueprint_id);
+  const weaponError = validateWeapon(weapon_id);
   if (weaponError) return res.status(400).json({ error: weaponError });
 
   if (tier !== undefined && tier !== null && (!Number.isInteger(tier) || tier < 1 || tier > 4)) {
@@ -861,10 +877,10 @@ app.post('/api/gun-configs', (req, res) => {
   // tier; passing one (including 0) is an explicit override and is kept as-is.
   const resolvedWeaponValue = weapon_value !== undefined
     ? weapon_value
-    : (seededWeaponValue(blueprint_id, tier) ?? 0);
+    : (seededWeaponValue(weapon_id, tier) ?? 0);
 
   const insertConfig = db.prepare(`
-    INSERT INTO gun_configs (character_id, blueprint_id, name, tier, quantity, weapon_value, notes)
+    INSERT INTO gun_configs (character_id, weapon_id, name, tier, quantity, weapon_value, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
   const insertMod = db.prepare('INSERT INTO gun_config_mods (config_id, mod_id, slot) VALUES (?, ?, ?)');
@@ -872,7 +888,7 @@ app.post('/api/gun-configs', (req, res) => {
   const create = db.transaction(() => {
     const result = insertConfig.run(
       character_id,
-      blueprint_id,
+      weapon_id,
       name ? String(name).trim().slice(0, 64) : null,
       tier ?? null,
       Math.min(Math.max(0, quantity ?? 0), 9999),
@@ -894,13 +910,13 @@ app.put('/api/gun-configs/:id', (req, res) => {
   const current = db.prepare('SELECT * FROM gun_configs WHERE id = ?').get(id);
   if (!current) return res.status(404).json({ error: 'gun config not found' });
 
-  const { blueprint_id, name, tier, quantity, weapon_value, notes, mod_ids } = req.body;
+  const { weapon_id, name, tier, quantity, weapon_value, notes, mod_ids } = req.body;
 
-  if (blueprint_id !== undefined) {
-    if (!Number.isInteger(blueprint_id)) {
-      return res.status(400).json({ error: 'blueprint_id must be an integer' });
+  if (weapon_id !== undefined) {
+    if (!Number.isInteger(weapon_id)) {
+      return res.status(400).json({ error: 'weapon_id must be an integer' });
     }
-    const weaponError = validateWeapon(blueprint_id);
+    const weaponError = validateWeapon(weapon_id);
     if (weaponError) return res.status(400).json({ error: weaponError });
   }
   if (tier !== undefined && tier !== null && (!Number.isInteger(tier) || tier < 1 || tier > 4)) {
@@ -912,7 +928,7 @@ app.put('/api/gun-configs/:id', (req, res) => {
 
   const updateConfig = db.prepare(`
     UPDATE gun_configs SET
-      blueprint_id = ?, name = ?, tier = ?, quantity = ?, weapon_value = ?, notes = ?,
+      weapon_id = ?, name = ?, tier = ?, quantity = ?, weapon_value = ?, notes = ?,
       updated_at = datetime('now')
     WHERE id = ?
   `);
@@ -921,7 +937,7 @@ app.put('/api/gun-configs/:id', (req, res) => {
 
   const update = db.transaction(() => {
     updateConfig.run(
-      blueprint_id ?? current.blueprint_id,
+      weapon_id ?? current.weapon_id,
       name !== undefined ? (name ? String(name).trim().slice(0, 64) : null) : current.name,
       tier !== undefined ? (tier ?? null) : current.tier,
       quantity !== undefined ? Math.min(Math.max(0, quantity), 9999) : current.quantity,
@@ -1007,13 +1023,13 @@ app.get('/api/reports/gun-configs', (req, res) => {
   // Which weapons are built most often, across every character.
   const weaponBreakdown = db.prepare(`
     SELECT
-      b.id as blueprint_id, b.name as weapon_name, b.slug as weapon_slug,
+      w.id as weapon_id, w.name as weapon_name, w.slug as weapon_slug, w.class as weapon_class,
       COUNT(gc.id)                        as config_count,
       COALESCE(SUM(gc.quantity), 0)       as total_guns
     FROM gun_configs gc
-    JOIN blueprints b ON b.id = gc.blueprint_id
-    GROUP BY b.id
-    ORDER BY total_guns DESC, b.name COLLATE NOCASE
+    JOIN weapons w ON w.id = gc.weapon_id
+    GROUP BY w.id
+    ORDER BY total_guns DESC, w.name COLLATE NOCASE
   `).all();
 
   // Which mods are actually in use, and on how many guns. build_count counts

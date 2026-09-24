@@ -680,8 +680,11 @@ function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
           <h3 className="text-sm font-semibold text-arc-text mb-3">Most-built weapons</h3>
           <div className="space-y-1.5">
             {data.weapons.map(w => (
-              <div key={w.blueprint_id} className="flex items-center gap-3 text-sm">
-                <span className="text-arc-muted flex-1 truncate">{w.weapon_name}</span>
+              <div key={w.weapon_id} className="flex items-center gap-3 text-sm">
+                <span className="text-arc-muted flex-1 truncate">
+                  {w.weapon_name}
+                  <span className="text-arc-dim text-xs ml-1.5">{w.weapon_class}</span>
+                </span>
                 <span className="text-xs text-arc-dim tabular-nums">
                   {w.config_count} build{w.config_count === 1 ? '' : 's'}
                 </span>

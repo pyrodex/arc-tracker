@@ -15,12 +15,24 @@
  * value already entered — see seedWeaponPrices in db.js.
  */
 
-// Most weapons draw from one shared ladder, entering at a different rung:
+// The blueprint weapons mostly draw from one shared ladder, entering at a
+// different rung:
 //   2,900 → 5,000 → 7,000 → 10,000 → 13,000 → 17,000 → 22,000 → 27,000
-// Bettina is the lone exception and does not sit on it. Its figures were
-// re-read from the page to confirm; if they ever look wrong in game, that is
-// the first row to suspect.
+// Bettina is the only blueprint weapon that breaks it. The Gunsmith-unlocked
+// weapons ignore the ladder altogether, so it is a pattern among blueprint
+// weapons rather than a rule — weaker evidence against Bettina than it first
+// appeared, but its figures were still re-read from the page to confirm.
 const WEAPON_PRICES = [
+  // Gunsmith-unlocked weapons (no blueprint). These sit off the shared ladder
+  // entirely — the ladder only ever described the blueprint weapons.
+  { name: 'Hairpin',     tiers: [450, 1000, 2000, 2900] },
+  { name: 'Ferro',       tiers: [475, 1000, 2000, 2900] },
+  { name: 'Stitcher',    tiers: [800, 2000, 3000, 5000] },
+  { name: 'Kettle',      tiers: [840, 2000, 3000, 5000] },
+  { name: 'Rattler',     tiers: [1750, 3000, 5000, 7000] },
+  { name: 'Arpeggio',    tiers: [5500, 8000, 11500, 15000] },
+  { name: 'Renegade',    tiers: [7000, 10000, 13000, 17000] },
+
   { name: 'Burletta',    tiers: [2900, 5000, 7000, 10000] },
   { name: 'Anvil',       tiers: [5000, 7000, 10000, 13000] },
   { name: 'Il Toro',     tiers: [5000, 7000, 10000, 13000] },
