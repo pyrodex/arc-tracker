@@ -64,6 +64,12 @@ export interface SummaryCharacter {
   total_blueprints: number;
   total_arc_parts: number;
   arc_parts_value: number;
+  /** Gun builds defined for this character. */
+  config_count: number;
+  /** Total guns held across those builds (sum of quantities). */
+  total_guns: number;
+  /** Total value of those guns, weapons plus mods. */
+  loadout_value: number;
 }
 
 export interface Summary {
@@ -349,9 +355,26 @@ export interface GunConfigWeaponReport {
   total_guns: number;
 }
 
+export interface GunConfigModUsage {
+  mod_id: number;
+  mod_name: string;
+  slug: string;
+  slot: ModSlot;
+  variant: ModVariant | null;
+  craftable: 0 | 1;
+  sell_value: number;
+  /** Distinct builds this mod appears on. */
+  build_count: number;
+  /** Guns carrying it, weighted by each build's quantity. */
+  gun_count: number;
+  total_value: number;
+}
+
 export interface GunConfigsReport {
   characters: GunConfigCharacterReport[];
   weapons: GunConfigWeaponReport[];
+  mods: GunConfigModUsage[];
+  slots: ModSlotMeta[];
   totals: {
     config_count: number;
     total_guns: number;
