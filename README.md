@@ -249,6 +249,9 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
 
+### v1.5.2
+- **Readable build cards** — the value block on a Loadouts card read as a sentence fragment ("Weapon 27,000 + mods 22,000 / 49,000 each") with labels and figures at the same weight, next to a properly labelled Total. Each and Total are now parallel labelled figures on one baseline, with the weapon/mod breakdown as a caption beneath. Mod names go from 11px to 14px and slot labels from 9px to 10px, and the build name, empty state and unpriced warning all step up a size
+
 ### v1.5.1
 - **Build ordering** — builds now sort by weapon name, then by per-gun value high to low, so every build of a weapon sits together with the best one first. Previously they appeared in creation order, which scattered builds of the same weapon as soon as you had a few. Quantity deliberately doesn't affect the order: a one-off top-tier build outranks a stack of base guns worth more in total. The Loadouts page and the Loadouts report use the same ordering
 

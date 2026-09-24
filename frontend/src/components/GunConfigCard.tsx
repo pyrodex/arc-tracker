@@ -49,7 +49,7 @@ export default function GunConfigCard({
               </span>
             )}
           </div>
-          {config.name && <p className="text-xs text-arc-muted truncate mt-0.5">{config.name}</p>}
+          {config.name && <p className="text-sm text-arc-muted truncate mt-0.5">{config.name}</p>}
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -72,7 +72,7 @@ export default function GunConfigCard({
 
       {/* Mods by slot */}
       {filledSlots.length === 0 ? (
-        <p className="text-xs text-arc-dim italic">No mods attached — base weapon.</p>
+        <p className="text-sm text-arc-dim italic">No mods attached — base weapon.</p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {filledSlots.map(slot => {
@@ -80,42 +80,50 @@ export default function GunConfigCard({
             return (
               <span
                 key={slot.slot}
-                className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] bg-arc-border/40 border border-arc-border text-arc-muted"
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-arc-border/40 border border-arc-border"
                 title={`${slot.label}${mod.craftable ? '' : ' · loot-only'}`}
               >
-                <span className="text-arc-dim uppercase tracking-wide text-[9px]">{slot.label}</span>
-                <span className="text-arc-text">{mod.name}</span>
-                {!mod.craftable && <span className="text-amber-400" title="Loot-only">◆</span>}
+                <span className="text-arc-dim uppercase tracking-wider text-[10px] leading-none">{slot.label}</span>
+                <span className="text-sm text-arc-text leading-none">{mod.name}</span>
+                {!mod.craftable && <span className="text-amber-400 leading-none" title="Loot-only">◆</span>}
               </span>
             );
           })}
         </div>
       )}
 
-      {/* Values */}
-      <div className="flex items-end justify-between gap-3 pt-1 border-t border-arc-border">
-        <div className="text-xs space-y-0.5">
-          <p className="text-arc-dim">
-            Weapon <span className="text-arc-muted tabular-nums">{config.weapon_value.toLocaleString()}</span>
-            {config.mods.length > 0 && (
-              <> + mods <span className="text-arc-muted tabular-nums">{config.mods_value.toLocaleString()}</span></>
-            )}
-          </p>
-          <p className="text-arc-muted">
-            <span className="tabular-nums font-medium text-arc-text">{config.unit_value.toLocaleString()}</span> each
-          </p>
+      {/* Values. Each and Total are parallel labelled figures rather than a
+          sentence fragment beside a stat — they're the two numbers you compare,
+          so they get the same shape and sit on the same baseline. */}
+      <div className="pt-2 border-t border-arc-border space-y-1.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <div>
+            <p className="text-[10px] text-arc-dim uppercase tracking-wider">Each</p>
+            <p className="text-lg font-semibold text-arc-text tabular-nums leading-tight">
+              {config.unit_value.toLocaleString()}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-arc-dim uppercase tracking-wider">Total value</p>
+            <p className="text-lg font-semibold text-arc-extra tabular-nums leading-tight">
+              {config.total_value.toLocaleString()}
+            </p>
+          </div>
         </div>
 
-        <div className="text-right">
-          <p className="text-[10px] text-arc-dim uppercase tracking-wide">Total value</p>
-          <p className="text-base font-semibold text-arc-extra tabular-nums leading-tight">
-            {config.total_value.toLocaleString()}
-          </p>
-        </div>
+        {/* The breakdown supports the figures above, so it reads as a caption. */}
+        <p className="text-xs text-arc-muted tabular-nums">
+          {config.weapon_value.toLocaleString()} weapon
+          {config.mods.length > 0 && (
+            <> <span className="text-arc-dim">+</span> {config.mods_value.toLocaleString()} mods</>
+          )}
+          <span className="text-arc-dim"> × </span>
+          {config.quantity.toLocaleString()} held
+        </p>
       </div>
 
       {incomplete && (
-        <p className="flex items-start gap-1.5 text-[11px] text-amber-400/90">
+        <p className="flex items-start gap-1.5 text-xs text-amber-400/90">
           <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
           <span>
             {config.weapon_value === 0 && 'Weapon value not set'}

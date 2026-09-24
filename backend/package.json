@@ -1,6 +1,6 @@
 {
   "name": "arc-tracker-backend",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Backend for ARC Raiders tracker",
   "main": "src/server.js",
   "type": "commonjs",
