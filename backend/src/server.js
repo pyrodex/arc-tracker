@@ -234,6 +234,82 @@ app.delete('/api/characters/:id', (req, res) => {
   res.status(204).end();
 });
 
+// ── Activity ───────────────────────────────────────────────────────────────────
+
+/**
+ * When each character last touched each tracked area.
+ *
+ * Derived from the updated_at each tracking table already stamps, rather than
+ * stored separately — so it reflects history that predates this endpoint, and
+ * no write path has to remember to maintain it.
+ *
+ * Known limit: a delete leaves no row behind, so removing a build or a
+ * character's last tracked item does not move that area's date. Deletes are the
+ * rarer action and stamping them would need the stored-field approach.
+ *
+ * Workshop covers both station levels and material stockpiles — one area to the
+ * user, two tables underneath — so it appears twice below and the newer wins.
+ *
+ * SQLite stores 'YYYY-MM-DD HH:MM:SS' with no zone, which JavaScript's Date
+ * parses as LOCAL time. Formatting to explicit UTC here keeps the client from
+ * silently shifting every date by its offset.
+ */
+const ACTIVITY_AREAS = ['blueprints', 'arc_parts', 'workshop', 'loadouts'];
+
+app.get('/api/characters/activity', (req, res) => {
+  const rows = db.prepare(`
+    SELECT character_id, 'blueprints' AS area,
+           strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at)) AS updated_at
+      FROM blueprint_tracking GROUP BY character_id
+    UNION ALL
+    SELECT character_id, 'arc_parts',
+           strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at))
+      FROM arc_parts_tracking GROUP BY character_id
+    UNION ALL
+    SELECT character_id, 'workshop',
+           strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at))
+      FROM workshop_station_progress GROUP BY character_id
+    UNION ALL
+    SELECT character_id, 'workshop',
+           strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at))
+      FROM workshop_material_tracking GROUP BY character_id
+    UNION ALL
+    SELECT character_id, 'loadouts',
+           strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at))
+      FROM gun_configs GROUP BY character_id
+  `).all();
+
+  const characters = db.prepare(
+    'SELECT id FROM characters ORDER BY sort_order, created_at'
+  ).all();
+
+  const byCharacter = new Map(
+    characters.map(c => [c.id, Object.fromEntries(ACTIVITY_AREAS.map(a => [a, null]))])
+  );
+
+  for (const row of rows) {
+    if (!row.updated_at) continue;
+    const entry = byCharacter.get(row.character_id);
+    if (!entry) continue;
+    // Workshop contributes two rows; keep whichever is newer.
+    if (!entry[row.area] || row.updated_at > entry[row.area]) entry[row.area] = row.updated_at;
+  }
+
+  res.json({
+    areas: ACTIVITY_AREAS,
+    characters: characters.map(c => {
+      const areas = byCharacter.get(c.id);
+      const stamps = ACTIVITY_AREAS.map(a => areas[a]).filter(Boolean);
+      return {
+        character_id: c.id,
+        ...areas,
+        // Newest activity of any kind, for a single "last active" figure.
+        latest: stamps.length ? stamps.reduce((a, b) => (a > b ? a : b)) : null,
+      };
+    }),
+  });
+});
+
 // Blueprint tracking
 app.get('/api/tracking/:characterId', (req, res) => {
   const characterId = parseInt(req.params.characterId, 10);

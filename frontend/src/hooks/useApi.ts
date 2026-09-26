@@ -32,6 +32,8 @@ import type {
   UpdateGunConfigPayload,
   WeaponPriceCatalog,
   WeaponCatalog,
+  ActivityReport,
+  CharacterActivity,
 } from '../types';
 
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -102,8 +104,28 @@ export function useDeleteCharacter() {
       qc.invalidateQueries({ queryKey: ['characters'] });
       qc.invalidateQueries({ queryKey: ['tracking'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['activity'] });
+      qc.invalidateQueries({ queryKey: ['activity'] });
     },
   });
+}
+
+// ── Activity ───────────────────────────────────────────────────────────────────
+// Short staleTime: these dates move whenever anything is tracked, and a stale
+// "last updated" is worse than a stale count.
+export function useActivity() {
+  return useQuery<ActivityReport>({
+    queryKey: ['activity'],
+    queryFn: () => apiFetch('/api/characters/activity'),
+    staleTime: 5_000,
+  });
+}
+
+/** One character's activity, or nulls if it has none yet. */
+export function useCharacterActivity(characterId: number | null): CharacterActivity | undefined {
+  const { data } = useActivity();
+  if (characterId === null) return undefined;
+  return data?.characters.find(c => c.character_id === characterId);
 }
 
 // ── Tracking ───────────────────────────────────────────────────────────────────
@@ -136,6 +158,7 @@ export function useUpsertTracking() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['tracking', variables.character_id] });
       qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['activity'] });
     },
   });
 }
@@ -198,6 +221,7 @@ export function useUpsertArcPartTracking() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['arc-parts-tracking', variables.character_id] });
       qc.invalidateQueries({ queryKey: ['reports', 'arc-parts'] });
+      qc.invalidateQueries({ queryKey: ['activity'] });
     },
   });
 }
@@ -241,6 +265,7 @@ export function useUpsertWorkshopProgress() {
       }),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['workshop-progress', variables.character_id] });
+      qc.invalidateQueries({ queryKey: ['activity'] });
     },
   });
 }
@@ -276,6 +301,7 @@ export function useUpsertWorkshopMaterialTracking() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ['workshop-materials-tracking', variables.character_id] });
       qc.invalidateQueries({ queryKey: ['reports', 'workshop-materials'] });
+      qc.invalidateQueries({ queryKey: ['activity'] });
     },
   });
 }
@@ -344,6 +370,7 @@ export function useGunConfigs(characterId: number | null) {
 function invalidateConfigs(qc: ReturnType<typeof useQueryClient>, characterId?: number) {
   qc.invalidateQueries({ queryKey: ['gun-configs', characterId] });
   qc.invalidateQueries({ queryKey: ['reports', 'gun-configs'] });
+  qc.invalidateQueries({ queryKey: ['activity'] });
 }
 
 export function useCreateGunConfig() {

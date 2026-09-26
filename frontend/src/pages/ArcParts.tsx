@@ -6,7 +6,9 @@ import {
   useCharacters,
   useArcPartsTrackingMap,
   useUpsertArcPartTracking,
+  useCharacterActivity,
 } from '../hooks/useApi';
+import LastUpdated from '../components/LastUpdated';
 import ArcPartCard from '../components/ArcPartCard';
 
 type RarityFilter = 'all' | ArcPartRarity;
@@ -33,6 +35,7 @@ export default function ArcParts() {
   const [search, setSearch]                 = useState('');
 
   const activeCharId = selectedCharId ?? characters[0]?.id ?? null;
+  const activity = useCharacterActivity(activeCharId);
   const activeChar   = characters.find(c => c.id === activeCharId);
 
   const { trackingMap } = useArcPartsTrackingMap(activeCharId);
@@ -126,6 +129,9 @@ export default function ArcParts() {
               </button>
             ))}
           </div>
+
+          {/* When this character last touched this area. */}
+          <LastUpdated value={activity?.arc_parts ?? null} label="Updated" className="ml-auto" />
         </div>
 
         {/* Filters */}

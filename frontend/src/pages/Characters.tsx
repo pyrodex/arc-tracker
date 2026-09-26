@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { UserPlus, Pencil, Trash2, Users, Minus, Plus, AlertTriangle, BookCheck, BookX, Layers, Cpu } from 'lucide-react';
-import type { Character, SummaryCharacter } from '../types';
-import { useCharacters, useCreateCharacter, useUpdateCharacter, useDeleteCharacter, useSummary } from '../hooks/useApi';
+import type { Character, CharacterActivity, SummaryCharacter } from '../types';
+import { useCharacters, useCreateCharacter, useUpdateCharacter, useDeleteCharacter, useSummary, useActivity } from '../hooks/useApi';
 import Modal from '../components/Modal';
 import CharacterForm from '../components/CharacterForm';
+import LastUpdated from '../components/LastUpdated';
 
 type CharacterGroup = {
   parent: Character;
@@ -76,9 +77,31 @@ function CharacterStats({ stats }: { stats: SummaryCharacter }) {
   );
 }
 
+/** The four tracked areas, in the order they appear in the sidebar. */
+const ACTIVITY_AREAS: Array<{ key: keyof Omit<CharacterActivity, 'character_id' | 'latest'>; label: string }> = [
+  { key: 'blueprints', label: 'Blueprints' },
+  { key: 'arc_parts', label: 'ARC Parts' },
+  { key: 'workshop', label: 'Workshop' },
+  { key: 'loadouts', label: 'Loadouts' },
+];
+
+function ActivityGrid({ activity }: { activity?: CharacterActivity }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 mt-2 pt-2 border-t border-arc-border/60">
+      {ACTIVITY_AREAS.map(({ key, label }) => (
+        <div key={key} className="min-w-0">
+          <p className="text-[10px] text-arc-dim uppercase tracking-wider">{label}</p>
+          <LastUpdated value={activity?.[key] ?? null} showIcon={false} stacked className="text-[11px]" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 interface CharacterRowProps {
   char: Character;
   stats?: SummaryCharacter;
+  activity?: CharacterActivity;
   nested?: boolean;
   parentName?: string;
   onEdit: (char: Character) => void;
@@ -90,6 +113,7 @@ interface CharacterRowProps {
 function CharacterRow({
   char,
   stats,
+  activity,
   nested,
   parentName,
   onEdit,
@@ -100,7 +124,8 @@ function CharacterRow({
   const avatarSize = nested ? 'w-8 h-8 text-base' : 'w-10 h-10 text-lg';
 
   return (
-    <div className={`card p-4 flex items-center gap-4 hover:border-arc-muted/40 transition-colors ${nested ? 'bg-arc-bg/30' : ''}`}>
+    <div className={`card p-4 hover:border-arc-muted/40 transition-colors ${nested ? 'bg-arc-bg/30' : ''}`}>
+      <div className="flex items-center gap-4">
       <div
         className={`${avatarSize} rounded-lg shrink-0 flex items-center justify-center font-bold`}
         style={{ backgroundColor: char.color + '20', border: `1px solid ${char.color}40`, color: char.color }}
@@ -158,6 +183,9 @@ function CharacterRow({
           </button>
         </div>
       </div>
+      </div>
+
+      <ActivityGrid activity={activity} />
     </div>
   );
 }
@@ -165,12 +193,16 @@ function CharacterRow({
 export default function Characters() {
   const { data: characters = [], isLoading } = useCharacters();
   const { data: summary } = useSummary();
+  const { data: activityReport } = useActivity();
   const createChar = useCreateCharacter();
   const updateChar = useUpdateCharacter();
   const deleteChar = useDeleteCharacter();
 
   const statsById = Object.fromEntries(
     (summary?.characters ?? []).map(s => [s.id, s])
+  );
+  const activityById = Object.fromEntries(
+    (activityReport?.characters ?? []).map(a => [a.character_id, a])
   );
 
   const groups = groupCharactersByParent(characters);
@@ -211,6 +243,7 @@ export default function Characters() {
               <CharacterRow
                 char={parent}
                 stats={statsById[parent.id]}
+                activity={activityById[parent.id]}
                 onEdit={setEditTarget}
                 onDelete={setDeleteTarget}
                 onNomadStashChange={(id, nomad_stash) => updateChar.mutate({ id, nomad_stash })}
@@ -224,6 +257,7 @@ export default function Characters() {
                       key={child.id}
                       char={child}
                       stats={statsById[child.id]}
+                      activity={activityById[child.id]}
                       nested
                       parentName={parent.name}
                       onEdit={setEditTarget}

@@ -7,7 +7,9 @@ import {
   useCharacters,
   useTrackingMap,
   useUpsertTracking,
+  useCharacterActivity,
 } from '../hooks/useApi';
+import LastUpdated from '../components/LastUpdated';
 import BlueprintCard from '../components/BlueprintCard';
 import { categoryMeta } from '../components/CategoryIcon';
 
@@ -23,6 +25,7 @@ export default function Blueprints() {
   const [search, setSearch]                     = useState('');
 
   const activeCharId = selectedCharId ?? characters[0]?.id ?? null;
+  const activity = useCharacterActivity(activeCharId);
   const activeChar   = characters.find(c => c.id === activeCharId);
 
   const { data: blueprints = [] } = useBlueprints(selectedCategory === 'all' ? undefined : selectedCategory);
@@ -100,6 +103,9 @@ export default function Blueprints() {
               </button>
             ))}
           </div>
+
+          {/* When this character last touched this area. */}
+          <LastUpdated value={activity?.blueprints ?? null} label="Updated" className="ml-auto" />
         </div>
 
         {/* Filters */}

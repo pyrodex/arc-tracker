@@ -148,7 +148,7 @@ arc-tracker/
 │       ├── pages/             Dashboard, Characters, Blueprints, ArcParts, Workshop,
 │       │                      Loadouts, Reports
 │       ├── components/        BlueprintCard, BlueprintIcon, ArcPartCard, ArcPartIcon,
-│       │                      GunConfigCard, GunConfigEditor,
+│       │                      GunConfigCard, GunConfigEditor, LastUpdated,
 │       │                      WorkshopStationCard, WorkshopMaterialIcon,
 │       │                      CategoryIcon, CharacterForm, Layout, Modal, ThemeToggle, …
 │       ├── hooks/
@@ -169,6 +169,7 @@ arc-tracker/
 | GET | `/api/blueprints` | All blueprints (query: `?category=weapons&in_game=true`) |
 | GET | `/api/blueprints/categories` | Category list with counts |
 | GET | `/api/characters` | All characters |
+| GET | `/api/characters/activity` | Last-updated per character per tracked area (UTC) |
 | POST | `/api/characters` | Create a character (supports `parent_id`) |
 | PUT | `/api/characters/:id` | Update a character (supports `parent_id`, `nomad_stash`) |
 | DELETE | `/api/characters/:id` | Delete a character and all its tracking data |
@@ -248,6 +249,12 @@ Blueprint and ARC parts data sourced from [arcraiders.wiki](https://arcraiders.w
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
+
+### Unreleased
+- **Last updated per area** — each character now shows when it last had activity in Blueprints, ARC Parts, Workshop and Loadouts, as "24 Sep 2026 (2 days ago)". The date appears beside the character selector on each of those pages, and all four together on the Characters page
+- Derived from the `updated_at` every tracking table already stamps, so it needs no migration and reflects history that predates the feature. Deletes are the known gap: removing a build leaves no row to stamp, so that area's date does not move
+- Workshop combines station levels and material stockpiles into one date, matching how the page presents itself
+- Timestamps are served as explicit UTC, since SQLite's `datetime()` format would otherwise be parsed as local time by the browser and shift by the viewer's offset
 
 ### v1.5.2
 - **Readable build cards** — the value block on a Loadouts card read as a sentence fragment ("Weapon 27,000 + mods 22,000 / 49,000 each") with labels and figures at the same weight, next to a properly labelled Total. Each and Total are now parallel labelled figures on one baseline, with the weapon/mod breakdown as a caption beneath. Mod names go from 11px to 14px and slot labels from 9px to 10px, and the build name, empty state and unpriced warning all step up a size
