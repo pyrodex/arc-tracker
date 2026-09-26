@@ -12,7 +12,9 @@ import {
   useSetGunConfigQuantity,
   useDeleteGunConfig,
   useUpdateModPrice,
+  useCharacterActivity,
 } from '../hooks/useApi';
+import LastUpdated from '../components/LastUpdated';
 import GunConfigCard from '../components/GunConfigCard';
 import GunConfigEditor from '../components/GunConfigEditor';
 
@@ -30,6 +32,7 @@ export default function Loadouts() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const activeCharId = selectedCharId ?? characters[0]?.id ?? null;
+  const activity = useCharacterActivity(activeCharId);
   const activeChar = characters.find(c => c.id === activeCharId);
 
   const { data: configs = [] } = useGunConfigs(activeCharId);
@@ -161,6 +164,9 @@ export default function Loadouts() {
               </button>
             ))}
           </div>
+
+          {/* When this character last touched this area. */}
+          <LastUpdated value={activity?.loadouts ?? null} label="Updated" className="ml-auto" />
         </div>
 
         <button

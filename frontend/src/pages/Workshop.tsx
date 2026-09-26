@@ -12,7 +12,9 @@ import {
   useArcPartsTrackingMap,
   useUpsertArcPartTracking,
   useArcPartsReport,
+  useCharacterActivity,
 } from '../hooks/useApi';
+import LastUpdated from '../components/LastUpdated';
 import WorkshopStationCard from '../components/WorkshopStationCard';
 
 const STATION_ICONS: Record<string, LucideIcon> = {
@@ -32,6 +34,7 @@ export default function Workshop() {
   const [search, setSearch] = useState('');
 
   const activeCharId = selectedCharId ?? characters[0]?.id ?? null;
+  const activity = useCharacterActivity(activeCharId);
   const activeChar = characters.find(c => c.id === activeCharId);
 
   const { progressMap } = useWorkshopProgressMap(activeCharId);
@@ -171,6 +174,9 @@ export default function Workshop() {
               </button>
             ))}
           </div>
+
+          {/* When this character last touched this area. */}
+          <LastUpdated value={activity?.workshop ?? null} label="Updated" className="ml-auto" />
         </div>
 
         {/* Search */}

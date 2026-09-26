@@ -414,6 +414,26 @@ export interface GunConfigsReport {
   };
 }
 
+// ── Activity ───────────────────────────────────────────────────────────────────
+
+export type ActivityArea = 'blueprints' | 'arc_parts' | 'workshop' | 'loadouts';
+
+/** UTC timestamps (…Z), or null where the area has never been touched. */
+export interface CharacterActivity {
+  character_id: number;
+  blueprints: string | null;
+  arc_parts: string | null;
+  workshop: string | null;
+  loadouts: string | null;
+  /** Newest of the four. */
+  latest: string | null;
+}
+
+export interface ActivityReport {
+  areas: ActivityArea[];
+  characters: CharacterActivity[];
+}
+
 // ── Characters ─────────────────────────────────────────────────────────────────
 
 export type CreateCharacterPayload = {
