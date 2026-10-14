@@ -159,7 +159,7 @@ app.get('/api/characters', (req, res) => {
 const STASH_LIMITS = {
   normal_stash: 11,     // stash upgrades, 24 slots each
   nomad_stash: 2,       // Nomad expansions, 12 slots each
-  expedition_stash: 3,  // expeditions completed, 12 slots each
+  expedition_stash: 5,  // expeditions completed, 12 slots each
 };
 
 // Returns value if it's an integer within 0..STASH_LIMITS[field], otherwise fallback.

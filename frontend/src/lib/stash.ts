@@ -17,7 +17,7 @@ export const BASE_STASH_SLOTS = 64;
 export const STASH_SOURCES: StashSource[] = [
   { field: 'normal_stash', label: 'Upgrades', slotsEach: 24, max: 11 },
   { field: 'nomad_stash', label: 'Nomad', slotsEach: 12, max: 2 },
-  { field: 'expedition_stash', label: 'Expeditions', slotsEach: 12, max: 3 },
+  { field: 'expedition_stash', label: 'Expeditions', slotsEach: 12, max: 5 },
 ];
 
 /** A character's count for one source, clamped to that source's range. */
