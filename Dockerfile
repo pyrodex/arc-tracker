@@ -36,6 +36,11 @@ RUN npm install --omit=dev --prefer-offline
 # ── Stage 3: Production image ──────────────────────────────────────────────────
 FROM node:22.23.2-alpine AS runner
 
+# Pull the latest patched Alpine packages on top of the base image, so OS-level
+# fixes released after the base image was built are included (e.g. zlib
+# 1.3.2-r1 for CVE-2026-85091). --no-cache keeps the apk index out of the image.
+RUN apk upgrade --no-cache
+
 # npm ships with the Node base image but is never invoked at runtime — the app
 # runs purely as a `node` process. Removing npm eliminates Trivy findings for
 # npm-internal dependencies (ip-address, brace-expansion, tar, undici) that have
