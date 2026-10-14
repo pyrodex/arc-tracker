@@ -106,8 +106,46 @@ interface CharacterRowProps {
   parentName?: string;
   onEdit: (char: Character) => void;
   onDelete: (char: Character) => void;
-  onNomadStashChange: (id: number, nomad_stash: number) => void;
-  nomadStashPending: boolean;
+  onStashChange: (id: number, field: StashField, value: number) => void;
+  stashPending: boolean;
+}
+
+type StashField = 'normal_stash' | 'nomad_stash';
+
+interface StashCounterProps {
+  label: string;
+  value: number;
+  pending: boolean;
+  onChange: (value: number) => void;
+}
+
+function StashCounter({ label, value, pending, onChange }: StashCounterProps) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-[10px] font-medium text-arc-muted uppercase tracking-wide">{label}</span>
+      <div className="flex items-center gap-1">
+        <button
+          className="btn-ghost p-1 rounded disabled:opacity-40"
+          title={`Decrease ${label}`}
+          disabled={value <= 0 || pending}
+          onClick={() => onChange(Math.max(0, value - 1))}
+        >
+          <Minus className="w-3.5 h-3.5" />
+        </button>
+        <span className="min-w-[2rem] text-center text-sm font-semibold text-arc-text tabular-nums">
+          {value}
+        </span>
+        <button
+          className="btn-ghost p-1 rounded"
+          title={`Increase ${label}`}
+          disabled={pending}
+          onClick={() => onChange(value + 1)}
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function CharacterRow({
@@ -118,8 +156,8 @@ function CharacterRow({
   parentName,
   onEdit,
   onDelete,
-  onNomadStashChange,
-  nomadStashPending,
+  onStashChange,
+  stashPending,
 }: CharacterRowProps) {
   const avatarSize = nested ? 'w-8 h-8 text-base' : 'w-10 h-10 text-lg';
 
@@ -149,30 +187,18 @@ function CharacterRow({
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
-        <div className="flex flex-col items-center gap-0.5">
-          <span className="text-[10px] font-medium text-arc-muted uppercase tracking-wide">Nomad Stash</span>
-          <div className="flex items-center gap-1">
-            <button
-              className="btn-ghost p-1 rounded disabled:opacity-40"
-              title="Decrease Nomad Stash"
-              disabled={char.nomad_stash <= 0 || nomadStashPending}
-              onClick={() => onNomadStashChange(char.id, Math.max(0, char.nomad_stash - 1))}
-            >
-              <Minus className="w-3.5 h-3.5" />
-            </button>
-            <span className="min-w-[2rem] text-center text-sm font-semibold text-arc-text tabular-nums">
-              {char.nomad_stash}
-            </span>
-            <button
-              className="btn-ghost p-1 rounded"
-              title="Increase Nomad Stash"
-              disabled={nomadStashPending}
-              onClick={() => onNomadStashChange(char.id, char.nomad_stash + 1)}
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
+        <StashCounter
+          label="Stash"
+          value={char.normal_stash ?? 0}
+          pending={stashPending}
+          onChange={value => onStashChange(char.id, 'normal_stash', value)}
+        />
+        <StashCounter
+          label="Nomad Stash"
+          value={char.nomad_stash ?? 0}
+          pending={stashPending}
+          onChange={value => onStashChange(char.id, 'nomad_stash', value)}
+        />
 
         <div className="flex items-center gap-1">
           <button onClick={() => onEdit(char)} className="btn-ghost p-2" title="Edit">
@@ -246,8 +272,8 @@ export default function Characters() {
                 activity={activityById[parent.id]}
                 onEdit={setEditTarget}
                 onDelete={setDeleteTarget}
-                onNomadStashChange={(id, nomad_stash) => updateChar.mutate({ id, nomad_stash })}
-                nomadStashPending={updateChar.isPending}
+                onStashChange={(id, field, value) => updateChar.mutate({ id, [field]: value })}
+                stashPending={updateChar.isPending}
               />
 
               {children.length > 0 && (
@@ -262,8 +288,8 @@ export default function Characters() {
                       parentName={parent.name}
                       onEdit={setEditTarget}
                       onDelete={setDeleteTarget}
-                      onNomadStashChange={(id, nomad_stash) => updateChar.mutate({ id, nomad_stash })}
-                      nomadStashPending={updateChar.isPending}
+                      onStashChange={(id, field, value) => updateChar.mutate({ id, [field]: value })}
+                      stashPending={updateChar.isPending}
                     />
                   ))}
                 </div>
