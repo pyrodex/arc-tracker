@@ -37,7 +37,9 @@ jobs:
 
       - name: Audit backend
         working-directory: backend
-        run: npm install --ignore-scripts && npm audit --audit-level=high
+        # --omit=dev: the published image only ships production dependencies, so
+        # dev-only tooling (e.g. nodemon) should not block a release.
+        run: npm install --ignore-scripts && npm audit --audit-level=high --omit=dev
 
       - name: Audit frontend
         working-directory: frontend
@@ -48,9 +50,13 @@ jobs:
           # already marks 7.18.2 as patched. The advisory only impacts unstable RSC
           # APIs, which this project does not use. The filter below can be removed
           # once the npm registry syncs the corrected advisory range.
+          #
+          # GHSA-vfj7-8cjw-p6xm: braces has no patched release for any version. It
+          # only enters through build-time tooling (tailwindcss -> chokidar/micromatch),
+          # not the shipped static bundle. Remove once a fix is published.
           npm audit --json 2>/dev/null | node -e "
             var d = JSON.parse(require('fs').readFileSync(0, 'utf8'));
-            var ignored = ['GHSA-qwww-vcr4-c8h2'];
+            var ignored = ['GHSA-qwww-vcr4-c8h2', 'GHSA-vfj7-8cjw-p6xm'];
             var bad = Object.values(d.vulnerabilities || {}).filter(function(v) {
               if (!['high', 'critical'].includes(v.severity)) return false;
               return (v.via || []).filter(function(x) { return x && x.url; })
