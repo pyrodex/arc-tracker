@@ -155,8 +155,20 @@ app.get('/api/characters', (req, res) => {
   res.json(characters);
 });
 
+// Max number of each stash expansion a character can have.
+const STASH_LIMITS = {
+  normal_stash: 11,     // stash upgrades, 24 slots each
+  nomad_stash: 2,       // Nomad expansions, 12 slots each
+  expedition_stash: 3,  // expeditions completed, 12 slots each
+};
+
+// Returns value if it's an integer within 0..STASH_LIMITS[field], otherwise fallback.
+function parseStashCount(field, value, fallback) {
+  return Number.isInteger(value) && value >= 0 && value <= STASH_LIMITS[field] ? value : fallback;
+}
+
 app.post('/api/characters', (req, res) => {
-  const { name, label, notes, color, sort_order, normal_stash, nomad_stash, parent_id } = req.body;
+  const { name, label, notes, color, sort_order, normal_stash, nomad_stash, expedition_stash, parent_id } = req.body;
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
   }
@@ -166,16 +178,17 @@ app.post('/api/characters', (req, res) => {
   if (parentError) return res.status(400).json({ error: parentError });
 
   const result = db.prepare(`
-    INSERT INTO characters (name, label, notes, color, sort_order, normal_stash, nomad_stash, parent_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO characters (name, label, notes, color, sort_order, normal_stash, nomad_stash, expedition_stash, parent_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     name.trim().slice(0, 64),
     label ? label.trim().slice(0, 32) : null,
     notes ? notes.trim().slice(0, 512) : null,
     /^#[0-9a-fA-F]{6}$/.test(color) ? color : '#3b82f6',
     typeof sort_order === 'number' ? sort_order : 0,
-    Number.isInteger(normal_stash) && normal_stash >= 0 ? normal_stash : 0,
-    Number.isInteger(nomad_stash) && nomad_stash >= 0 ? nomad_stash : 0,
+    parseStashCount('normal_stash', normal_stash, 0),
+    parseStashCount('nomad_stash', nomad_stash, 0),
+    parseStashCount('expedition_stash', expedition_stash, 0),
     parsedParentId,
   );
 
@@ -190,7 +203,7 @@ app.put('/api/characters/:id', (req, res) => {
   const existing = db.prepare('SELECT id FROM characters WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'character not found' });
 
-  const { name, label, notes, color, sort_order, normal_stash, nomad_stash, parent_id } = req.body;
+  const { name, label, notes, color, sort_order, normal_stash, nomad_stash, expedition_stash, parent_id } = req.body;
   if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
     return res.status(400).json({ error: 'name must be a non-empty string' });
   }
@@ -210,6 +223,7 @@ app.put('/api/characters/:id', (req, res) => {
       sort_order   = ?,
       normal_stash = ?,
       nomad_stash  = ?,
+      expedition_stash = ?,
       parent_id   = ?
     WHERE id = ?
   `).run(
@@ -218,8 +232,9 @@ app.put('/api/characters/:id', (req, res) => {
     notes !== undefined ? (notes ? notes.trim().slice(0, 512) : null) : current.notes,
     /^#[0-9a-fA-F]{6}$/.test(color) ? color : current.color,
     typeof sort_order === 'number' ? sort_order : current.sort_order,
-    Number.isInteger(normal_stash) && normal_stash >= 0 ? normal_stash : current.normal_stash ?? 0,
-    Number.isInteger(nomad_stash) && nomad_stash >= 0 ? nomad_stash : current.nomad_stash ?? 0,
+    parseStashCount('normal_stash', normal_stash, current.normal_stash ?? 0),
+    parseStashCount('nomad_stash', nomad_stash, current.nomad_stash ?? 0),
+    parseStashCount('expedition_stash', expedition_stash, current.expedition_stash ?? 0),
     parsedParentId,
     id,
   );
