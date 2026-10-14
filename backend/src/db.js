@@ -51,6 +51,7 @@ function initSchema() {
       notes        TEXT,
       color        TEXT    NOT NULL DEFAULT '#3b82f6',
       sort_order   INTEGER DEFAULT 0,
+      normal_stash INTEGER DEFAULT 0,
       nomad_stash  INTEGER DEFAULT 0,
       parent_id    INTEGER REFERENCES characters(id) ON DELETE SET NULL,
       created_at   TEXT    DEFAULT (datetime('now'))
@@ -622,6 +623,9 @@ function runMigrations() {
   const charCols = db.pragma('table_info(characters)').map(c => c.name);
   if (!charCols.includes('nomad_stash')) {
     db.exec('ALTER TABLE characters ADD COLUMN nomad_stash INTEGER DEFAULT 0');
+  }
+  if (!charCols.includes('normal_stash')) {
+    db.exec('ALTER TABLE characters ADD COLUMN normal_stash INTEGER DEFAULT 0');
   }
 
   const arcCols = db.pragma('table_info(arc_parts)').map(c => c.name);

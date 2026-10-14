@@ -33,6 +33,7 @@ export interface Character {
   notes: string | null;
   color: string;
   sort_order: number;
+  normal_stash: number;
   nomad_stash: number;
   parent_id: number | null;
   created_at: string;
@@ -444,7 +445,7 @@ export type CreateCharacterPayload = {
   parent_id?: number | null;
 };
 
-export type UpdateCharacterPayload = Partial<CreateCharacterPayload & { sort_order: number; nomad_stash: number }>;
+export type UpdateCharacterPayload = Partial<CreateCharacterPayload & { sort_order: number; normal_stash: number; nomad_stash: number }>;
 
 export type TrackingUpdate = {
   character_id: number;

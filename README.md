@@ -23,7 +23,7 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 - **Multi-select labels** — assign one or more labels per character from presets (Wipe, Non-Wipe, Mule, PvP, PvE, HC, Leveling, Trade) or create custom labels
 - **Color coding** — pick from preset colors or a custom color picker; colors appear throughout the UI
 - **Notes** — optional free-text notes per character
-- **Nomad Stash** — per-character +/– counter for tracking your stash count, starting at zero
+- **Stash & Nomad Stash** — per-character +/– counters for tracking normal in-game stash expansions and Nomad stash count, both starting at zero
 - **At-a-glance stats** — each character card shows learned blueprint count, unlearned count, spare/extra copies, and total ARC parts collected
 - **Delete confirmation** — a prominent confirmation prompt (with warning) is shown before a character and all its data are permanently removed
 
@@ -171,7 +171,7 @@ arc-tracker/
 | GET | `/api/characters` | All characters |
 | GET | `/api/characters/activity` | Last-updated per character per tracked area (UTC) |
 | POST | `/api/characters` | Create a character (supports `parent_id`) |
-| PUT | `/api/characters/:id` | Update a character (supports `parent_id`, `nomad_stash`) |
+| PUT | `/api/characters/:id` | Update a character (supports `parent_id`, `normal_stash`, `nomad_stash`) |
 | DELETE | `/api/characters/:id` | Delete a character and all its tracking data |
 | GET | `/api/tracking/:characterId` | All blueprint tracking records for a character |
 | POST | `/api/tracking` | Upsert a single blueprint tracking record |
