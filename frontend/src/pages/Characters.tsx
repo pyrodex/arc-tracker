@@ -5,6 +5,15 @@ import { useCharacters, useCreateCharacter, useUpdateCharacter, useDeleteCharact
 import Modal from '../components/Modal';
 import CharacterForm from '../components/CharacterForm';
 import LastUpdated from '../components/LastUpdated';
+import {
+  BASE_STASH_SLOTS,
+  MAX_STASH_SLOTS,
+  STASH_SOURCES,
+  stashCount,
+  totalStashSlots,
+  type StashField,
+  type StashSource,
+} from '../lib/stash';
 
 type CharacterGroup = {
   parent: Character;
@@ -110,16 +119,15 @@ interface CharacterRowProps {
   stashPending: boolean;
 }
 
-type StashField = 'normal_stash' | 'nomad_stash';
-
 interface StashCounterProps {
-  label: string;
+  source: StashSource;
   value: number;
   pending: boolean;
   onChange: (value: number) => void;
 }
 
-function StashCounter({ label, value, pending, onChange }: StashCounterProps) {
+function StashCounter({ source, value, pending, onChange }: StashCounterProps) {
+  const { label, slotsEach, max } = source;
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span className="text-[10px] font-medium text-arc-muted uppercase tracking-wide">{label}</span>
@@ -132,18 +140,52 @@ function StashCounter({ label, value, pending, onChange }: StashCounterProps) {
         >
           <Minus className="w-3.5 h-3.5" />
         </button>
-        <span className="min-w-[2rem] text-center text-sm font-semibold text-arc-text tabular-nums">
-          {value}
+        <span className="min-w-[2.75rem] text-center text-sm font-semibold text-arc-text tabular-nums">
+          {value}<span className="text-arc-dim font-normal">/{max}</span>
         </span>
         <button
-          className="btn-ghost p-1 rounded"
+          className="btn-ghost p-1 rounded disabled:opacity-40"
           title={`Increase ${label}`}
-          disabled={pending}
-          onClick={() => onChange(value + 1)}
+          disabled={value >= max || pending}
+          onClick={() => onChange(Math.min(max, value + 1))}
         >
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
+      <span className="text-[10px] text-arc-dim tabular-nums">+{slotsEach} each</span>
+    </div>
+  );
+}
+
+function StashPanel({
+  char,
+  pending,
+  onStashChange,
+}: {
+  char: Character;
+  pending: boolean;
+  onStashChange: (id: number, field: StashField, value: number) => void;
+}) {
+  const total = totalStashSlots(char);
+  return (
+    <div className="mt-3 pt-3 border-t border-arc-border/40 flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="flex flex-col">
+        <span className="text-[10px] font-medium text-arc-muted uppercase tracking-wide">Total Stash</span>
+        <span className="text-lg font-semibold text-arc-text tabular-nums leading-tight">
+          {total}
+          <span className="text-xs text-arc-dim font-normal"> / {MAX_STASH_SLOTS} slots</span>
+        </span>
+        <span className="text-[10px] text-arc-dim">{BASE_STASH_SLOTS} base</span>
+      </div>
+      {STASH_SOURCES.map(source => (
+        <StashCounter
+          key={source.field}
+          source={source}
+          value={stashCount(char, source)}
+          pending={pending}
+          onChange={value => onStashChange(char.id, source.field, value)}
+        />
+      ))}
     </div>
   );
 }
@@ -187,19 +229,6 @@ function CharacterRow({
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
-        <StashCounter
-          label="Stash"
-          value={char.normal_stash ?? 0}
-          pending={stashPending}
-          onChange={value => onStashChange(char.id, 'normal_stash', value)}
-        />
-        <StashCounter
-          label="Nomad Stash"
-          value={char.nomad_stash ?? 0}
-          pending={stashPending}
-          onChange={value => onStashChange(char.id, 'nomad_stash', value)}
-        />
-
         <div className="flex items-center gap-1">
           <button onClick={() => onEdit(char)} className="btn-ghost p-2" title="Edit">
             <Pencil className="w-4 h-4" />
@@ -210,6 +239,8 @@ function CharacterRow({
         </div>
       </div>
       </div>
+
+      <StashPanel char={char} pending={stashPending} onStashChange={onStashChange} />
 
       <ActivityGrid activity={activity} />
     </div>
