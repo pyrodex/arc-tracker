@@ -34,6 +34,12 @@ import type {
   WeaponCatalog,
   ActivityReport,
   CharacterActivity,
+  Stencil,
+  StencilTrackingRecord,
+  StencilTrackingMap,
+  StencilTrackingUpdate,
+  UnlearnedStencil,
+  StencilExtrasReport,
 } from '../types';
 
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -103,8 +109,8 @@ export function useDeleteCharacter() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['characters'] });
       qc.invalidateQueries({ queryKey: ['tracking'] });
+      qc.invalidateQueries({ queryKey: ['stencil-tracking'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
-      qc.invalidateQueries({ queryKey: ['activity'] });
       qc.invalidateQueries({ queryKey: ['activity'] });
     },
   });
@@ -174,6 +180,40 @@ export function useBatchUpdateTracking() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tracking'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
+    },
+  });
+}
+
+// ── Stencils ───────────────────────────────────────────────────────────────────
+export function useStencils() {
+  return useQuery<Stencil[]>({
+    queryKey: ['stencils'],
+    queryFn: () => apiFetch('/api/stencils'),
+    staleTime: Infinity,
+  });
+}
+
+export function useStencilTrackingMap(characterId: number | null) {
+  const query = useQuery<StencilTrackingRecord[]>({
+    queryKey: ['stencil-tracking', characterId],
+    queryFn: () => apiFetch(`/api/stencils/tracking/${characterId}`),
+    enabled: characterId !== null,
+    staleTime: 10_000,
+  });
+  const map: StencilTrackingMap = {};
+  for (const record of query.data ?? []) map[record.stencil_id] = record;
+  return { ...query, trackingMap: map };
+}
+
+export function useUpsertStencilTracking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (update: StencilTrackingUpdate) =>
+      apiFetch<StencilTrackingRecord>('/api/stencils/tracking', { method: 'POST', body: JSON.stringify(update) }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['stencil-tracking', variables.character_id] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['activity'] });
     },
   });
 }
@@ -441,6 +481,22 @@ export function useExtrasReport() {
   return useQuery<ExtrasReport[]>({
     queryKey: ['reports', 'extras'],
     queryFn: () => apiFetch('/api/reports/extras'),
+    staleTime: 15_000,
+  });
+}
+
+export function useStencilUnlearnedReport() {
+  return useQuery<UnlearnedStencil[]>({
+    queryKey: ['reports', 'stencils-unlearned'],
+    queryFn: () => apiFetch('/api/reports/stencils/unlearned'),
+    staleTime: 15_000,
+  });
+}
+
+export function useStencilExtrasReport() {
+  return useQuery<StencilExtrasReport[]>({
+    queryKey: ['reports', 'stencils-extras'],
+    queryFn: () => apiFetch('/api/reports/stencils/extras'),
     staleTime: 15_000,
   });
 }

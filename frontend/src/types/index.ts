@@ -73,10 +73,16 @@ export interface SummaryCharacter {
   total_guns: number;
   /** Total value of those guns, weapons plus mods. */
   loadout_value: number;
+  /** Stencils this character has learned. */
+  stencils_learned: number;
+  /** Spare stencils held by this character. */
+  stencil_extras: number;
+  total_stencils: number;
 }
 
 export interface Summary {
   totalBlueprints: number;
+  totalStencils: number;
   totalCharacters: number;
   characters: SummaryCharacter[];
 }
@@ -110,6 +116,58 @@ export interface CharacterExtras {
   character_label: string | null;
   character_color: string;
   extras: number;
+}
+
+// ── Stencils ───────────────────────────────────────────────────────────────────
+
+export type StencilRarity = 'legendary' | 'epic' | 'rare' | 'uncommon' | 'common';
+
+export interface Stencil {
+  id: number;
+  name: string;
+  slug: string;
+  rarity: StencilRarity;
+  /** Comma-separated list of weapons the stencil can be applied to. */
+  weapons: string | null;
+  sort_order: number;
+}
+
+export interface StencilTrackingRecord {
+  id: number;
+  character_id: number;
+  stencil_id: number;
+  learned: 0 | 1;
+  extras: number;
+  updated_at: string;
+  stencil_name?: string;
+  slug?: string;
+  rarity?: StencilRarity;
+}
+
+export interface StencilTrackingMap {
+  [stencilId: number]: StencilTrackingRecord;
+}
+
+export type StencilTrackingUpdate = {
+  character_id: number;
+  stencil_id: number;
+  learned: boolean;
+  extras: number;
+};
+
+export interface UnlearnedStencil extends Stencil {
+  characters: CharacterLearnStatus[];
+  unlearned_count: number;
+  unlearned_by_any: boolean;
+}
+
+export interface StencilExtrasReport {
+  stencil_id: number;
+  stencil_name: string;
+  slug: string;
+  rarity: StencilRarity;
+  total_extras: number;
+  character_breakdown: CharacterExtras[];
 }
 
 // ── ARC Parts ──────────────────────────────────────────────────────────────────
@@ -419,16 +477,17 @@ export interface GunConfigsReport {
 
 // ── Activity ───────────────────────────────────────────────────────────────────
 
-export type ActivityArea = 'blueprints' | 'arc_parts' | 'workshop' | 'loadouts';
+export type ActivityArea = 'blueprints' | 'stencils' | 'arc_parts' | 'workshop' | 'loadouts';
 
 /** UTC timestamps (…Z), or null where the area has never been touched. */
 export interface CharacterActivity {
   character_id: number;
   blueprints: string | null;
+  stencils: string | null;
   arc_parts: string | null;
   workshop: string | null;
   loadouts: string | null;
-  /** Newest of the four. */
+  /** Newest of the areas above. */
   latest: string | null;
 }
 

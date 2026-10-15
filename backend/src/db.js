@@ -5,6 +5,7 @@ const fs = require('fs');
 const Database = require('better-sqlite3');
 const BLUEPRINTS = require('./blueprints');
 const ARC_PARTS = require('./arc-parts');
+const STENCILS = require('./stencils');
 const WORKSHOP_STATIONS = require('./workshop');
 const { WEAPON_MODS, MOD_SLOTS } = require('./weapon-mods');
 const WEAPON_PRICES = require('./weapon-prices');
@@ -73,6 +74,32 @@ function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_tracking_char   ON blueprint_tracking(character_id);
     CREATE INDEX IF NOT EXISTS idx_tracking_bp     ON blueprint_tracking(blueprint_id);
     CREATE INDEX IF NOT EXISTS idx_blueprints_cat  ON blueprints(category);
+
+    -- Weapon stencils: cosmetic finishes that are found, then learned and
+    -- crafted, so they're tracked exactly like blueprints (learned + extras).
+    CREATE TABLE IF NOT EXISTS stencils (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT    NOT NULL UNIQUE,
+      slug       TEXT    NOT NULL UNIQUE,
+      rarity     TEXT    NOT NULL,
+      weapons    TEXT,
+      sort_order INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS stencil_tracking (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      character_id INTEGER NOT NULL,
+      stencil_id   INTEGER NOT NULL,
+      learned      INTEGER DEFAULT 0,
+      extras       INTEGER DEFAULT 0,
+      updated_at   TEXT    DEFAULT (datetime('now')),
+      FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+      FOREIGN KEY (stencil_id)   REFERENCES stencils(id),
+      UNIQUE(character_id, stencil_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_stencil_tracking_char    ON stencil_tracking(character_id);
+    CREATE INDEX IF NOT EXISTS idx_stencil_tracking_stencil ON stencil_tracking(stencil_id);
 
     CREATE TABLE IF NOT EXISTS arc_parts (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -313,6 +340,42 @@ function seedArcParts() {
   upsertMany(ARC_PARTS);
   const after = db.prepare('SELECT COUNT(*) as c FROM arc_parts').get().c;
   if (after > before) console.log(`Seeded ${after - before} new ARC part(s) (total: ${after})`);
+}
+
+function seedStencils() {
+  const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO stencils (name, slug, rarity, weapons, sort_order)
+    VALUES (@name, @slug, @rarity, @weapons, @sort_order)
+  `);
+
+  // Keep rarity, compatible weapons and ordering in step with seed corrections.
+  const syncFields = db.prepare(`
+    UPDATE stencils
+    SET rarity = @rarity, weapons = @weapons, sort_order = @sort_order
+    WHERE name = @name
+      AND (rarity != @rarity OR IFNULL(weapons, '') != IFNULL(@weapons, '') OR sort_order != @sort_order)
+  `);
+
+  const upsertMany = db.transaction((stencils) => {
+    stencils.forEach((s, i) => {
+      const row = {
+        name: s.name,
+        slug: slugify(s.name),
+        rarity: s.rarity,
+        weapons: s.weapons || null,
+        sort_order: rarityOrder.indexOf(s.rarity) * 100 + i,
+      };
+      insert.run(row);
+      syncFields.run(row);
+    });
+  });
+
+  const before = db.prepare('SELECT COUNT(*) as c FROM stencils').get().c;
+  upsertMany(STENCILS);
+  const after = db.prepare('SELECT COUNT(*) as c FROM stencils').get().c;
+  if (after > before) console.log(`Seeded ${after - before} new stencil(s) (total: ${after})`);
 }
 
 function seedWorkshop() {
@@ -650,6 +713,7 @@ function runMigrations() {
 initSchema();
 runMigrations();
 seedBlueprints();
+seedStencils();
 seedArcParts();
 seedWorkshop();
 seedWeaponMods();

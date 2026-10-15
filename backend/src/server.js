@@ -272,13 +272,17 @@ app.delete('/api/characters/:id', (req, res) => {
  * parses as LOCAL time. Formatting to explicit UTC here keeps the client from
  * silently shifting every date by its offset.
  */
-const ACTIVITY_AREAS = ['blueprints', 'arc_parts', 'workshop', 'loadouts'];
+const ACTIVITY_AREAS = ['blueprints', 'stencils', 'arc_parts', 'workshop', 'loadouts'];
 
 app.get('/api/characters/activity', (req, res) => {
   const rows = db.prepare(`
     SELECT character_id, 'blueprints' AS area,
            strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at)) AS updated_at
       FROM blueprint_tracking GROUP BY character_id
+    UNION ALL
+    SELECT character_id, 'stencils',
+           strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at))
+      FROM stencil_tracking GROUP BY character_id
     UNION ALL
     SELECT character_id, 'arc_parts',
            strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at))
@@ -413,6 +417,7 @@ app.post('/api/tracking/batch', (req, res) => {
 app.get('/api/reports/summary', (req, res) => {
   const totalBlueprints = db.prepare('SELECT COUNT(*) as c FROM blueprints WHERE in_game = 1').get().c;
   const totalCharacters = db.prepare('SELECT COUNT(*) as c FROM characters').get().c;
+  const totalStencils = db.prepare('SELECT COUNT(*) as c FROM stencils').get().c;
 
   const characterStats = db.prepare(`
     SELECT
@@ -464,6 +469,16 @@ app.get('/api/reports/summary', (req, res) => {
   `).all();
   const loadoutByChar = Object.fromEntries(loadoutTotals.map(r => [r.character_id, r]));
 
+  const stencilTotals = db.prepare(`
+    SELECT
+      character_id,
+      COUNT(CASE WHEN learned = 1 THEN 1 END) as stencils_learned,
+      COALESCE(SUM(extras), 0)                as stencil_extras
+    FROM stencil_tracking
+    GROUP BY character_id
+  `).all();
+  const stencilByChar = Object.fromEntries(stencilTotals.map(r => [r.character_id, r]));
+
   const characters = characterStats.map(c => ({
     ...c,
     total_arc_parts:  arcByChar[c.id]?.total_arc_parts  ?? 0,
@@ -471,9 +486,12 @@ app.get('/api/reports/summary', (req, res) => {
     config_count:     loadoutByChar[c.id]?.config_count  ?? 0,
     total_guns:       loadoutByChar[c.id]?.total_guns    ?? 0,
     loadout_value:    loadoutByChar[c.id]?.loadout_value ?? 0,
+    stencils_learned: stencilByChar[c.id]?.stencils_learned ?? 0,
+    stencil_extras:   stencilByChar[c.id]?.stencil_extras   ?? 0,
+    total_stencils:   totalStencils,
   }));
 
-  res.json({ totalBlueprints, totalCharacters, characters });
+  res.json({ totalBlueprints, totalStencils, totalCharacters, characters });
 });
 
 app.get('/api/reports/unlearned', (req, res) => {
@@ -543,6 +561,125 @@ app.get('/api/reports/extras', (req, res) => {
   }));
 
   res.json(result);
+});
+
+// ── Stencils ───────────────────────────────────────────────────────────────────
+// Tracked like blueprints: a stencil is learned once, and spare copies are extras.
+
+const STENCIL_RARITIES = new Set(['legendary', 'epic', 'rare', 'uncommon', 'common']);
+
+app.get('/api/stencils', (req, res) => {
+  const { rarity } = req.query;
+  if (rarity && !STENCIL_RARITIES.has(rarity)) {
+    return res.status(400).json({ error: 'invalid rarity' });
+  }
+  const rows = rarity
+    ? db.prepare('SELECT * FROM stencils WHERE rarity = ? ORDER BY sort_order, name COLLATE NOCASE').all(rarity)
+    : db.prepare('SELECT * FROM stencils ORDER BY sort_order, name COLLATE NOCASE').all();
+  res.json(rows);
+});
+
+app.get('/api/stencils/tracking/:characterId', (req, res) => {
+  const characterId = parseInt(req.params.characterId, 10);
+  if (!characterId) return res.status(400).json({ error: 'invalid characterId' });
+
+  const rows = db.prepare(`
+    SELECT st.*, s.name as stencil_name, s.slug, s.rarity
+    FROM stencil_tracking st
+    JOIN stencils s ON s.id = st.stencil_id
+    WHERE st.character_id = ?
+  `).all(characterId);
+
+  res.json(rows);
+});
+
+app.post('/api/stencils/tracking', (req, res) => {
+  const { character_id, stencil_id, learned, extras } = req.body;
+
+  if (!Number.isInteger(character_id) || !Number.isInteger(stencil_id)) {
+    return res.status(400).json({ error: 'character_id and stencil_id must be integers' });
+  }
+  if (typeof learned !== 'undefined' && typeof learned !== 'boolean' && learned !== 0 && learned !== 1) {
+    return res.status(400).json({ error: 'learned must be boolean or 0/1' });
+  }
+  if (typeof extras !== 'undefined' && (!Number.isInteger(extras) || extras < 0)) {
+    return res.status(400).json({ error: 'extras must be a non-negative integer' });
+  }
+  if (!db.prepare('SELECT id FROM characters WHERE id = ?').get(character_id)) {
+    return res.status(404).json({ error: 'character not found' });
+  }
+  if (!db.prepare('SELECT id FROM stencils WHERE id = ?').get(stencil_id)) {
+    return res.status(404).json({ error: 'stencil not found' });
+  }
+
+  db.prepare(`
+    INSERT INTO stencil_tracking (character_id, stencil_id, learned, extras, updated_at)
+    VALUES (?, ?, ?, ?, datetime('now'))
+    ON CONFLICT(character_id, stencil_id) DO UPDATE SET
+      learned    = excluded.learned,
+      extras     = excluded.extras,
+      updated_at = excluded.updated_at
+  `).run(character_id, stencil_id, learned ? 1 : 0, Math.min(Math.max(0, extras || 0), 9999));
+
+  res.json(db.prepare(
+    'SELECT * FROM stencil_tracking WHERE character_id = ? AND stencil_id = ?'
+  ).get(character_id, stencil_id));
+});
+
+app.get('/api/reports/stencils/unlearned', (req, res) => {
+  const characters = db.prepare('SELECT * FROM characters ORDER BY sort_order, created_at').all();
+  const stencils = db.prepare(
+    'SELECT id, name, slug, rarity, weapons FROM stencils ORDER BY sort_order, name COLLATE NOCASE'
+  ).all();
+  const learnedSet = new Set(
+    db.prepare('SELECT character_id, stencil_id FROM stencil_tracking WHERE learned = 1').all()
+      .map(t => `${t.character_id}:${t.stencil_id}`)
+  );
+
+  const result = stencils.map(s => {
+    const charStatus = characters.map(c => ({
+      character_id: c.id,
+      character_name: c.name,
+      character_label: c.label,
+      character_color: c.color,
+      learned: learnedSet.has(`${c.id}:${s.id}`),
+    }));
+    const unlearnedCount = charStatus.filter(cs => !cs.learned).length;
+    return { ...s, characters: charStatus, unlearned_count: unlearnedCount, unlearned_by_any: unlearnedCount > 0 };
+  });
+
+  res.json(result.filter(s => s.unlearned_by_any));
+});
+
+app.get('/api/reports/stencils/extras', (req, res) => {
+  const rows = db.prepare(`
+    SELECT
+      s.id     as stencil_id,
+      s.name   as stencil_name,
+      s.slug,
+      s.rarity,
+      SUM(st.extras) as total_extras,
+      JSON_GROUP_ARRAY(
+        JSON_OBJECT(
+          'character_id', c.id,
+          'character_name', c.name,
+          'character_label', c.label,
+          'character_color', c.color,
+          'extras', st.extras
+        )
+      ) as character_breakdown
+    FROM stencil_tracking st
+    JOIN stencils s   ON s.id = st.stencil_id
+    JOIN characters c ON c.id = st.character_id
+    WHERE st.extras > 0
+    GROUP BY s.id
+    ORDER BY total_extras DESC, s.name
+  `).all();
+
+  res.json(rows.map(row => ({
+    ...row,
+    character_breakdown: JSON.parse(row.character_breakdown).filter(c => c.extras > 0),
+  })));
 });
 
 // ── ARC Parts ──────────────────────────────────────────────────────────────────

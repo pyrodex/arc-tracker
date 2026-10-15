@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Pencil, Trash2, Users, Minus, Plus, AlertTriangle, BookCheck, BookX, Layers, Cpu } from 'lucide-react';
+import { UserPlus, Pencil, Trash2, Users, Minus, Plus, AlertTriangle, BookCheck, BookX, Layers, Cpu, SprayCan } from 'lucide-react';
 import type { Character, CharacterActivity, SummaryCharacter } from '../types';
 import { useCharacters, useCreateCharacter, useUpdateCharacter, useDeleteCharacter, useSummary, useActivity } from '../hooks/useApi';
 import Modal from '../components/Modal';
@@ -74,6 +74,10 @@ function CharacterStats({ stats }: { stats: SummaryCharacter }) {
       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400" title="Spare blueprints">
         <Layers className="w-3 h-3" />{stats.total_extras}
       </span>
+      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-fuchsia-400"
+        title={`Stencils learned (${stats.stencil_extras} spare)`}>
+        <SprayCan className="w-3 h-3" />{stats.stencils_learned}/{stats.total_stencils}
+      </span>
       <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-400" title="ARC Parts collected">
         <Cpu className="w-3 h-3" />{stats.total_arc_parts}
         {stats.arc_parts_value > 0 && (
@@ -86,9 +90,10 @@ function CharacterStats({ stats }: { stats: SummaryCharacter }) {
   );
 }
 
-/** The four tracked areas, in the order they appear in the sidebar. */
+/** The tracked areas, in the order they appear in the sidebar. */
 const ACTIVITY_AREAS: Array<{ key: keyof Omit<CharacterActivity, 'character_id' | 'latest'>; label: string }> = [
   { key: 'blueprints', label: 'Blueprints' },
+  { key: 'stencils', label: 'Stencils' },
   { key: 'arc_parts', label: 'ARC Parts' },
   { key: 'workshop', label: 'Workshop' },
   { key: 'loadouts', label: 'Loadouts' },
@@ -96,7 +101,7 @@ const ACTIVITY_AREAS: Array<{ key: keyof Omit<CharacterActivity, 'character_id' 
 
 function ActivityGrid({ activity }: { activity?: CharacterActivity }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 mt-2 pt-2 border-t border-arc-border/60">
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-x-4 gap-y-1 mt-2 pt-2 border-t border-arc-border/60">
       {ACTIVITY_AREAS.map(({ key, label }) => (
         <div key={key} className="min-w-0">
           <p className="text-[10px] text-arc-dim uppercase tracking-wider">{label}</p>
