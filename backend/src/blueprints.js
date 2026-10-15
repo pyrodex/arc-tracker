@@ -3,8 +3,10 @@
 /**
  * Complete ARC Raiders blueprint seed data.
  * Source: https://arcraiders.wiki/wiki/Blueprints (June 2026)
+ * New blueprints (Oct 2026) from https://arcblueprinttracker.io/data/blueprints-grid,
+ * with spawn details from arcraiders.wiki where published; 'Unknown' where not yet known.
  *
- * Categories: weapons, mods, explosives, medicine, augments, utility, crafting
+ * Categories: weapons, mods, explosives, medicine, augments, utility, keys, crafting
  * map: 'All' | 'Stella Montis' | 'The Blue Gate' | 'Stella Montis, The Blue Gate' | 'Condition Only' | 'N/A'
  * condition: conditions under which it spawns, or 'Any'
  */
@@ -12,6 +14,7 @@ const BLUEPRINTS = [
   // ─── Weapons ───────────────────────────────────────────────────────────────
   { name: 'Anvil',        category: 'weapons', map: 'All',          condition: 'Any',                          containers: 'Raider Containers',                          quest_reward: null,                    trials_reward: true  },
   { name: 'Aphelion',     category: 'weapons', map: 'Stella Montis',condition: 'Any',                          containers: 'Anywhere',                                   quest_reward: null,                    trials_reward: false },
+  { name: 'Bantam',       category: 'weapons', map: 'Unknown',       condition: 'Unknown',                      containers: 'Unknown',                                    quest_reward: null,                    trials_reward: false },
   { name: 'Bettina',      category: 'weapons', map: 'All',          condition: 'Any',                          containers: 'Raider Containers',                          quest_reward: null,                    trials_reward: true  },
   { name: 'Bobcat',       category: 'weapons', map: 'Condition Only',condition: 'First Wave',                  containers: 'Anywhere, First Wave Cache',                  quest_reward: null,                    trials_reward: true  },
   { name: 'Burletta',     category: 'weapons', map: 'N/A',          condition: 'N/A',                          containers: 'N/A',                                        quest_reward: 'Industrial Espionage',   trials_reward: true  },
@@ -24,6 +27,7 @@ const BLUEPRINTS = [
   { name: 'Jupiter',      category: 'weapons', map: 'Condition Only',condition: 'Harvester',                   containers: 'Harvester',                                  quest_reward: null,                    trials_reward: false },
   { name: 'Osprey',       category: 'weapons', map: 'All',          condition: 'Any',                          containers: 'Raider Containers',                          quest_reward: null,                    trials_reward: true  },
   { name: 'Rascal',       category: 'weapons', map: 'All',          condition: 'Any',                          containers: 'Raider Containers',                          quest_reward: null,                    trials_reward: true  },
+  { name: 'Stiletto',     category: 'weapons', map: 'Unknown',       condition: 'Unknown',                      containers: 'Unknown',                                    quest_reward: null,                    trials_reward: false },
   { name: 'Tempest',      category: 'weapons', map: 'Condition Only',condition: 'Night Raid, Hurricane',        containers: 'Residential Containers, First Wave Cache',   quest_reward: null,                    trials_reward: true  },
   { name: 'Torrente',     category: 'weapons', map: 'All',          condition: 'Any',                          containers: 'Raider Containers',                          quest_reward: null,                    trials_reward: true  },
   { name: 'Trailblazer',  category: 'explosives', map: 'Stella Montis',condition: 'Any',                        containers: 'Anywhere',                                   quest_reward: null,                    trials_reward: true  },
@@ -69,6 +73,7 @@ const BLUEPRINTS = [
   { name: 'Smoke Grenade',    category: 'explosives', map: 'All',           condition: 'Any',                  containers: 'Residential Containers', quest_reward: null,                  trials_reward: true  },
   { name: "Trigger 'Nade",    category: 'explosives', map: 'All',           condition: 'Any',                  containers: 'Anywhere',             quest_reward: 'Sparks Fly',           trials_reward: false },
   { name: 'Wolfpack',         category: 'explosives', map: 'Condition Only',condition: 'Night Raid',            containers: 'Residential Containers', quest_reward: null,                  trials_reward: true  },
+  { name: 'Yank Grenade',     category: 'explosives', map: 'Unknown',       condition: 'Unknown',              containers: 'Unknown',              quest_reward: null,                   trials_reward: false },
 
   // ─── Medicine ──────────────────────────────────────────────────────────────
   { name: 'Defibrillator', category: 'medicine', map: 'All', condition: 'Any', containers: 'Medical Containers',             quest_reward: null,                   trials_reward: true  },
@@ -86,10 +91,13 @@ const BLUEPRINTS = [
   { name: 'Tactical Mk. 3 (Smoke)',         category: 'augments', map: 'Stella Montis, The Blue Gate', condition: 'Any', containers: 'Medical Containers, Security Containers',    quest_reward: null, trials_reward: true  },
 
   // ─── Utility ───────────────────────────────────────────────────────────────
+  { name: 'Advanced Camera',    category: 'utility', map: 'Unknown',       condition: 'Unknown', containers: 'Unknown',              quest_reward: null,           trials_reward: false },
+  { name: 'Banjo',              category: 'utility', map: 'Unknown',       condition: 'Unknown', containers: 'Unknown',              quest_reward: null,           trials_reward: false },
   { name: 'Barricade Kit',      category: 'utility', map: 'All',           condition: 'Any',     containers: 'Electrical Containers', quest_reward: null,           trials_reward: true  },
   { name: 'Blue Light Stick',   category: 'utility', map: 'All',           condition: 'Any',     containers: 'Anywhere',             quest_reward: null,           trials_reward: true  },
   { name: 'Crash Mat',          category: 'utility', map: 'All',           condition: 'Any',     containers: 'Unknown',              quest_reward: null,           trials_reward: false },
   { name: 'Fireworks Box',      category: 'utility', map: 'Condition Only',condition: 'Cold Snap',containers: 'Anywhere',            quest_reward: 'Test Case',    trials_reward: false },
+  { name: 'Grappling Hook',     category: 'utility', map: 'Unknown',       condition: 'Unknown', containers: 'Unknown',              quest_reward: null,           trials_reward: false },
   { name: 'Green Light Stick',  category: 'utility', map: 'All',           condition: 'Any',     containers: 'Anywhere',             quest_reward: null,           trials_reward: true  },
   { name: 'Powered Descender',  category: 'utility', map: 'All',           condition: 'Any',     containers: 'Unknown',              quest_reward: null,           trials_reward: false },
   { name: 'Red Light Stick',    category: 'utility', map: 'All',           condition: 'Any',     containers: 'Anywhere',             quest_reward: null,           trials_reward: true  },
@@ -97,8 +105,12 @@ const BLUEPRINTS = [
   { name: 'Snap Hook',          category: 'utility', map: 'Condition Only',condition: 'Electromagnetic Storm', containers: 'Anywhere',    quest_reward: null,           trials_reward: false },
   { name: 'Surge Coil',         category: 'utility', map: 'Condition Only',condition: 'Electromagnetic Storm', containers: 'Unknown',    quest_reward: null,           trials_reward: false },
   { name: 'Tagging Grenade',    category: 'utility', map: 'All',           condition: 'Any',     containers: 'Electrical Containers', quest_reward: null,           trials_reward: true  },
+  { name: 'Tether Launcher',    category: 'utility', map: 'Unknown',       condition: 'Unknown', containers: 'Unknown',              quest_reward: null,           trials_reward: false },
   { name: 'White Flag',         category: 'utility', map: 'All',           condition: 'Any',     containers: 'Any',                  quest_reward: null,           trials_reward: true  },
   { name: 'Yellow Light Stick', category: 'utility', map: 'All',           condition: 'Any',     containers: 'Anywhere',             quest_reward: null,           trials_reward: true  },
+
+  // ─── Keys ──────────────────────────────────────────────────────────────────
+  { name: 'Emperor Gateway Conduit', category: 'keys', map: 'Pendola Pass', condition: 'Redirection', containers: 'Harvester Payload', quest_reward: null, trials_reward: false },
 
   // ─── Crafting Components ───────────────────────────────────────────────────
   { name: 'Complex Gun Parts', category: 'crafting', map: 'All', condition: 'Any', containers: 'Security Containers', quest_reward: null, trials_reward: false },

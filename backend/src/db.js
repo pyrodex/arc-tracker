@@ -242,7 +242,7 @@ function initSchema() {
 }
 
 function seedBlueprints() {
-  const categoryOrder = ['weapons', 'mods', 'explosives', 'medicine', 'augments', 'utility', 'crafting'];
+  const categoryOrder = ['weapons', 'mods', 'explosives', 'medicine', 'augments', 'utility', 'keys', 'crafting'];
 
   const insert = db.prepare(`
     INSERT OR IGNORE INTO blueprints
