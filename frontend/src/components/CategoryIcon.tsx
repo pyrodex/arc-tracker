@@ -12,6 +12,7 @@ const CATEGORY_META: Record<BlueprintCategory, { label: string; emoji: string; b
   medicine:   { label: 'Medicine',  emoji: '💊', bg: 'bg-green-500/15',  text: 'text-green-400',  border: 'border-green-500/30'  },
   augments:   { label: 'Augment',   emoji: '🧠', bg: 'bg-purple-500/15', text: 'text-purple-400', border: 'border-purple-500/30' },
   utility:    { label: 'Utility',   emoji: '⚡', bg: 'bg-cyan-500/15',   text: 'text-cyan-400',   border: 'border-cyan-500/30'   },
+  keys:       { label: 'Key',       emoji: '🔑', bg: 'bg-amber-500/15',  text: 'text-amber-400',  border: 'border-amber-500/30'  },
   crafting:   { label: 'Crafting',  emoji: '⚙️', bg: 'bg-yellow-500/15', text: 'text-yellow-400', border: 'border-yellow-500/30' },
 };
 

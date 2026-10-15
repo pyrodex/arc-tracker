@@ -36,6 +36,7 @@ const NAME_TO_FILE = {
   // Weapons (tiered — wiki uses the first tier image)
   'Anvil':          'File:Anvil I.png',
   'Aphelion':       'File:Aphelion.png',
+  'Bantam':         'File:Bantam IV.png',       // wiki only has tier IV image
   'Bettina':        'File:Bettina I.png',
   'Bobcat':         'File:Bobcat I.png',
   'Burletta':       'File:Burletta I.png',
@@ -48,6 +49,7 @@ const NAME_TO_FILE = {
   'Jupiter':        'File:Jupiter.png',
   'Osprey':         'File:Osprey I.png',
   'Rascal':         'File:Rascal II.png',       // wiki starts at II for Rascal
+  'Stiletto':       'File:Stiletto IV.png',     // wiki only has tier IV image
   'Tempest':        'File:Tempest I.png',
   'Torrente':       'File:Torrente I.png',
   'Trailblazer':    'File:Trailblazer.png',
@@ -90,6 +92,7 @@ const NAME_TO_FILE = {
   'Showstopper':     'File:Showstopper.png',
   'Smoke Grenade':   'File:Smoke Grenade.png',
   "Trigger 'Nade":   "File:Trigger 'Nade.png",
+  'Yank Grenade':    'File:Yank Grenade.png',
   'Wolfpack':        'File:Wolfpack.png',
   // Medicine
   'Defibrillator':  'File:Defibrillator.png',
@@ -105,6 +108,10 @@ const NAME_TO_FILE = {
   'Tactical Mk. 3 (Revival)':    'File:Tactical Mk. 3 (Revival).png',
   'Tactical Mk. 3 (Smoke)':      'File:Tactical Mk. 3 (Smoke).png',
   // Utility
+  'Advanced Camera':     'File:Advanced Camera.png',
+  'Banjo':               'File:Banjo.png',
+  'Grappling Hook':      'File:Grappling Hook.png',
+  'Tether Launcher':     'File:Tether Launcher.png',
   'Barricade Kit':       'File:Barricade Kit.png',
   'Blue Light Stick':    'File:Blue Light Stick.png',
   'Crash Mat':           'File:Crash Mat.png',
@@ -118,6 +125,8 @@ const NAME_TO_FILE = {
   'Tagging Grenade':     'File:Tagging Grenade.png',
   'White Flag':          'File:White Flag.png',
   'Yellow Light Stick':  'File:Yellow Light Stick.png',
+  // Keys
+  'Emperor Gateway Conduit': 'File:Emperor Gateway Conduit.png',
   // Crafting components
   'Complex Gun Parts': 'File:Complex Gun Parts.png',
   'Heavy Gun Parts':   'File:Heavy Gun Parts.png',
@@ -271,6 +280,7 @@ const CATEGORY_COLORS = {
   medicine:        { bg: '#001a0a', border: '#22c55e', text: '#22c55e', emoji: '💊' },
   augments:        { bg: '#0d001a', border: '#a855f7', text: '#a855f7', emoji: '🧠' },
   utility:         { bg: '#001a1a', border: '#06b6d4', text: '#06b6d4', emoji: '⚡' },
+  keys:            { bg: '#1a1400', border: '#f59e0b', text: '#f59e0b', emoji: '🔑' },
   crafting:        { bg: '#1a1a00', border: '#eab308', text: '#eab308', emoji: '⚙' },
   'arc-legendary': { bg: '#1a1000', border: '#f59e0b', text: '#f59e0b', emoji: '👑' },
   'arc-epic':      { bg: '#0d0a1a', border: '#a855f7', text: '#a855f7', emoji: '⚡' },

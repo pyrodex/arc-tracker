@@ -5,7 +5,7 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 ## Features
 
 ### Blueprint Tracking
-- **83 blueprints** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Blueprints) across 7 categories: Weapons, Mods, Explosives, Medicine, Augments, Utility, and Crafting
+- **91 blueprints** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Blueprints) and [Arc Blueprint Tracker](https://arcblueprinttracker.io/data/blueprints-grid) across 8 categories: Weapons, Mods, Explosives, Medicine, Augments, Utility, Keys, and Crafting
 - **Per-character tracking** — mark each blueprint as Learned/Consumed and track extra copies with +/– controls or direct input
 - **Quick learn/unlearn all** — bulk-toggle all visible blueprints for a character in one click
 - **Blueprint icons** — downloaded from arcraiders.wiki on first startup using an explicit name→file mapping; SVG category-icon placeholders generated for any not found
@@ -28,7 +28,7 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 - **Delete confirmation** — a prominent confirmation prompt (with warning) is shown before a character and all its data are permanently removed
 
 ### Blueprints Page
-- **Filter by category** — Weapons, Mods, Explosives, Medicine, Augments, Utility, Crafting, or All
+- **Filter by category** — Weapons, Mods, Explosives, Medicine, Augments, Utility, Keys, Crafting, or All
 - **Filter by status** — All, Learned, or Not Learned
 - **Full-text search** — filter blueprints by name in real time
 - **Character switcher** — switch between characters without leaving the page

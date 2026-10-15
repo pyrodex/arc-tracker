@@ -19,6 +19,7 @@ export type BlueprintCategory =
   | 'medicine'
   | 'augments'
   | 'utility'
+  | 'keys'
   | 'crafting';
 
 export interface CategoryCount {
