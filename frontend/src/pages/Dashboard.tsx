@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, BarChart3, ChevronRight, Trophy, Package, Cpu, Wrench, Crosshair } from 'lucide-react';
+import { Users, BookOpen, BarChart3, ChevronRight, Trophy, Package, Cpu, Wrench, Crosshair, SprayCan } from 'lucide-react';
 import { useSummary, useCharacters } from '../hooks/useApi';
 
 function ProgressBar({ value, max, color = 'rgb(var(--arc-accent))' }: { value: number; max: number; color?: string }) {
@@ -35,17 +35,27 @@ export default function Dashboard() {
   const totalGuns = chars?.reduce((s, c) => s + c.total_guns, 0);
   const totalBuilds = chars?.reduce((s, c) => s + c.config_count, 0) ?? 0;
   const totalLoadoutValue = chars?.reduce((s, c) => s + c.loadout_value, 0) ?? 0;
+  const totalStencilsLearned = chars?.reduce((s, c) => s + c.stencils_learned, 0) ?? 0;
+  const totalStencilExtras = chars?.reduce((s, c) => s + c.stencil_extras, 0) ?? 0;
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-arc-text mb-1">Dashboard</h1>
-        <p className="text-arc-muted text-sm">Track blueprints, ARC parts and gun builds across all your characters.</p>
+        <p className="text-arc-muted text-sm">Track blueprints, stencils, ARC parts and gun builds across all your characters.</p>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <StatCard icon={<BookOpen className="w-5 h-5 text-arc-accent"  />} label="Blueprints"      value={summary.data?.totalBlueprints ?? '—'} sub="in-game blueprints" />
+        <StatCard
+          icon={<SprayCan className="w-5 h-5 text-fuchsia-400" />}
+          label="Stencils"
+          value={summary.data?.totalStencils ?? '—'}
+          sub={totalStencilsLearned || totalStencilExtras
+            ? `${totalStencilsLearned} learned · ${totalStencilExtras} extra${totalStencilExtras === 1 ? '' : 's'}`
+            : 'in-game stencils'}
+        />
         <StatCard icon={<Users    className="w-5 h-5 text-purple-400" />} label="Characters"      value={summary.data?.totalCharacters ?? '—'} sub="tracked characters" />
         <StatCard icon={<Package  className="w-5 h-5 text-arc-extra"  />} label="Blueprint Extras" value={summary.data?.characters.reduce((s, c) => s + c.total_extras, 0) ?? '—'} sub="across all characters" />
         <StatCard icon={<Cpu      className="w-5 h-5 text-purple-400" />} label="ARC Parts"        value={summary.data?.characters.reduce((s, c) => s + c.total_arc_parts, 0) ?? '—'} sub="collected across all characters" />
@@ -104,7 +114,14 @@ export default function Dashboard() {
                   <ProgressBar value={char.learned_count} max={char.total_blueprints} color={char.color} />
 
                   <div className="flex justify-between text-xs text-arc-dim mt-2">
-                    <span>{char.learned_count} / {char.total_blueprints} learned</span>
+                    <span>
+                      {char.learned_count} / {char.total_blueprints} learned
+                      {char.total_stencils > 0 && (
+                        <span className="text-fuchsia-400" title={`${char.stencil_extras} spare stencil${char.stencil_extras === 1 ? '' : 's'}`}>
+                          {' · '}{char.stencils_learned} / {char.total_stencils} stencils
+                        </span>
+                      )}
+                    </span>
                     <div className="flex items-center gap-2">
                       {char.total_extras > 0 && <span className="text-arc-extra">{char.total_extras} extras</span>}
                       {char.total_arc_parts > 0 && <span className="text-purple-400">{char.total_arc_parts} ARC parts</span>}
@@ -125,10 +142,11 @@ export default function Dashboard() {
       {/* Quick nav */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <QuickNav icon={<BookOpen  className="w-5 h-5" />} title="Track Blueprints" desc="View and update learned/extra status per character"          onClick={() => navigate('/blueprints')} color="text-arc-accent"  />
+        <QuickNav icon={<SprayCan  className="w-5 h-5" />} title="Stencils"         desc="Track learned and spare weapon stencils per character"       onClick={() => navigate('/stencils')}   color="text-fuchsia-400" />
         <QuickNav icon={<Cpu       className="w-5 h-5" />} title="ARC Parts"        desc="Track Epic and Legendary drops per character"                onClick={() => navigate('/arc-parts')}  color="text-purple-400" />
         <QuickNav icon={<Wrench    className="w-5 h-5" />} title="Workshop"         desc="Station upgrade requirements and material stockpiles"       onClick={() => navigate('/workshop')}   color="text-sky-400"    />
         <QuickNav icon={<Crosshair className="w-5 h-5" />} title="Loadouts"         desc="Gun builds with mods, counts held, and value"                onClick={() => navigate('/loadouts')}   color="text-sky-400"    />
-        <QuickNav icon={<BarChart3 className="w-5 h-5" />} title="Reports"          desc="Unlearned blueprints, extras, ARC parts, and loadouts across all characters" onClick={() => navigate('/reports')} color="text-arc-extra"  />
+        <QuickNav icon={<BarChart3 className="w-5 h-5" />} title="Reports"          desc="Unlearned blueprints and stencils, extras, ARC parts, and loadouts across all characters" onClick={() => navigate('/reports')} color="text-arc-extra"  />
       </div>
     </div>
   );

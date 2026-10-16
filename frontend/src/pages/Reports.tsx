@@ -1,13 +1,16 @@
 import { useState } from 'react';
-import { BarChart3, AlertCircle, Package, Cpu, Wrench, ChevronDown, ChevronRight, Users, Crosshair } from 'lucide-react';
-import { useUnlearnedReport, useExtrasReport, useArcPartsReport, useWorkshopMaterialsReport, useCharacters, useGunConfigsReport } from '../hooks/useApi';
-import type { UnlearnedBlueprint, ExtrasReport, ArcPartsReport, WorkshopMaterialsReport, CharacterLearnStatus, Character } from '../types';
+import type { ReactNode } from 'react';
+import { BarChart3, AlertCircle, Package, Cpu, Wrench, ChevronDown, ChevronRight, Users, Crosshair, SprayCan, PackagePlus } from 'lucide-react';
+import { useUnlearnedReport, useExtrasReport, useArcPartsReport, useWorkshopMaterialsReport, useCharacters, useGunConfigsReport, useStencilUnlearnedReport, useStencilExtrasReport } from '../hooks/useApi';
+import type { UnlearnedBlueprint, ExtrasReport, ArcPartsReport, WorkshopMaterialsReport, CharacterLearnStatus, CharacterExtras, Character, UnlearnedStencil, StencilExtrasReport } from '../types';
 import { CategoryBadge } from '../components/CategoryIcon';
 import BlueprintIcon from '../components/BlueprintIcon';
 import ArcPartIcon from '../components/ArcPartIcon';
+import StencilIcon from '../components/StencilIcon';
+import { StencilRarityBadge } from '../components/StencilRarity';
 import WorkshopMaterialIcon from '../components/WorkshopMaterialIcon';
 
-type ReportTab = 'unlearned' | 'extras' | 'arc-parts' | 'workshop-materials' | 'loadouts';
+type ReportTab = 'unlearned' | 'extras' | 'stencils-unlearned' | 'stencils-extras' | 'arc-parts' | 'workshop-materials' | 'loadouts';
 
 function CharacterFilter({
   characters,
@@ -61,13 +64,15 @@ export default function Reports() {
     <div className="p-8 max-w-5xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-arc-text mb-1">Reports</h1>
-        <p className="text-arc-muted text-sm">Analyze blueprint collection gaps and extras across all characters.</p>
+        <p className="text-arc-muted text-sm">Analyze blueprint and stencil collection gaps and extras across all characters.</p>
       </div>
 
       <div className="flex gap-1 p-1 bg-arc-panel rounded-lg w-fit mb-6 border border-arc-border flex-wrap">
         {([
           { id: 'unlearned',          label: 'Unlearned Blueprints', icon: AlertCircle },
           { id: 'extras',             label: 'Extras Inventory',     icon: Package },
+          { id: 'stencils-unlearned', label: 'Unlearned Stencils',   icon: SprayCan },
+          { id: 'stencils-extras',    label: 'Stencil Extras',       icon: PackagePlus },
           { id: 'arc-parts',          label: 'ARC Parts',            icon: Cpu },
           { id: 'workshop-materials', label: 'Workshop Materials',   icon: Wrench },
           { id: 'loadouts',           label: 'Loadouts',             icon: Crosshair },
@@ -91,6 +96,8 @@ export default function Reports() {
 
       {tab === 'unlearned'          && <UnlearnedReport selectedCharId={selectedCharId} />}
       {tab === 'extras'             && <ExtrasInventory selectedCharId={selectedCharId} />}
+      {tab === 'stencils-unlearned' && <StencilUnlearnedReport selectedCharId={selectedCharId} />}
+      {tab === 'stencils-extras'    && <StencilExtrasInventory selectedCharId={selectedCharId} />}
       {tab === 'arc-parts'          && <ArcPartsInventory selectedCharId={selectedCharId} />}
       {tab === 'workshop-materials' && <WorkshopMaterialsInventory selectedCharId={selectedCharId} />}
       {tab === 'loadouts'           && <LoadoutsReport selectedCharId={selectedCharId} />}
@@ -98,30 +105,109 @@ export default function Reports() {
   );
 }
 
+/**
+ * Blueprints and stencils share the same "learned + extras" model, so their
+ * report tabs share these lists. Each wrapper loads its data and maps it to
+ * the neutral row shapes below.
+ */
+interface UnlearnedRow {
+  id: number;
+  name: string;
+  icon: ReactNode;
+  badge: ReactNode;
+  characters: CharacterLearnStatus[];
+  unlearned_count: number;
+}
+
+interface ExtrasRow {
+  id: number;
+  name: string;
+  icon: ReactNode;
+  badge: ReactNode;
+  total_extras: number;
+  character_breakdown: CharacterExtras[];
+}
+
 function UnlearnedReport({ selectedCharId }: { selectedCharId: number | null }) {
   const { data, isLoading } = useUnlearnedReport();
+  const rows = data?.map((bp: UnlearnedBlueprint): UnlearnedRow => ({
+    id: bp.id,
+    name: bp.name,
+    icon: <BlueprintIcon slug={bp.slug} name={bp.name} category={bp.category} size={40} />,
+    badge: <CategoryBadge category={bp.category} />,
+    characters: bp.characters,
+    unlearned_count: bp.unlearned_count,
+  }));
+  return <UnlearnedList rows={rows} isLoading={isLoading} selectedCharId={selectedCharId} noun="blueprint" />;
+}
+
+function StencilUnlearnedReport({ selectedCharId }: { selectedCharId: number | null }) {
+  const { data, isLoading } = useStencilUnlearnedReport();
+  const rows = data?.map((s: UnlearnedStencil): UnlearnedRow => ({
+    id: s.id,
+    name: s.name,
+    icon: <StencilIcon slug={s.slug} name={s.name} rarity={s.rarity} size={40} />,
+    badge: <StencilRarityBadge rarity={s.rarity} />,
+    characters: s.characters,
+    unlearned_count: s.unlearned_count,
+  }));
+  return <UnlearnedList rows={rows} isLoading={isLoading} selectedCharId={selectedCharId} noun="stencil" />;
+}
+
+function ExtrasInventory({ selectedCharId }: { selectedCharId: number | null }) {
+  const { data, isLoading } = useExtrasReport();
+  const rows = data?.map((bp: ExtrasReport): ExtrasRow => ({
+    id: bp.blueprint_id,
+    name: bp.blueprint_name,
+    icon: <BlueprintIcon slug={bp.slug} name={bp.blueprint_name} category={bp.category} size={40} />,
+    badge: <CategoryBadge category={bp.category} />,
+    total_extras: bp.total_extras,
+    character_breakdown: bp.character_breakdown,
+  }));
+  return <ExtrasList rows={rows} isLoading={isLoading} selectedCharId={selectedCharId} noun="blueprint" />;
+}
+
+function StencilExtrasInventory({ selectedCharId }: { selectedCharId: number | null }) {
+  const { data, isLoading } = useStencilExtrasReport();
+  const rows = data?.map((s: StencilExtrasReport): ExtrasRow => ({
+    id: s.stencil_id,
+    name: s.stencil_name,
+    icon: <StencilIcon slug={s.slug} name={s.stencil_name} rarity={s.rarity} size={40} />,
+    badge: <StencilRarityBadge rarity={s.rarity} />,
+    total_extras: s.total_extras,
+    character_breakdown: s.character_breakdown,
+  }));
+  return <ExtrasList rows={rows} isLoading={isLoading} selectedCharId={selectedCharId} noun="stencil" />;
+}
+
+function UnlearnedList({ rows, isLoading, selectedCharId, noun }: {
+  rows: UnlearnedRow[] | undefined;
+  isLoading: boolean;
+  selectedCharId: number | null;
+  noun: 'blueprint' | 'stencil';
+}) {
   const { data: characters = [] } = useCharacters();
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   if (isLoading) return <LoadingState />;
-  if (!data || characters.length === 0) return <EmptyState message="No characters or blueprints found." />;
+  if (!rows || characters.length === 0) return <EmptyState message={`No characters or ${noun}s found.`} />;
 
   const filtered = selectedCharId === null
-    ? data
-    : data.filter(bp => bp.characters.some(cs => cs.character_id === selectedCharId && !cs.learned));
+    ? rows
+    : rows.filter(row => row.characters.some(cs => cs.character_id === selectedCharId && !cs.learned));
 
-  if (data.length === 0) {
+  if (rows.length === 0) {
     return (
       <div className="card p-10 text-center">
         <div className="text-4xl mb-3">🎉</div>
-        <p className="text-arc-text font-semibold">All blueprints learned!</p>
-        <p className="text-arc-muted text-sm mt-1">Every blueprint has been learned by all characters.</p>
+        <p className="text-arc-text font-semibold">All {noun}s learned!</p>
+        <p className="text-arc-muted text-sm mt-1">Every {noun} has been learned by all characters.</p>
       </div>
     );
   }
 
   if (filtered.length === 0) {
-    return <EmptyState message="No unlearned blueprints for the selected character." />;
+    return <EmptyState message={`No unlearned ${noun}s for the selected character.`} />;
   }
 
   const toggle = (id: number) => setExpanded(prev => {
@@ -135,25 +221,25 @@ function UnlearnedReport({ selectedCharId }: { selectedCharId: number | null }) 
   return (
     <div>
       <p className="text-sm text-arc-muted mb-4">
-        <span className="text-arc-text font-semibold">{filtered.length}</span> blueprint{filtered.length !== 1 ? 's' : ''} not learned
+        <span className="text-arc-text font-semibold">{filtered.length}</span> {noun}{filtered.length !== 1 ? 's' : ''} not learned
         {selectedChar ? <> by <span className="font-semibold" style={{ color: selectedChar.color }}>{selectedChar.name}</span></> : ' by at least one character'}.
       </p>
 
       <div className="card overflow-hidden divide-y divide-arc-border/50">
-        {filtered.map((bp: UnlearnedBlueprint) => {
-          const isOpen    = expanded.has(bp.id);
-          const allMissing = bp.unlearned_count === characters.length;
+        {filtered.map(row => {
+          const isOpen     = expanded.has(row.id);
+          const allMissing = row.unlearned_count === characters.length;
 
           return (
-            <div key={bp.id}>
+            <div key={row.id}>
               <button
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-arc-hover/40 transition-colors text-left"
-                onClick={() => toggle(bp.id)}
+                onClick={() => toggle(row.id)}
               >
-                <BlueprintIcon slug={bp.slug} name={bp.name} category={bp.category} size={40} />
+                {row.icon}
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-arc-text">{bp.name}</span>
-                  <span className="ml-2 hidden sm:inline"><CategoryBadge category={bp.category} /></span>
+                  <span className="text-sm font-medium text-arc-text">{row.name}</span>
+                  <span className="ml-2 hidden sm:inline">{row.badge}</span>
                 </div>
 
                 <span className={`badge shrink-0 font-bold px-3 ${
@@ -161,7 +247,7 @@ function UnlearnedReport({ selectedCharId }: { selectedCharId: number | null }) 
                     ? 'bg-arc-danger/15 text-arc-danger border border-arc-danger/30'
                     : 'bg-arc-extra/15 text-arc-extra border border-arc-extra/30'
                 }`}>
-                  {bp.unlearned_count}/{characters.length} missing
+                  {row.unlearned_count}/{characters.length} missing
                 </span>
 
                 {isOpen
@@ -173,7 +259,7 @@ function UnlearnedReport({ selectedCharId }: { selectedCharId: number | null }) 
               {isOpen && (
                 <div className="bg-arc-bg/40 px-4 py-3 border-t border-arc-border/40">
                   <div className="flex flex-wrap gap-2">
-                    {[...(bp.characters as CharacterLearnStatus[])].sort((a, b) => a.character_name.localeCompare(b.character_name)).map(cs => (
+                    {[...row.characters].sort((a, b) => a.character_name.localeCompare(b.character_name)).map(cs => (
                       <div
                         key={cs.character_id}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg border"
@@ -205,18 +291,22 @@ function UnlearnedReport({ selectedCharId }: { selectedCharId: number | null }) 
   );
 }
 
-function ExtrasInventory({ selectedCharId }: { selectedCharId: number | null }) {
-  const { data, isLoading } = useExtrasReport();
+function ExtrasList({ rows, isLoading, selectedCharId, noun }: {
+  rows: ExtrasRow[] | undefined;
+  isLoading: boolean;
+  selectedCharId: number | null;
+  noun: 'blueprint' | 'stencil';
+}) {
   const { data: characters = [] } = useCharacters();
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
 
   if (isLoading) return <LoadingState />;
-  if (!data || data.length === 0) return <EmptyState message="No extra blueprints found across any characters." />;
+  if (!rows || rows.length === 0) return <EmptyState message={`No extra ${noun}s found across any characters.`} />;
 
   const filtered = selectedCharId === null
-    ? data
-    : data
-        .filter(bp => bp.character_breakdown.some(cb => cb.character_id === selectedCharId && cb.extras > 0))
+    ? rows
+    : rows
+        .filter(row => row.character_breakdown.some(cb => cb.character_id === selectedCharId && cb.extras > 0))
         .sort((a, b) => {
           const aCount = a.character_breakdown.find(cb => cb.character_id === selectedCharId)?.extras ?? 0;
           const bCount = b.character_breakdown.find(cb => cb.character_id === selectedCharId)?.extras ?? 0;
@@ -225,9 +315,9 @@ function ExtrasInventory({ selectedCharId }: { selectedCharId: number | null }) 
 
   const selectedChar = selectedCharId !== null ? characters.find(c => c.id === selectedCharId) : null;
 
-  const totalExtras = filtered.reduce((s, bp) => {
-    if (selectedCharId === null) return s + bp.total_extras;
-    const cb = bp.character_breakdown.find(c => c.character_id === selectedCharId);
+  const totalExtras = filtered.reduce((s, row) => {
+    if (selectedCharId === null) return s + row.total_extras;
+    const cb = row.character_breakdown.find(c => c.character_id === selectedCharId);
     return s + (cb?.extras ?? 0);
   }, 0);
 
@@ -238,34 +328,34 @@ function ExtrasInventory({ selectedCharId }: { selectedCharId: number | null }) 
   });
 
   if (filtered.length === 0) {
-    return <EmptyState message="No extra blueprints found for the selected character." />;
+    return <EmptyState message={`No extra ${noun}s found for the selected character.`} />;
   }
 
   return (
     <div>
       <p className="text-sm text-arc-muted mb-4">
         <span className="text-arc-text font-semibold">{totalExtras}</span> total extras across{' '}
-        <span className="text-arc-text font-semibold">{filtered.length}</span> blueprint type{filtered.length !== 1 ? 's' : ''}
+        <span className="text-arc-text font-semibold">{filtered.length}</span> {noun} type{filtered.length !== 1 ? 's' : ''}
         {selectedChar ? <> for <span className="font-semibold" style={{ color: selectedChar.color }}>{selectedChar.name}</span></> : ''}.
       </p>
 
       <div className="card overflow-hidden divide-y divide-arc-border/50">
-        {filtered.map((bp: ExtrasReport) => {
-          const isOpen = expanded.has(bp.blueprint_id);
+        {filtered.map(row => {
+          const isOpen = expanded.has(row.id);
           const displayExtras = selectedCharId === null
-            ? bp.total_extras
-            : (bp.character_breakdown.find(cb => cb.character_id === selectedCharId)?.extras ?? 0);
+            ? row.total_extras
+            : (row.character_breakdown.find(cb => cb.character_id === selectedCharId)?.extras ?? 0);
 
           return (
-            <div key={bp.blueprint_id}>
+            <div key={row.id}>
               <button
                 className="w-full flex items-center gap-3 px-4 py-3 hover:bg-arc-hover/40 transition-colors text-left"
-                onClick={() => toggle(bp.blueprint_id)}
+                onClick={() => toggle(row.id)}
               >
-                <BlueprintIcon slug={bp.slug} name={bp.blueprint_name} category={bp.category} size={40} />
+                {row.icon}
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-arc-text">{bp.blueprint_name}</span>
-                  <span className="ml-2 hidden sm:inline"><CategoryBadge category={bp.category} /></span>
+                  <span className="text-sm font-medium text-arc-text">{row.name}</span>
+                  <span className="ml-2 hidden sm:inline">{row.badge}</span>
                 </div>
                 <span className="badge bg-arc-extra/15 text-arc-extra border border-arc-extra/30 text-sm font-bold px-3 shrink-0">
                   {displayExtras} extra{displayExtras !== 1 ? 's' : ''}
@@ -279,7 +369,7 @@ function ExtrasInventory({ selectedCharId }: { selectedCharId: number | null }) 
               {isOpen && (
                 <div className="bg-arc-bg/40 px-4 py-3 border-t border-arc-border/40">
                   <div className="flex flex-wrap gap-3">
-                    {[...bp.character_breakdown].sort((a, b) => a.character_name.localeCompare(b.character_name)).map(cb => (
+                    {[...row.character_breakdown].sort((a, b) => a.character_name.localeCompare(b.character_name)).map(cb => (
                       <div
                         key={cb.character_id}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg border"
