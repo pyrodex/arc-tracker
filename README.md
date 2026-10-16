@@ -1,6 +1,6 @@
 # ARC Tracker
 
-A self-hosted web tool for tracking blueprints and ARC parts across multiple characters in [ARC Raiders](https://arcraiders.com/).
+A self-hosted web tool for tracking blueprints, stencils and ARC parts across multiple characters in [ARC Raiders](https://arcraiders.com/).
 
 ## Features
 
@@ -11,7 +11,7 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 - **Blueprint icons** — downloaded from arcraiders.wiki on first startup using an explicit name→file mapping; SVG category-icon placeholders generated for any not found
 - **Alphabetical ordering** — all blueprint lists are sorted A→Z regardless of category filter
 
-### Stencil Tracking
+### Stencil Tracking *(new in v1.6.0)*
 - **14 weapon stencils** seeded from [Arc Blueprint Tracker](https://arcblueprinttracker.io/data/blueprints-grid) (names, rarity) and [arcraiders.wiki](https://arcraiders.wiki/wiki/Stencils) (compatible weapons), across Legendary, Epic, Rare and Uncommon
 - **Per-character tracking** — stencils are found, then learned and crafted, so they work like blueprints: mark each as learned and track extra copies
 - **Filter by rarity, weapon and status** — or search by stencil or weapon name; each card lists the weapons the stencil fits
@@ -29,7 +29,7 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 - **Multi-select labels** — assign one or more labels per character from presets (Wipe, Non-Wipe, Mule, PvP, PvE, HC, Leveling, Trade) or create custom labels
 - **Color coding** — pick from preset colors or a custom color picker; colors appear throughout the UI
 - **Notes** — optional free-text notes per character
-- **Stash space** — per-character +/– counters for stash upgrades (up to 11, 24 slots each), Nomad expansions (up to 2, 12 slots each) and expeditions (up to 5, 12 slots each), with the character's total stash shown on top of the 64-slot base (max 412)
+- **Stash space** *(new in v1.6.0)* — per-character +/– counters for stash upgrades (up to 11, 24 slots each), Nomad expansions (up to 2, 12 slots each) and expeditions (up to 5, 12 slots each), with the character's total stash shown on top of the 64-slot base (max 412)
 - **At-a-glance stats** — each character card shows learned blueprint count, unlearned count, spare/extra copies, and total ARC parts collected
 - **Delete confirmation** — a prominent confirmation prompt (with warning) is shown before a character and all its data are permanently removed
 
@@ -72,6 +72,7 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 > **Bettina** is worth spot-checking against the game. Every other weapon draws from one shared ladder (2,900 → 5,000 → 7,000 → 10,000 → 13,000 → 17,000 → 22,000 → 27,000); Bettina alone uses 8,000/11,000/14,000/18,000. The figures are what the page says, but a lone outlier in a rigid pattern is what a wiki typo looks like.
 
 ### Reports
+- **Navigation** *(new in v1.6.0)* — one row of report tabs, an Unlearned / Extras switch for blueprints and stencils, and the selected report, view and character kept in the URL
 - **Unlearned Blueprints** — collapsible rows showing which blueprints are missing for at least one character; expand any row to see each character's ✓/✗ status with name and labels
 - **Extras Inventory** — total extras per blueprint sorted by count; expand to drill down into which characters hold extras and how many
 - **Unlearned Stencils** / **Stencil Extras** — the same two views for stencils, with rarity badges
@@ -263,12 +264,22 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
 
-### Unreleased
-- **Stencils** — new sidebar section for the 14 weapon stencils: per-character learned + extras tracking, rarity/weapon/status filters, Unlearned Stencils and Stencil Extras report tabs, a Stencils card on the Dashboard, stencil counts on each character, and a Stencils "last updated" area. New `stencils` and `stencil_tracking` tables are created automatically on startup
-- **Last updated per area** — each character now shows when it last had activity in Blueprints, ARC Parts, Workshop and Loadouts, as "24 Sep 2026 (2 days ago)". The date appears beside the character selector on each of those pages, and all four together on the Characters page
-- Derived from the `updated_at` every tracking table already stamps, so it needs no migration and reflects history that predates the feature. Deletes are the known gap: removing a build leaves no row to stamp, so that area's date does not move
-- Workshop combines station levels and material stockpiles into one date, matching how the page presents itself
-- Timestamps are served as explicit UTC, since SQLite's `datetime()` format would otherwise be parsed as local time by the browser and shift by the viewer's offset
+### v1.6.0
+- **Stencils** *(new)* — sidebar section for the 14 weapon stencils (Legendary to Uncommon). Stencils are found, then learned and crafted, so they're tracked like blueprints: learned + extras per character. Filter by rarity, weapon and status, search by stencil or weapon name, and see which weapons each one fits. Icons come from arcraiders.wiki, falling back to the wiki's generic stencil icon until a stencil's own is uploaded. New `stencils` and `stencil_tracking` tables are created on startup
+- **Stencils everywhere else** — Unlearned and Extras reports, a Stencils card and per-character progress on the Dashboard, stencil counts on each character, and a Stencils "last updated" area
+- **8 new blueprints** — Bantam, Stiletto (weapons), Yank Grenade (explosives), Advanced Camera, Banjo, Grappling Hook, Tether Launcher (utility) and Emperor Gateway Conduit, under a new **Keys** category. 91 blueprints in total, matching [Arc Blueprint Tracker](https://arcblueprinttracker.io/data/blueprints-grid). Spawn details are `Unknown` where neither source publishes them yet. Existing databases pick them up on startup
+- **Stash space per character** — the Characters page tracks stash upgrades (0–11, 24 slots each), Nomad expansions (0–2, 12 each) and expeditions (0–5, 12 each), and shows the character's total stash on top of the 64-slot base (max 412). The API enforces each range. New `normal_stash` and `expedition_stash` columns are added on startup
+- **Reports navigation** — seven tabs that wrapped onto two rows become one row of five (Blueprints, Stencils, ARC Parts, Workshop, Loadouts), with an Unlearned / Extras switch for blueprints and stencils and a one-line description of each report. The selected report, view and character are kept in the URL, so refreshes and bookmarks keep your place
+- **Last updated per area** — each character shows when it last had activity in Blueprints, Stencils, ARC Parts, Workshop and Loadouts, as "24 Sep 2026 (2 days ago)": beside the character selector on each page, and all together on the Characters page. Derived from the `updated_at` each tracking table already stamps, so it reflects history from before this release. Deletes are the known gap: removing a build leaves no row to stamp, so that area's date doesn't move. Timestamps are served as explicit UTC so the browser doesn't shift them by the viewer's offset
+- **Icon downloader** — a mapping can now list several wiki files, using the first that exists
+
+**Security**
+- **zlib CVE-2026-85091** (heap buffer overflow) — the production image now runs `apk upgrade` on top of the Node Alpine base, picking up zlib 1.3.2-r1 and any later OS fixes without waiting for a new base image
+- **npm audit fixes** — `proxy-addr` (critical, IP spoofing) and `brace-expansion` patched in the backend, `source-map-js` in the frontend. The backend audit now checks production dependencies only, since that's all the image ships; `braces` (GHSA-vfj7-8cjw-p6xm, no patched release, build-time only via Tailwind) is ignored in the frontend audit until a fix ships
+
+**Dependencies**
+- Frontend: `@tanstack/react-query` 5.102.8 → 5.104.2, `postcss` 8.5.28 → 8.5.30, `vite` 6.4.3 → 6.4.4
+- Lock files refreshed to keep resolved versions in sync with `package.json`
 
 ### v1.5.2
 - **Readable build cards** — the value block on a Loadouts card read as a sentence fragment ("Weapon 27,000 + mods 22,000 / 49,000 each") with labels and figures at the same weight, next to a properly labelled Total. Each and Total are now parallel labelled figures on one baseline, with the weapon/mod breakdown as a caption beneath. Mod names go from 11px to 14px and slot labels from 9px to 10px, and the build name, empty state and unpriced warning all step up a size
