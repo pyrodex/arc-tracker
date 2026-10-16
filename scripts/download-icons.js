@@ -11,6 +11,10 @@
  * 3. Download to DATA_DIR/icons/<slug>.png
  * 4. SVG placeholder for any not found.
  *
+ * A mapping may list several File: titles; the first one the wiki has is used.
+ * Stencils rely on this to fall back to the wiki's generic stencil icon until
+ * their own icon is uploaded (re-run with --force to pick those up later).
+ *
  * Usage:
  *   DATA_DIR=/data node scripts/download-icons.js [--force]
  */
@@ -285,6 +289,7 @@ const CATEGORY_COLORS = {
   'arc-legendary': { bg: '#1a1000', border: '#f59e0b', text: '#f59e0b', emoji: '👑' },
   'arc-epic':      { bg: '#0d0a1a', border: '#a855f7', text: '#a855f7', emoji: '⚡' },
   'workshop-material': { bg: '#001a1f', border: '#38bdf8', text: '#38bdf8', emoji: '⚙' },
+  stencil:         { bg: '#1a001a', border: '#d946ef', text: '#d946ef', emoji: '🎨' },
 };
 
 function generateSvgPlaceholder(name, category) {
@@ -299,8 +304,27 @@ function generateSvgPlaceholder(name, category) {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 const BLUEPRINTS       = require('../backend/src/blueprints');
+const STENCILS         = require('../backend/src/stencils');
 const ARC_PARTS        = require('../backend/src/arc-parts');
 const WORKSHOP_STATIONS = require('../backend/src/workshop');
+
+// Stencil icons on the wiki are named "Icon Stencil <Name>.png". Each one falls
+// back to the generic stencil icon while its own hasn't been uploaded yet.
+const STENCIL_WIKI_NAMES = {
+  'Milky Terracotta Stencil': 'Milky Terraccota', // wiki file name is misspelled
+};
+for (const s of STENCILS) {
+  const base = STENCIL_WIKI_NAMES[s.name] ?? s.name.replace(/\s+Stencil$/i, '');
+  NAME_TO_FILE[s.name] = [`File:Icon Stencil ${base}.png`, 'File:Icon Stencil.png'];
+}
+const STENCIL_ITEMS = STENCILS.map(s => ({ name: s.name, category: 'stencil' }));
+
+/** File: titles to try for an item, best first. */
+function fileCandidates(name) {
+  const mapped = NAME_TO_FILE[name];
+  if (!mapped) return [];
+  return Array.isArray(mapped) ? mapped : [mapped];
+}
 
 // Normalise ARC parts to same shape used by blueprint processing
 const ARC_PART_ITEMS = ARC_PARTS.map(p => ({ name: p.name, category: `arc-${p.rarity}` }));
@@ -323,7 +347,7 @@ async function main() {
   console.log(`Icons directory: ${ICONS_DIR}`);
   console.log(`Force re-download: ${FORCE}\n`);
 
-  const allItems = [...BLUEPRINTS, ...ARC_PART_ITEMS, ...WORKSHOP_MATERIAL_ITEMS];
+  const allItems = [...BLUEPRINTS, ...STENCIL_ITEMS, ...ARC_PART_ITEMS, ...WORKSHOP_MATERIAL_ITEMS];
 
   // Which items still need icons?
   const pending = FORCE
@@ -342,10 +366,10 @@ async function main() {
 
   // Collect the unique File: titles we need to resolve
   const titlesNeeded = [...new Set(
-    pending.map(bp => NAME_TO_FILE[bp.name]).filter(Boolean)
+    pending.flatMap(bp => fileCandidates(bp.name))
   )];
 
-  const unmapped = pending.filter(bp => !NAME_TO_FILE[bp.name]);
+  const unmapped = pending.filter(bp => fileCandidates(bp.name).length === 0);
   if (unmapped.length) {
     console.warn(`⚠️  No wiki mapping for: ${unmapped.map(b => b.name).join(', ')}\n`);
   }
@@ -395,7 +419,7 @@ async function main() {
 
 async function processOne(bp, resolvedMap) {
   const slug     = slugify(bp.name);
-  const fileTitle = NAME_TO_FILE[bp.name];
+  const fileTitle = fileCandidates(bp.name).find(title => resolvedMap[title]);
   const imageUrl  = fileTitle ? resolvedMap[fileTitle] : null;
 
   if (imageUrl) {

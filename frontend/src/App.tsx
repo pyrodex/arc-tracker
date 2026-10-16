@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Characters from './pages/Characters';
 import Blueprints from './pages/Blueprints';
+import Stencils from './pages/Stencils';
 import ArcParts from './pages/ArcParts';
 import Workshop from './pages/Workshop';
 import Loadouts from './pages/Loadouts';
@@ -16,6 +17,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="characters" element={<Characters />} />
           <Route path="blueprints" element={<Blueprints />} />
+          <Route path="stencils" element={<Stencils />} />
           <Route path="arc-parts" element={<ArcParts />} />
           <Route path="workshop" element={<Workshop />} />
           <Route path="loadouts" element={<Loadouts />} />

@@ -11,6 +11,12 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 - **Blueprint icons** — downloaded from arcraiders.wiki on first startup using an explicit name→file mapping; SVG category-icon placeholders generated for any not found
 - **Alphabetical ordering** — all blueprint lists are sorted A→Z regardless of category filter
 
+### Stencil Tracking
+- **14 weapon stencils** seeded from [Arc Blueprint Tracker](https://arcblueprinttracker.io/data/blueprints-grid) (names, rarity) and [arcraiders.wiki](https://arcraiders.wiki/wiki/Stencils) (compatible weapons), across Legendary, Epic, Rare and Uncommon
+- **Per-character tracking** — stencils are found, then learned and crafted, so they work like blueprints: mark each as learned and track extra copies
+- **Filter by rarity, weapon and status** — or search by stencil or weapon name; each card lists the weapons the stencil fits
+- **Stencil icons** — downloaded from arcraiders.wiki; stencils without their own icon yet use the wiki's generic stencil icon (re-download icons to pick up new ones)
+
 ### ARC Parts Tracking *(new in v1.1.0)*
 - **9 Epic & Legendary ARC parts** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/ARC): Queen Reactor, Matriarch Reactor, Bastion Cell, Bombardier Cell, Leaper Pulse Unit, Rocketeer Driver, Vaporizer Regulator, Turbine Compressor, and Assessor Matrix
 - **Per-character count tracking** — increment or decrement how many of each part a character holds, with click-to-edit direct input
@@ -68,6 +74,7 @@ A self-hosted web tool for tracking blueprints and ARC parts across multiple cha
 ### Reports
 - **Unlearned Blueprints** — collapsible rows showing which blueprints are missing for at least one character; expand any row to see each character's ✓/✗ status with name and labels
 - **Extras Inventory** — total extras per blueprint sorted by count; expand to drill down into which characters hold extras and how many
+- **Unlearned Stencils** / **Stencil Extras** — the same two views for stencils, with rarity badges
 - **ARC Parts Inventory** *(new in v1.1.0)* — total ARC parts collected per part type; expand to see per-character counts with rarity badges and source enemy info; sorted Legendary-first
 - **Workshop Materials** *(new in v1.3.0)* — total workshop materials collected per material type; expand to see per-character counts
 - **Loadouts** *(new in v1.4.0)* — builds, guns held and total value per character; expand a character to see every build with its mods and value, plus most-built-weapons and mod-usage breakdowns across all characters
@@ -137,7 +144,8 @@ arc-tracker/
 │   └── src/
 │       ├── server.js          Express API + static file serving
 │       ├── db.js              better-sqlite3 setup, schema, seed, and migrations
-│       ├── blueprints.js      Seed data (83 blueprints)
+│       ├── blueprints.js      Seed data (91 blueprints)
+│       ├── stencils.js        Seed data (14 weapon stencils)
 │       ├── arc-parts.js       Seed data (9 Epic/Legendary ARC parts)
 │       ├── workshop.js        Seed data (6 stations × 3 levels of material requirements)
 │       ├── weapon-mods.js     Seed data (39 gun mods across 5 slots, incl. loot-only)
@@ -145,9 +153,9 @@ arc-tracker/
 │       └── weapons.js        Seed data (24 weapons incl. 7 Gunsmith-unlocked)
 ├── frontend/
 │   └── src/
-│       ├── pages/             Dashboard, Characters, Blueprints, ArcParts, Workshop,
+│       ├── pages/             Dashboard, Characters, Blueprints, Stencils, ArcParts, Workshop,
 │       │                      Loadouts, Reports
-│       ├── components/        BlueprintCard, BlueprintIcon, ArcPartCard, ArcPartIcon,
+│       ├── components/        BlueprintCard, BlueprintIcon, StencilCard, StencilIcon, ArcPartCard, ArcPartIcon,
 │       │                      GunConfigCard, GunConfigEditor, LastUpdated,
 │       │                      WorkshopStationCard, WorkshopMaterialIcon,
 │       │                      CategoryIcon, CharacterForm, Layout, Modal, ThemeToggle, …
@@ -176,6 +184,9 @@ arc-tracker/
 | GET | `/api/tracking/:characterId` | All blueprint tracking records for a character |
 | POST | `/api/tracking` | Upsert a single blueprint tracking record |
 | POST | `/api/tracking/batch` | Upsert up to 500 blueprint records at once |
+| GET | `/api/stencils` | All stencils (query: `?rarity=epic`) |
+| GET | `/api/stencils/tracking/:characterId` | All stencil tracking records for a character |
+| POST | `/api/stencils/tracking` | Upsert a stencil tracking record (`learned`, `extras`) |
 | GET | `/api/arc-parts` | All ARC parts (query: `?rarity=epic\|legendary`) |
 | GET | `/api/arc-parts/tracking/:characterId` | ARC parts counts for a character |
 | POST | `/api/arc-parts/tracking` | Upsert an ARC part count for a character |
@@ -194,9 +205,11 @@ arc-tracker/
 | PATCH | `/api/gun-configs/:id/quantity` | Adjust quantity by `delta` or set it outright |
 | DELETE | `/api/gun-configs/:id` | Delete a build and its mods |
 | GET | `/api/reports/gun-configs` | Builds per character with counts, values, and weapon/mod breakdowns |
-| GET | `/api/reports/summary` | Dashboard summary stats (per-character learned, extras, ARC parts, and loadout counts/value) |
+| GET | `/api/reports/summary` | Dashboard summary stats (per-character learned, extras, stencils, ARC parts, and loadout counts/value) |
 | GET | `/api/reports/unlearned` | Unlearned blueprints with per-character status |
 | GET | `/api/reports/extras` | Extras by blueprint with character breakdown |
+| GET | `/api/reports/stencils/unlearned` | Unlearned stencils with per-character status |
+| GET | `/api/reports/stencils/extras` | Extras by stencil with character breakdown |
 | GET | `/api/reports/arc-parts` | ARC parts collected with per-character breakdown |
 | GET | `/api/reports/workshop-materials` | Workshop materials collected with per-character breakdown |
 | POST | `/api/icons/refresh` | Trigger a background icon re-download |
@@ -245,12 +258,13 @@ arc.yourdomain.com {
 
 ## Data Source
 
-Blueprint and ARC parts data sourced from [arcraiders.wiki](https://arcraiders.wiki/).
+Blueprint, stencil and ARC parts data sourced from [arcraiders.wiki](https://arcraiders.wiki/) and [Arc Blueprint Tracker](https://arcblueprinttracker.io/).
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
 
 ### Unreleased
+- **Stencils** — new sidebar section for the 14 weapon stencils: per-character learned + extras tracking, rarity/weapon/status filters, Unlearned Stencils and Stencil Extras report tabs, a Stencils card on the Dashboard, stencil counts on each character, and a Stencils "last updated" area. New `stencils` and `stencil_tracking` tables are created automatically on startup
 - **Last updated per area** — each character now shows when it last had activity in Blueprints, ARC Parts, Workshop and Loadouts, as "24 Sep 2026 (2 days ago)". The date appears beside the character selector on each of those pages, and all four together on the Characters page
 - Derived from the `updated_at` every tracking table already stamps, so it needs no migration and reflects history that predates the feature. Deletes are the known gap: removing a build leaves no row to stamp, so that area's date does not move
 - Workshop combines station levels and material stockpiles into one date, matching how the page presents itself
