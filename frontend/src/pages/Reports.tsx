@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { BarChart3, AlertCircle, Package, Cpu, Wrench, ChevronDown, ChevronRight, Users, Crosshair, SprayCan, PackagePlus } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { BarChart3, AlertCircle, Package, Cpu, Wrench, ChevronDown, ChevronRight, Users, Crosshair, SprayCan, BookOpen } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useUnlearnedReport, useExtrasReport, useArcPartsReport, useWorkshopMaterialsReport, useCharacters, useGunConfigsReport, useStencilUnlearnedReport, useStencilExtrasReport } from '../hooks/useApi';
 import type { UnlearnedBlueprint, ExtrasReport, ArcPartsReport, WorkshopMaterialsReport, CharacterLearnStatus, CharacterExtras, Character, UnlearnedStencil, StencilExtrasReport } from '../types';
 import { CategoryBadge } from '../components/CategoryIcon';
@@ -10,7 +12,43 @@ import StencilIcon from '../components/StencilIcon';
 import { StencilRarityBadge } from '../components/StencilRarity';
 import WorkshopMaterialIcon from '../components/WorkshopMaterialIcon';
 
-type ReportTab = 'unlearned' | 'extras' | 'stencils-unlearned' | 'stencils-extras' | 'arc-parts' | 'workshop-materials' | 'loadouts';
+type ReportId = 'blueprints' | 'stencils' | 'arc-parts' | 'workshop' | 'loadouts';
+type ReportView = 'unlearned' | 'extras';
+
+interface ReportDef {
+  id: ReportId;
+  label: string;
+  icon: LucideIcon;
+  /** One line shown under the tabs, per view where the report has two. */
+  description: string | Record<ReportView, string>;
+  /** Blueprints and stencils have both an Unlearned and an Extras view. */
+  hasViews?: boolean;
+}
+
+const REPORTS: ReportDef[] = [
+  {
+    id: 'blueprints', label: 'Blueprints', icon: BookOpen, hasViews: true,
+    description: {
+      unlearned: 'Blueprints at least one character still needs to learn.',
+      extras: 'Spare blueprint copies and who is holding them.',
+    },
+  },
+  {
+    id: 'stencils', label: 'Stencils', icon: SprayCan, hasViews: true,
+    description: {
+      unlearned: 'Stencils at least one character still needs to learn.',
+      extras: 'Spare stencil copies and who is holding them.',
+    },
+  },
+  { id: 'arc-parts', label: 'ARC Parts', icon: Cpu,       description: 'Epic and Legendary ARC parts collected, with value.' },
+  { id: 'workshop',  label: 'Workshop',  icon: Wrench,    description: 'Workshop materials stockpiled across characters.' },
+  { id: 'loadouts',  label: 'Loadouts',  icon: Crosshair, description: 'Gun builds, guns held and total value per character.' },
+];
+
+const VIEWS: Array<{ id: ReportView; label: string; icon: LucideIcon }> = [
+  { id: 'unlearned', label: 'Unlearned', icon: AlertCircle },
+  { id: 'extras',    label: 'Extras',    icon: Package },
+];
 
 function CharacterFilter({
   characters,
@@ -23,9 +61,9 @@ function CharacterFilter({
 }) {
   if (characters.length === 0) return null;
   return (
-    <div className="flex items-center gap-2 flex-wrap mb-6">
-      <span className="text-xs text-arc-muted flex items-center gap-1 shrink-0">
-        <Users className="w-3.5 h-3.5" /> Filter:
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span className="text-xs text-arc-dim flex items-center gap-1 shrink-0 mr-1">
+        <Users className="w-3.5 h-3.5" /> Character
       </span>
       <button
         onClick={() => onChange(null)}
@@ -35,19 +73,20 @@ function CharacterFilter({
             : 'text-arc-muted border-arc-border hover:text-arc-text hover:border-arc-muted/40'
         }`}
       >
-        All Characters
+        All
       </button>
       {characters.map(c => (
         <button
           key={c.id}
           onClick={() => onChange(c.id)}
-          className="px-3 py-1 rounded-full text-xs font-medium border transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors"
           style={
             selectedId === c.id
               ? { backgroundColor: c.color + '25', color: c.color, borderColor: c.color + '60' }
-              : { color: 'var(--arc-muted)', borderColor: 'var(--arc-border)' }
+              : { color: 'rgb(var(--arc-text-muted))', borderColor: 'rgb(var(--arc-border))' }
           }
         >
+          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: c.color }} />
           {c.name}
         </button>
       ))}
@@ -56,51 +95,90 @@ function CharacterFilter({
 }
 
 export default function Reports() {
-  const [tab, setTab] = useState<ReportTab>('unlearned');
-  const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
+  // Report, view and character live in the URL so a refresh or a bookmark
+  // lands on the same report, and other pages can link straight to one.
+  const [params, setParams] = useSearchParams();
   const { data: characters = [] } = useCharacters();
+
+  const report = REPORTS.find(r => r.id === params.get('report')) ?? REPORTS[0];
+  const view: ReportView = params.get('view') === 'extras' ? 'extras' : 'unlearned';
+  const charParam = Number(params.get('character'));
+  const selectedCharId = characters.some(c => c.id === charParam) ? charParam : null;
+
+  const update = (changes: Record<string, string | null>) => {
+    const next = new URLSearchParams(params);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === null) next.delete(key); else next.set(key, value);
+    }
+    setParams(next, { replace: true });
+  };
+
+  const description = typeof report.description === 'string' ? report.description : report.description[view];
 
   return (
     <div className="p-8 max-w-5xl mx-auto">
-      <div className="mb-6">
+      <div className="mb-5">
         <h1 className="text-2xl font-bold text-arc-text mb-1">Reports</h1>
-        <p className="text-arc-muted text-sm">Analyze blueprint and stencil collection gaps and extras across all characters.</p>
+        <p className="text-arc-muted text-sm">Collection gaps, spares and inventory across all your characters.</p>
       </div>
 
-      <div className="flex gap-1 p-1 bg-arc-panel rounded-lg w-fit mb-6 border border-arc-border flex-wrap">
-        {([
-          { id: 'unlearned',          label: 'Unlearned Blueprints', icon: AlertCircle },
-          { id: 'extras',             label: 'Extras Inventory',     icon: Package },
-          { id: 'stencils-unlearned', label: 'Unlearned Stencils',   icon: SprayCan },
-          { id: 'stencils-extras',    label: 'Stencil Extras',       icon: PackagePlus },
-          { id: 'arc-parts',          label: 'ARC Parts',            icon: Cpu },
-          { id: 'workshop-materials', label: 'Workshop Materials',   icon: Wrench },
-          { id: 'loadouts',           label: 'Loadouts',             icon: Crosshair },
-        ] as const).map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors
-              ${tab === id ? 'bg-arc-card text-arc-text border border-arc-border' : 'text-arc-muted hover:text-arc-text'}`}
-          >
-            <Icon className="w-4 h-4" />{label}
-          </button>
-        ))}
+      {/* Report tabs: one row, scrolls sideways on narrow screens instead of wrapping. */}
+      <nav className="border-b border-arc-border mb-5 -mx-1 overflow-x-auto" aria-label="Reports">
+        <div className="flex gap-1 px-1 min-w-max">
+          {REPORTS.map(({ id, label, icon: Icon }) => {
+            const active = report.id === id;
+            return (
+              <button
+                key={id}
+                onClick={() => update({ report: id, view: null })}
+                aria-current={active ? 'page' : undefined}
+                className={`relative flex items-center gap-2 px-3.5 py-2.5 text-sm font-medium transition-colors whitespace-nowrap
+                  ${active ? 'text-arc-text' : 'text-arc-muted hover:text-arc-text'}`}
+              >
+                <Icon className={`w-4 h-4 ${active ? 'text-arc-accent' : ''}`} />
+                {label}
+                {active && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-arc-accent" />}
+              </button>
+            );
+          })}
+        </div>
+      </nav>
+
+      {/* Toolbar: what this report shows, its view switch, and the character filter. */}
+      <div className="flex flex-col gap-3 mb-6">
+        <div className="flex items-center justify-between gap-3 flex-wrap min-h-[34px]">
+          <p className="text-sm text-arc-muted">{description}</p>
+          {report.hasViews && (
+            <div className="flex p-0.5 bg-arc-panel rounded-lg border border-arc-border" role="tablist" aria-label="View">
+              {VIEWS.map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={view === id}
+                  onClick={() => update({ view: id === 'unlearned' ? null : id })}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+                    ${view === id ? 'bg-arc-card text-arc-text shadow-sm border border-arc-border' : 'text-arc-muted hover:text-arc-text border border-transparent'}`}
+                >
+                  <Icon className="w-3.5 h-3.5" />{label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <CharacterFilter
+          characters={characters}
+          selectedId={selectedCharId}
+          onChange={id => update({ character: id === null ? null : String(id) })}
+        />
       </div>
 
-      <CharacterFilter
-        characters={characters}
-        selectedId={selectedCharId}
-        onChange={setSelectedCharId}
-      />
-
-      {tab === 'unlearned'          && <UnlearnedReport selectedCharId={selectedCharId} />}
-      {tab === 'extras'             && <ExtrasInventory selectedCharId={selectedCharId} />}
-      {tab === 'stencils-unlearned' && <StencilUnlearnedReport selectedCharId={selectedCharId} />}
-      {tab === 'stencils-extras'    && <StencilExtrasInventory selectedCharId={selectedCharId} />}
-      {tab === 'arc-parts'          && <ArcPartsInventory selectedCharId={selectedCharId} />}
-      {tab === 'workshop-materials' && <WorkshopMaterialsInventory selectedCharId={selectedCharId} />}
-      {tab === 'loadouts'           && <LoadoutsReport selectedCharId={selectedCharId} />}
+      {report.id === 'blueprints' && view === 'unlearned' && <UnlearnedReport selectedCharId={selectedCharId} />}
+      {report.id === 'blueprints' && view === 'extras'    && <ExtrasInventory selectedCharId={selectedCharId} />}
+      {report.id === 'stencils'   && view === 'unlearned' && <StencilUnlearnedReport selectedCharId={selectedCharId} />}
+      {report.id === 'stencils'   && view === 'extras'    && <StencilExtrasInventory selectedCharId={selectedCharId} />}
+      {report.id === 'arc-parts'  && <ArcPartsInventory selectedCharId={selectedCharId} />}
+      {report.id === 'workshop'   && <WorkshopMaterialsInventory selectedCharId={selectedCharId} />}
+      {report.id === 'loadouts'   && <LoadoutsReport selectedCharId={selectedCharId} />}
     </div>
   );
 }
