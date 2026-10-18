@@ -134,6 +134,8 @@ cd frontend && npm install && npm run dev
 
 ### Re-download icons
 
+Missing icons are retried automatically on every container start: anything still showing a placeholder is looked up again, and the placeholder is replaced once an image is available. A forced re-download is only needed to replace icons that already downloaded.
+
 ```bash
 # Trigger a re-download from a running container via the API
 curl -X POST http://localhost:3001/api/icons/refresh
@@ -278,6 +280,7 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 ## Changelog
 
 ### Unreleased
+- **Icon retries** — items that got a placeholder icon are now retried on every startup instead of keeping the placeholder forever; the placeholder is removed once a real icon downloads. Previously an item whose image appeared later (e.g. Propellant Valve Assembly) kept its placeholder until a forced re-download
 - **Amplification item data** — Propellant Valve Assembly is now Epic, valued at 5,000 and counted in value totals (from RaidersData). Every component shows its weight and stack size. Existing databases gain `weight` and `stack_size` columns on startup
 - **Icon fallbacks by URL** — the icon downloader can fall back to a direct image URL when the wiki has no image; Propellant Valve Assembly uses this
 - **Amplification** — new sidebar section for the Frozen Trail amplification components: Amplification Modules Mk. I–V and five materials (Fluted Rotor Core, Fossilized Lightning, Pneumatic Actuator, Pressure Regulator, Propellant Valve Assembly), counted per character with value totals. Also an Amplification report tab, a Dashboard card, an amplification count on each character, and an Amplification "last updated" area. New `amplification_components` and `amplification_tracking` tables are created on startup

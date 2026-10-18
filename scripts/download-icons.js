@@ -369,14 +369,13 @@ async function main() {
 
   const allItems = [...BLUEPRINTS, ...STENCIL_ITEMS, ...AMPLIFICATION_ITEMS, ...ARC_PART_ITEMS, ...WORKSHOP_MATERIAL_ITEMS];
 
-  // Which items still need icons?
+  // Which items still need icons? Only a downloaded PNG counts as done: an SVG
+  // placeholder means the image wasn't available last time, so try again in
+  // case the wiki (or a fallback URL) has one now. That's one batched API call
+  // per startup for whatever is still missing.
   const pending = FORCE
     ? allItems
-    : allItems.filter(bp => {
-        const slug = slugify(bp.name);
-        return !fs.existsSync(path.join(ICONS_DIR, `${slug}.png`))
-            && !fs.existsSync(path.join(ICONS_DIR, `${slug}.svg`));
-      });
+    : allItems.filter(bp => !fs.existsSync(path.join(ICONS_DIR, `${slugify(bp.name)}.png`)));
 
   if (pending.length === 0) {
     console.log('✅ All icons already present. Use --force to re-download.\n');
@@ -446,6 +445,8 @@ async function processOne(bp, resolvedMap) {
     const dest = path.join(ICONS_DIR, `${slug}.png`);
     try {
       await downloadImage(imageUrl, dest);
+      // Drop the placeholder from an earlier run now that a real icon exists.
+      fs.rmSync(path.join(ICONS_DIR, `${slug}.svg`), { force: true });
       return { name: bp.name, status: 'downloaded' };
     } catch (err) {
       console.error(`    ⚠️  Download failed for ${bp.name}: ${err.message}`);
