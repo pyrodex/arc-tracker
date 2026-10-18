@@ -290,6 +290,7 @@ const CATEGORY_COLORS = {
   'arc-epic':      { bg: '#0d0a1a', border: '#a855f7', text: '#a855f7', emoji: '⚡' },
   'workshop-material': { bg: '#001a1f', border: '#38bdf8', text: '#38bdf8', emoji: '⚙' },
   stencil:         { bg: '#1a001a', border: '#d946ef', text: '#d946ef', emoji: '🎨' },
+  amplification:   { bg: '#1a1000', border: '#f59e0b', text: '#f59e0b', emoji: '⚡' },
 };
 
 function generateSvgPlaceholder(name, category) {
@@ -305,6 +306,7 @@ function generateSvgPlaceholder(name, category) {
 // ── Main ───────────────────────────────────────────────────────────────────────
 const BLUEPRINTS       = require('../backend/src/blueprints');
 const STENCILS         = require('../backend/src/stencils');
+const AMPLIFICATION_COMPONENTS = require('../backend/src/amplification');
 const ARC_PARTS        = require('../backend/src/arc-parts');
 const WORKSHOP_STATIONS = require('../backend/src/workshop');
 
@@ -318,6 +320,14 @@ for (const s of STENCILS) {
   NAME_TO_FILE[s.name] = [`File:Icon Stencil ${base}.png`, 'File:Icon Stencil.png'];
 }
 const STENCIL_ITEMS = STENCILS.map(s => ({ name: s.name, category: 'stencil' }));
+
+// Amplification components use their wiki item image, e.g.
+// "Amplification Module Mk. III.png". Propellant Valve Assembly has no wiki
+// image yet, so it falls through to the placeholder until one is uploaded.
+for (const c of AMPLIFICATION_COMPONENTS) {
+  NAME_TO_FILE[c.name] = `File:${c.name}.png`;
+}
+const AMPLIFICATION_ITEMS = AMPLIFICATION_COMPONENTS.map(c => ({ name: c.name, category: 'amplification' }));
 
 /** File: titles to try for an item, best first. */
 function fileCandidates(name) {
@@ -347,7 +357,7 @@ async function main() {
   console.log(`Icons directory: ${ICONS_DIR}`);
   console.log(`Force re-download: ${FORCE}\n`);
 
-  const allItems = [...BLUEPRINTS, ...STENCIL_ITEMS, ...ARC_PART_ITEMS, ...WORKSHOP_MATERIAL_ITEMS];
+  const allItems = [...BLUEPRINTS, ...STENCIL_ITEMS, ...AMPLIFICATION_ITEMS, ...ARC_PART_ITEMS, ...WORKSHOP_MATERIAL_ITEMS];
 
   // Which items still need icons?
   const pending = FORCE

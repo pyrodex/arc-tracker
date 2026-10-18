@@ -78,6 +78,11 @@ export interface SummaryCharacter {
   /** Spare stencils held by this character. */
   stencil_extras: number;
   total_stencils: number;
+  /** Amplification components held (modules + materials). */
+  total_amplification: number;
+  amplification_modules: number;
+  /** Value of held components with a known sell value. */
+  amplification_value: number;
 }
 
 export interface Summary {
@@ -222,6 +227,61 @@ export interface ArcPartsReport {
   rarity: ArcPartRarity;
   source: string;
   sell_value: number;
+  total_count: number;
+  total_value: number;
+  character_breakdown: CharacterArcCount[];
+}
+
+// ── Amplification ──────────────────────────────────────────────────────────────
+
+export type AmplificationKind = 'module' | 'material';
+
+export interface AmplificationComponent {
+  id: number;
+  name: string;
+  slug: string;
+  kind: AmplificationKind;
+  /** Module Mk level 1–5; null for materials. */
+  tier: number | null;
+  /** Weapon rarity a module amplifies; null for materials. */
+  unlocks: string | null;
+  /** Item rarity where known. */
+  rarity: string | null;
+  /** Coins per unit; null where the value isn't known yet. */
+  sell_value: number | null;
+  /** Where it drops; null where unknown. */
+  source: string | null;
+  sort_order: number;
+}
+
+export interface AmplificationTrackingRecord {
+  id: number;
+  character_id: number;
+  component_id: number;
+  count: number;
+  updated_at: string;
+}
+
+export interface AmplificationTrackingMap {
+  [componentId: number]: AmplificationTrackingRecord;
+}
+
+export type AmplificationCountUpdate = {
+  character_id: number;
+  component_id: number;
+  count: number;
+};
+
+export interface AmplificationReport {
+  component_id: number;
+  component_name: string;
+  slug: string;
+  kind: AmplificationKind;
+  tier: number | null;
+  unlocks: string | null;
+  rarity: string | null;
+  source: string | null;
+  sell_value: number | null;
   total_count: number;
   total_value: number;
   character_breakdown: CharacterArcCount[];
@@ -477,7 +537,7 @@ export interface GunConfigsReport {
 
 // ── Activity ───────────────────────────────────────────────────────────────────
 
-export type ActivityArea = 'blueprints' | 'stencils' | 'arc_parts' | 'workshop' | 'loadouts';
+export type ActivityArea = 'blueprints' | 'stencils' | 'arc_parts' | 'amplification' | 'workshop' | 'loadouts';
 
 /** UTC timestamps (…Z), or null where the area has never been touched. */
 export interface CharacterActivity {
@@ -485,6 +545,7 @@ export interface CharacterActivity {
   blueprints: string | null;
   stencils: string | null;
   arc_parts: string | null;
+  amplification: string | null;
   workshop: string | null;
   loadouts: string | null;
   /** Newest of the areas above. */

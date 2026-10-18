@@ -5,6 +5,7 @@ import Characters from './pages/Characters';
 import Blueprints from './pages/Blueprints';
 import Stencils from './pages/Stencils';
 import ArcParts from './pages/ArcParts';
+import Amplification from './pages/Amplification';
 import Workshop from './pages/Workshop';
 import Loadouts from './pages/Loadouts';
 import Reports from './pages/Reports';
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="blueprints" element={<Blueprints />} />
           <Route path="stencils" element={<Stencils />} />
           <Route path="arc-parts" element={<ArcParts />} />
+          <Route path="amplification" element={<Amplification />} />
           <Route path="workshop" element={<Workshop />} />
           <Route path="loadouts" element={<Loadouts />} />
           <Route path="reports" element={<Reports />} />

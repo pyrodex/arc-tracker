@@ -1,6 +1,6 @@
 # ARC Tracker
 
-A self-hosted web tool for tracking blueprints, stencils and ARC parts across multiple characters in [ARC Raiders](https://arcraiders.com/).
+A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplification components across multiple characters in [ARC Raiders](https://arcraiders.com/).
 
 ## Features
 
@@ -22,6 +22,13 @@ A self-hosted web tool for tracking blueprints, stencils and ARC parts across mu
 - **Per-character count tracking** — increment or decrement how many of each part a character holds, with click-to-edit direct input
 - **In-game icons** — all 9 part icons downloaded from arcraiders.wiki; rarity-colored fallbacks (amber for Legendary, purple for Epic)
 - **Grouped display** — Legendary parts shown above Epic parts with distinct color coding
+
+### Amplification Tracking
+- **10 amplification components** from the Frozen Trail update, seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Amplified_Weapons): Amplification Modules Mk. I–V (one takes a weapon to Level 5; the Mk. matches the weapon's base rarity, Common → Legendary) and five materials spent on individual amplifications: Fluted Rotor Core, Fossilized Lightning, Pneumatic Actuator, Pressure Regulator and Propellant Valve Assembly
+- **Per-character counts** with click-to-edit input and value totals, grouped into Modules and Materials, with drop sources where the wiki lists them
+- **Unknowns left blank** — Propellant Valve Assembly has no wiki page yet, and Fluted Rotor Core has no listed source, so those show as unknown and are left out of value totals rather than guessed
+- **ARC parts not duplicated** — amplifications that cost Queen/Matriarch Reactors, Assessor Matrix or Turbine Compressors use the ARC Parts counts
+- **Icons** downloaded from arcraiders.wiki; a placeholder is used where the wiki has no image yet
 
 ### Characters
 - **Multi-character support** — add as many characters as you need
@@ -72,6 +79,7 @@ A self-hosted web tool for tracking blueprints, stencils and ARC parts across mu
 > **Bettina** is worth spot-checking against the game. Every other weapon draws from one shared ladder (2,900 → 5,000 → 7,000 → 10,000 → 13,000 → 17,000 → 22,000 → 27,000); Bettina alone uses 8,000/11,000/14,000/18,000. The figures are what the page says, but a lone outlier in a rigid pattern is what a wiki typo looks like.
 
 ### Reports
+- **Amplification** — modules and materials held per component type, grouped Modules/Materials; expand to see per-character counts and value
 - **Navigation** *(new in v1.6.0)* — one row of report tabs, an Unlearned / Extras switch for blueprints and stencils, and the selected report, view and character kept in the URL
 - **Unlearned Blueprints** — collapsible rows showing which blueprints are missing for at least one character; expand any row to see each character's ✓/✗ status with name and labels
 - **Extras Inventory** — total extras per blueprint sorted by count; expand to drill down into which characters hold extras and how many
@@ -147,6 +155,7 @@ arc-tracker/
 │       ├── db.js              better-sqlite3 setup, schema, seed, and migrations
 │       ├── blueprints.js      Seed data (91 blueprints)
 │       ├── stencils.js        Seed data (14 weapon stencils)
+│       ├── amplification.js   Seed data (10 amplification modules and materials)
 │       ├── arc-parts.js       Seed data (9 Epic/Legendary ARC parts)
 │       ├── workshop.js        Seed data (6 stations × 3 levels of material requirements)
 │       ├── weapon-mods.js     Seed data (39 gun mods across 5 slots, incl. loot-only)
@@ -188,6 +197,9 @@ arc-tracker/
 | GET | `/api/stencils` | All stencils (query: `?rarity=epic`) |
 | GET | `/api/stencils/tracking/:characterId` | All stencil tracking records for a character |
 | POST | `/api/stencils/tracking` | Upsert a stencil tracking record (`learned`, `extras`) |
+| GET | `/api/amplification` | Amplification components (query: `?kind=module` or `?kind=material`) |
+| GET | `/api/amplification/tracking/:characterId` | Amplification counts for a character |
+| POST | `/api/amplification/tracking` | Set a character's count for a component |
 | GET | `/api/arc-parts` | All ARC parts (query: `?rarity=epic\|legendary`) |
 | GET | `/api/arc-parts/tracking/:characterId` | ARC parts counts for a character |
 | POST | `/api/arc-parts/tracking` | Upsert an ARC part count for a character |
@@ -211,6 +223,7 @@ arc-tracker/
 | GET | `/api/reports/extras` | Extras by blueprint with character breakdown |
 | GET | `/api/reports/stencils/unlearned` | Unlearned stencils with per-character status |
 | GET | `/api/reports/stencils/extras` | Extras by stencil with character breakdown |
+| GET | `/api/reports/amplification` | Amplification components held with per-character breakdown and value |
 | GET | `/api/reports/arc-parts` | ARC parts collected with per-character breakdown |
 | GET | `/api/reports/workshop-materials` | Workshop materials collected with per-character breakdown |
 | POST | `/api/icons/refresh` | Trigger a background icon re-download |
@@ -263,6 +276,10 @@ Blueprint, stencil and ARC parts data sourced from [arcraiders.wiki](https://arc
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
+
+### Unreleased
+- **Amplification** — new sidebar section for the Frozen Trail amplification components: Amplification Modules Mk. I–V and five materials (Fluted Rotor Core, Fossilized Lightning, Pneumatic Actuator, Pressure Regulator, Propellant Valve Assembly), counted per character with value totals. Also an Amplification report tab, a Dashboard card, an amplification count on each character, and an Amplification "last updated" area. New `amplification_components` and `amplification_tracking` tables are created on startup
+- **Dashboard** — the separate Blueprint Extras card is folded into the Blueprints card ("in-game · N extras held") to make room for Amplification
 
 ### v1.6.0
 - **Stencils** *(new)* — sidebar section for the 14 weapon stencils (Legendary to Uncommon). Stencils are found, then learned and crafted, so they're tracked like blueprints: learned + extras per character. Filter by rarity, weapon and status, search by stencil or weapon name, and see which weapons each one fits. Icons come from arcraiders.wiki, falling back to the wiki's generic stencil icon until a stencil's own is uploaded. New `stencils` and `stencil_tracking` tables are created on startup

@@ -272,7 +272,7 @@ app.delete('/api/characters/:id', (req, res) => {
  * parses as LOCAL time. Formatting to explicit UTC here keeps the client from
  * silently shifting every date by its offset.
  */
-const ACTIVITY_AREAS = ['blueprints', 'stencils', 'arc_parts', 'workshop', 'loadouts'];
+const ACTIVITY_AREAS = ['blueprints', 'stencils', 'arc_parts', 'amplification', 'workshop', 'loadouts'];
 
 app.get('/api/characters/activity', (req, res) => {
   const rows = db.prepare(`
@@ -287,6 +287,10 @@ app.get('/api/characters/activity', (req, res) => {
     SELECT character_id, 'arc_parts',
            strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at))
       FROM arc_parts_tracking GROUP BY character_id
+    UNION ALL
+    SELECT character_id, 'amplification',
+           strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at))
+      FROM amplification_tracking GROUP BY character_id
     UNION ALL
     SELECT character_id, 'workshop',
            strftime('%Y-%m-%dT%H:%M:%SZ', MAX(updated_at))
@@ -479,6 +483,19 @@ app.get('/api/reports/summary', (req, res) => {
   `).all();
   const stencilByChar = Object.fromEntries(stencilTotals.map(r => [r.character_id, r]));
 
+  // Value counts only components with a known sell value.
+  const ampTotals = db.prepare(`
+    SELECT
+      at.character_id,
+      COALESCE(SUM(at.count), 0)                                              as total_amplification,
+      COALESCE(SUM(CASE WHEN ac.kind = 'module' THEN at.count ELSE 0 END), 0) as amplification_modules,
+      COALESCE(SUM(at.count * COALESCE(ac.sell_value, 0)), 0)                 as amplification_value
+    FROM amplification_tracking at
+    JOIN amplification_components ac ON ac.id = at.component_id
+    GROUP BY at.character_id
+  `).all();
+  const ampByChar = Object.fromEntries(ampTotals.map(r => [r.character_id, r]));
+
   const characters = characterStats.map(c => ({
     ...c,
     total_arc_parts:  arcByChar[c.id]?.total_arc_parts  ?? 0,
@@ -489,6 +506,9 @@ app.get('/api/reports/summary', (req, res) => {
     stencils_learned: stencilByChar[c.id]?.stencils_learned ?? 0,
     stencil_extras:   stencilByChar[c.id]?.stencil_extras   ?? 0,
     total_stencils:   totalStencils,
+    total_amplification:   ampByChar[c.id]?.total_amplification   ?? 0,
+    amplification_modules: ampByChar[c.id]?.amplification_modules ?? 0,
+    amplification_value:   ampByChar[c.id]?.amplification_value   ?? 0,
   }));
 
   res.json({ totalBlueprints, totalStencils, totalCharacters, characters });
@@ -679,6 +699,103 @@ app.get('/api/reports/stencils/extras', (req, res) => {
   res.json(rows.map(row => ({
     ...row,
     character_breakdown: JSON.parse(row.character_breakdown).filter(c => c.extras > 0),
+  })));
+});
+
+// ── Amplification ──────────────────────────────────────────────────────────────
+// Weapon Amplification components (modules + materials), counted per character
+// like ARC parts. sell_value is null where the wiki doesn't give one yet, so
+// value totals only include components with a known value.
+
+app.get('/api/amplification', (req, res) => {
+  const { kind } = req.query;
+  if (kind && kind !== 'module' && kind !== 'material') {
+    return res.status(400).json({ error: 'kind must be module or material' });
+  }
+  const rows = kind
+    ? db.prepare('SELECT * FROM amplification_components WHERE kind = ? ORDER BY sort_order, name COLLATE NOCASE').all(kind)
+    : db.prepare('SELECT * FROM amplification_components ORDER BY sort_order, name COLLATE NOCASE').all();
+  res.json(rows);
+});
+
+app.get('/api/amplification/tracking/:characterId', (req, res) => {
+  const characterId = parseInt(req.params.characterId, 10);
+  if (!characterId) return res.status(400).json({ error: 'invalid characterId' });
+
+  const rows = db.prepare(`
+    SELECT at.*, ac.name as component_name, ac.slug, ac.kind
+    FROM amplification_tracking at
+    JOIN amplification_components ac ON ac.id = at.component_id
+    WHERE at.character_id = ?
+  `).all(characterId);
+
+  res.json(rows);
+});
+
+app.post('/api/amplification/tracking', (req, res) => {
+  const { character_id, component_id, count } = req.body;
+
+  if (!Number.isInteger(character_id) || !Number.isInteger(component_id)) {
+    return res.status(400).json({ error: 'character_id and component_id must be integers' });
+  }
+  if (!Number.isInteger(count) || count < 0) {
+    return res.status(400).json({ error: 'count must be a non-negative integer' });
+  }
+  if (!db.prepare('SELECT id FROM characters WHERE id = ?').get(character_id)) {
+    return res.status(404).json({ error: 'character not found' });
+  }
+  if (!db.prepare('SELECT id FROM amplification_components WHERE id = ?').get(component_id)) {
+    return res.status(404).json({ error: 'component not found' });
+  }
+
+  db.prepare(`
+    INSERT INTO amplification_tracking (character_id, component_id, count, updated_at)
+    VALUES (?, ?, ?, datetime('now'))
+    ON CONFLICT(character_id, component_id) DO UPDATE SET
+      count      = excluded.count,
+      updated_at = excluded.updated_at
+  `).run(character_id, component_id, Math.min(count, 9999));
+
+  res.json(db.prepare(
+    'SELECT * FROM amplification_tracking WHERE character_id = ? AND component_id = ?'
+  ).get(character_id, component_id));
+});
+
+app.get('/api/reports/amplification', (req, res) => {
+  const rows = db.prepare(`
+    SELECT
+      ac.id         as component_id,
+      ac.name       as component_name,
+      ac.slug,
+      ac.kind,
+      ac.tier,
+      ac.unlocks,
+      ac.rarity,
+      ac.source,
+      ac.sell_value,
+      SUM(at.count)                                   as total_count,
+      SUM(at.count) * COALESCE(ac.sell_value, 0)      as total_value,
+      JSON_GROUP_ARRAY(
+        JSON_OBJECT(
+          'character_id',    c.id,
+          'character_name',  c.name,
+          'character_label', c.label,
+          'character_color', c.color,
+          'count',           at.count,
+          'value',           at.count * COALESCE(ac.sell_value, 0)
+        )
+      ) as character_breakdown
+    FROM amplification_tracking at
+    JOIN amplification_components ac ON ac.id = at.component_id
+    JOIN characters c                ON c.id = at.character_id
+    WHERE at.count > 0
+    GROUP BY ac.id
+    ORDER BY ac.sort_order, ac.name
+  `).all();
+
+  res.json(rows.map(row => ({
+    ...row,
+    character_breakdown: JSON.parse(row.character_breakdown).filter(cb => cb.count > 0),
   })));
 });
 

@@ -40,6 +40,11 @@ import type {
   StencilTrackingUpdate,
   UnlearnedStencil,
   StencilExtrasReport,
+  AmplificationComponent,
+  AmplificationTrackingRecord,
+  AmplificationTrackingMap,
+  AmplificationCountUpdate,
+  AmplificationReport,
 } from '../types';
 
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -110,6 +115,7 @@ export function useDeleteCharacter() {
       qc.invalidateQueries({ queryKey: ['characters'] });
       qc.invalidateQueries({ queryKey: ['tracking'] });
       qc.invalidateQueries({ queryKey: ['stencil-tracking'] });
+      qc.invalidateQueries({ queryKey: ['amplification-tracking'] });
       qc.invalidateQueries({ queryKey: ['reports'] });
       qc.invalidateQueries({ queryKey: ['activity'] });
     },
@@ -215,6 +221,48 @@ export function useUpsertStencilTracking() {
       qc.invalidateQueries({ queryKey: ['reports'] });
       qc.invalidateQueries({ queryKey: ['activity'] });
     },
+  });
+}
+
+// ── Amplification ──────────────────────────────────────────────────────────────
+export function useAmplificationComponents() {
+  return useQuery<AmplificationComponent[]>({
+    queryKey: ['amplification'],
+    queryFn: () => apiFetch('/api/amplification'),
+    staleTime: Infinity,
+  });
+}
+
+export function useAmplificationTrackingMap(characterId: number | null) {
+  const query = useQuery<AmplificationTrackingRecord[]>({
+    queryKey: ['amplification-tracking', characterId],
+    queryFn: () => apiFetch(`/api/amplification/tracking/${characterId}`),
+    enabled: characterId !== null,
+    staleTime: 10_000,
+  });
+  const map: AmplificationTrackingMap = {};
+  for (const record of query.data ?? []) map[record.component_id] = record;
+  return { ...query, trackingMap: map };
+}
+
+export function useUpsertAmplificationTracking() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (update: AmplificationCountUpdate) =>
+      apiFetch<AmplificationTrackingRecord>('/api/amplification/tracking', { method: 'POST', body: JSON.stringify(update) }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ['amplification-tracking', variables.character_id] });
+      qc.invalidateQueries({ queryKey: ['reports'] });
+      qc.invalidateQueries({ queryKey: ['activity'] });
+    },
+  });
+}
+
+export function useAmplificationReport() {
+  return useQuery<AmplificationReport[]>({
+    queryKey: ['reports', 'amplification'],
+    queryFn: () => apiFetch('/api/reports/amplification'),
+    staleTime: 15_000,
   });
 }
 
