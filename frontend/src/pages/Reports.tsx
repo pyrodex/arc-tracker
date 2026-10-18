@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { BarChart3, AlertCircle, Package, Cpu, Wrench, ChevronDown, ChevronRight, Users, Crosshair, SprayCan, BookOpen } from 'lucide-react';
+import { BarChart3, AlertCircle, Package, Cpu, Wrench, ChevronDown, ChevronRight, Users, Crosshair, SprayCan, BookOpen, Zap } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useUnlearnedReport, useExtrasReport, useArcPartsReport, useWorkshopMaterialsReport, useCharacters, useGunConfigsReport, useStencilUnlearnedReport, useStencilExtrasReport } from '../hooks/useApi';
-import type { UnlearnedBlueprint, ExtrasReport, ArcPartsReport, WorkshopMaterialsReport, CharacterLearnStatus, CharacterExtras, Character, UnlearnedStencil, StencilExtrasReport } from '../types';
+import { useUnlearnedReport, useExtrasReport, useArcPartsReport, useWorkshopMaterialsReport, useCharacters, useGunConfigsReport, useStencilUnlearnedReport, useStencilExtrasReport, useAmplificationReport } from '../hooks/useApi';
+import type { UnlearnedBlueprint, ExtrasReport, ArcPartsReport, WorkshopMaterialsReport, CharacterLearnStatus, CharacterExtras, Character, UnlearnedStencil, StencilExtrasReport, AmplificationReport } from '../types';
 import { CategoryBadge } from '../components/CategoryIcon';
 import BlueprintIcon from '../components/BlueprintIcon';
 import ArcPartIcon from '../components/ArcPartIcon';
 import StencilIcon from '../components/StencilIcon';
 import { StencilRarityBadge } from '../components/StencilRarity';
 import WorkshopMaterialIcon from '../components/WorkshopMaterialIcon';
+import AmplificationIcon from '../components/AmplificationIcon';
+import { ampStyle, ampBadgeLabel } from '../components/AmplificationStyle';
 
-type ReportId = 'blueprints' | 'stencils' | 'arc-parts' | 'workshop' | 'loadouts';
+type ReportId = 'blueprints' | 'stencils' | 'arc-parts' | 'amplification' | 'workshop' | 'loadouts';
 type ReportView = 'unlearned' | 'extras';
 
 interface ReportDef {
@@ -41,6 +43,7 @@ const REPORTS: ReportDef[] = [
     },
   },
   { id: 'arc-parts', label: 'ARC Parts', icon: Cpu,       description: 'Epic and Legendary ARC parts collected, with value.' },
+  { id: 'amplification', label: 'Amplification', icon: Zap, description: 'Amplification modules and materials held, with value.' },
   { id: 'workshop',  label: 'Workshop',  icon: Wrench,    description: 'Workshop materials stockpiled across characters.' },
   { id: 'loadouts',  label: 'Loadouts',  icon: Crosshair, description: 'Gun builds, guns held and total value per character.' },
 ];
@@ -177,6 +180,7 @@ export default function Reports() {
       {report.id === 'stencils'   && view === 'unlearned' && <StencilUnlearnedReport selectedCharId={selectedCharId} />}
       {report.id === 'stencils'   && view === 'extras'    && <StencilExtrasInventory selectedCharId={selectedCharId} />}
       {report.id === 'arc-parts'  && <ArcPartsInventory selectedCharId={selectedCharId} />}
+      {report.id === 'amplification' && <AmplificationInventory selectedCharId={selectedCharId} />}
       {report.id === 'workshop'   && <WorkshopMaterialsInventory selectedCharId={selectedCharId} />}
       {report.id === 'loadouts'   && <LoadoutsReport selectedCharId={selectedCharId} />}
     </div>
@@ -611,6 +615,136 @@ function ArcPartsInventory({ selectedCharId }: { selectedCharId: number | null }
           );
         })}
       </div>
+    </div>
+  );
+}
+
+function AmplificationInventory({ selectedCharId }: { selectedCharId: number | null }) {
+  const { data, isLoading } = useAmplificationReport();
+  const { data: characters = [] } = useCharacters();
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+
+  if (isLoading) return <LoadingState />;
+  if (!data || data.length === 0) return <EmptyState message="No amplification components held by any character yet." />;
+
+  const countFor = (row: AmplificationReport) => selectedCharId === null
+    ? row.total_count
+    : (row.character_breakdown.find(cb => cb.character_id === selectedCharId)?.count ?? 0);
+  const valueFor = (row: AmplificationReport) => selectedCharId === null
+    ? row.total_value
+    : (row.character_breakdown.find(cb => cb.character_id === selectedCharId)?.value ?? 0);
+
+  const filtered = data.filter(row => countFor(row) > 0);
+  if (filtered.length === 0) return <EmptyState message="No amplification components held by the selected character." />;
+
+  const selectedChar = selectedCharId !== null ? characters.find(c => c.id === selectedCharId) : null;
+  const totalCount = filtered.reduce((s, row) => s + countFor(row), 0);
+  const totalValue = filtered.reduce((s, row) => s + valueFor(row), 0);
+  const hasUnpriced = filtered.some(row => row.sell_value === null);
+
+  const toggle = (id: number) => setExpanded(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+
+  const groups: Array<{ kind: AmplificationReport['kind']; title: string }> = [
+    { kind: 'module',   title: 'Modules' },
+    { kind: 'material', title: 'Materials' },
+  ];
+
+  return (
+    <div>
+      <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
+        <p className="text-sm text-arc-muted">
+          <span className="text-arc-text font-semibold">{totalCount}</span> component{totalCount !== 1 ? 's' : ''} across{' '}
+          <span className="text-arc-text font-semibold">{filtered.length}</span> type{filtered.length !== 1 ? 's' : ''}
+          {selectedChar ? <> for <span className="font-semibold" style={{ color: selectedChar.color }}>{selectedChar.name}</span></> : ''}.
+        </p>
+        {totalValue > 0 && (
+          <p className="text-sm font-semibold text-arc-extra tabular-nums" title={hasUnpriced ? 'Excludes components with an unknown value' : undefined}>
+            {totalValue.toLocaleString()} total value{hasUnpriced ? '*' : ''}
+          </p>
+        )}
+      </div>
+
+      {groups.map(({ kind, title }) => {
+        const rows = filtered.filter(row => row.kind === kind);
+        if (!rows.length) return null;
+        return (
+          <div key={kind} className="mb-6 last:mb-0">
+            <h3 className="text-xs font-semibold text-arc-dim uppercase tracking-wider mb-2">{title}</h3>
+            <div className="card overflow-hidden divide-y divide-arc-border/50">
+              {rows.map(row => {
+                const isOpen = expanded.has(row.component_id);
+                const style = ampStyle(row);
+                const displayValue = valueFor(row);
+                return (
+                  <div key={row.component_id}>
+                    <button
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-arc-hover/40 transition-colors text-left"
+                      onClick={() => toggle(row.component_id)}
+                    >
+                      <AmplificationIcon component={{ slug: row.slug, name: row.component_name, kind: row.kind, tier: row.tier, unlocks: row.unlocks, rarity: row.rarity }} size={40} />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-arc-text">{row.component_name}</span>
+                        <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded hidden sm:inline-block ${style.badge}`}>
+                          {ampBadgeLabel(row)}
+                        </span>
+                        <p className="text-xs text-arc-dim mt-0.5">{row.source ? `from ${row.source}` : 'Source unknown'}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={`badge text-sm font-bold px-3 ${style.badge}`}>×{countFor(row)}</p>
+                        <p className="text-xs font-semibold tabular-nums mt-0.5 text-arc-extra">
+                          {row.sell_value === null ? <span className="text-arc-dim font-normal">value unknown</span> : displayValue.toLocaleString()}
+                        </p>
+                      </div>
+                      {isOpen
+                        ? <ChevronDown  className="w-4 h-4 text-arc-muted shrink-0" />
+                        : <ChevronRight className="w-4 h-4 text-arc-muted shrink-0" />
+                      }
+                    </button>
+
+                    {isOpen && (
+                      <div className="bg-arc-bg/40 px-4 py-3 border-t border-arc-border/40">
+                        <div className="flex flex-wrap gap-3">
+                          {[...row.character_breakdown]
+                            .sort((a, b) => a.character_name.localeCompare(b.character_name))
+                            .map(cb => (
+                              <div
+                                key={cb.character_id}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg border"
+                                style={{ backgroundColor: cb.character_color + '15', borderColor: cb.character_color + '40' }}
+                              >
+                                <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cb.character_color }} />
+                                <span className="text-sm text-arc-muted">{cb.character_name}</span>
+                                {cb.character_label && (
+                                  <span className="text-xs text-arc-dim">·{' '}
+                                    {cb.character_label.split(',').map(l => l.trim()).filter(Boolean).join(', ')}
+                                  </span>
+                                )}
+                                <span className="text-sm font-bold font-mono ml-1" style={{ color: cb.character_color }}>
+                                  ×{cb.count}
+                                </span>
+                                {cb.value > 0 && (
+                                  <span className="text-xs text-arc-extra tabular-nums">{cb.value.toLocaleString()}</span>
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+
+      {hasUnpriced && (
+        <p className="text-[11px] text-arc-dim mt-4">* Total value excludes components whose sell value isn’t known yet.</p>
+      )}
     </div>
   );
 }

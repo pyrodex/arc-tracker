@@ -6,6 +6,7 @@ const Database = require('better-sqlite3');
 const BLUEPRINTS = require('./blueprints');
 const ARC_PARTS = require('./arc-parts');
 const STENCILS = require('./stencils');
+const AMPLIFICATION_COMPONENTS = require('./amplification');
 const WORKSHOP_STATIONS = require('./workshop');
 const { WEAPON_MODS, MOD_SLOTS } = require('./weapon-mods');
 const WEAPON_PRICES = require('./weapon-prices');
@@ -100,6 +101,35 @@ function initSchema() {
 
     CREATE INDEX IF NOT EXISTS idx_stencil_tracking_char    ON stencil_tracking(character_id);
     CREATE INDEX IF NOT EXISTS idx_stencil_tracking_stencil ON stencil_tracking(stencil_id);
+
+    -- Weapon Amplification components (modules + materials), counted per
+    -- character like ARC parts. sell_value is NULL where the value is unknown.
+    CREATE TABLE IF NOT EXISTS amplification_components (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT    NOT NULL UNIQUE,
+      slug       TEXT    NOT NULL UNIQUE,
+      kind       TEXT    NOT NULL CHECK (kind IN ('module', 'material')),
+      tier       INTEGER,
+      unlocks    TEXT,
+      rarity     TEXT,
+      sell_value INTEGER,
+      source     TEXT,
+      sort_order INTEGER DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS amplification_tracking (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      character_id INTEGER NOT NULL,
+      component_id INTEGER NOT NULL,
+      count        INTEGER DEFAULT 0,
+      updated_at   TEXT    DEFAULT (datetime('now')),
+      FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
+      FOREIGN KEY (component_id) REFERENCES amplification_components(id),
+      UNIQUE(character_id, component_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_amp_tracking_char      ON amplification_tracking(character_id);
+    CREATE INDEX IF NOT EXISTS idx_amp_tracking_component ON amplification_tracking(component_id);
 
     CREATE TABLE IF NOT EXISTS arc_parts (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -376,6 +406,47 @@ function seedStencils() {
   upsertMany(STENCILS);
   const after = db.prepare('SELECT COUNT(*) as c FROM stencils').get().c;
   if (after > before) console.log(`Seeded ${after - before} new stencil(s) (total: ${after})`);
+}
+
+function seedAmplification() {
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO amplification_components
+      (name, slug, kind, tier, unlocks, rarity, sell_value, source, sort_order)
+    VALUES
+      (@name, @slug, @kind, @tier, @unlocks, @rarity, @sell_value, @source, @sort_order)
+  `);
+
+  // Keep catalog details in step with seed corrections (e.g. a value that
+  // becomes known later). Counts live in amplification_tracking and are untouched.
+  const sync = db.prepare(`
+    UPDATE amplification_components
+    SET kind = @kind, tier = @tier, unlocks = @unlocks, rarity = @rarity,
+        sell_value = @sell_value, source = @source, sort_order = @sort_order
+    WHERE name = @name
+  `);
+
+  const upsertMany = db.transaction((components) => {
+    components.forEach((c, i) => {
+      const row = {
+        name: c.name,
+        slug: slugify(c.name),
+        kind: c.kind,
+        tier: c.tier ?? null,
+        unlocks: c.unlocks ?? null,
+        rarity: c.rarity ?? null,
+        sell_value: c.sell_value ?? null,
+        source: c.source ?? null,
+        sort_order: (c.kind === 'module' ? 0 : 100) + i,
+      };
+      insert.run(row);
+      sync.run(row);
+    });
+  });
+
+  const before = db.prepare('SELECT COUNT(*) as c FROM amplification_components').get().c;
+  upsertMany(AMPLIFICATION_COMPONENTS);
+  const after = db.prepare('SELECT COUNT(*) as c FROM amplification_components').get().c;
+  if (after > before) console.log(`Seeded ${after - before} new amplification component(s) (total: ${after})`);
 }
 
 function seedWorkshop() {
@@ -714,6 +785,7 @@ initSchema();
 runMigrations();
 seedBlueprints();
 seedStencils();
+seedAmplification();
 seedArcParts();
 seedWorkshop();
 seedWeaponMods();
