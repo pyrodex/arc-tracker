@@ -53,8 +53,8 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 - **Grouped sections** — Legendary parts at the top, Epic parts below
 
 ### Workshop *(new in v1.3.0)*
-- **6 upgradable stations** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Workshop) — Gunsmith, Gear Bench, Medical Lab, Explosives Station, Utility Station, and Refiner (the free, non-upgradable Workbench is intentionally excluded)
-- **Per-level requirements** — exact material lists for levels 1–3 of every station
+- **7 upgradable stations** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Workshop) — Gunsmith, Gear Bench, Medical Lab, Explosives Station, Utility Station, Refiner, and Research Station (the free, non-upgradable Workbench is intentionally excluded)
+- **Per-level requirements** — exact material lists for every level: 1–3 for most stations, 1–4 for the Gunsmith (level 4 requires the Outpost and unlocks Weapon Amplification) and the Research Station
 - **Per-character station levels** — mark each station's current level for a character with one click; completed levels are badged "Built", the next one is badged "Next"
 - **Material stockpile tracking** — track how many of each required material a character currently holds, with +/– controls or direct input
 - **Acquired vs. required progress** — every requirement shows total acquired across *all* characters against the amount needed, turning green once you have enough
@@ -159,7 +159,7 @@ arc-tracker/
 │       ├── stencils.js        Seed data (14 weapon stencils)
 │       ├── amplification.js   Seed data (10 amplification modules and materials)
 │       ├── arc-parts.js       Seed data (9 Epic/Legendary ARC parts)
-│       ├── workshop.js        Seed data (6 stations × 3 levels of material requirements)
+│       ├── workshop.js        Seed data (7 stations, 3–4 levels each, of material requirements)
 │       ├── weapon-mods.js     Seed data (39 gun mods across 5 slots, incl. loot-only)
 │       ├── weapon-prices.js   Seed data (weapon sale prices per tier)
 │       └── weapons.js        Seed data (24 weapons incl. 7 Gunsmith-unlocked)
@@ -207,7 +207,7 @@ arc-tracker/
 | POST | `/api/arc-parts/tracking` | Upsert an ARC part count for a character |
 | GET | `/api/workshop/stations` | All workshop stations with per-level material requirements |
 | GET | `/api/workshop/progress/:characterId` | Current station levels for a character |
-| POST | `/api/workshop/progress` | Upsert a station's current level (0–3) for a character |
+| POST | `/api/workshop/progress` | Upsert a station's current level for a character (0 up to that station's max level) |
 | GET | `/api/workshop/materials/tracking/:characterId` | Workshop material counts for a character |
 | POST | `/api/workshop/materials/tracking` | Upsert a workshop material count for a character |
 | GET | `/api/weapon-mods` | Gun mod catalog with slot metadata and seeded prices |
@@ -280,6 +280,7 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 ## Changelog
 
 ### Unreleased
+- **Workshop: Research Station and Gunsmith level 4** — the Frozen Trail Research Station (levels 1–4) and Gunsmith level 4 (3× Radial Press, 3× Magnetic Accelerator, 1× Emperor Modulator; requires the Outpost) are added with their material requirements and icons. Levels can now carry a note such as "Requires the Outpost", and the progress API checks each station's own max level instead of a fixed 3. Existing databases pick these up on startup
 - **Icon retries** — items that got a placeholder icon are now retried on every startup instead of keeping the placeholder forever; the placeholder is removed once a real icon downloads. Previously an item whose image appeared later (e.g. Propellant Valve Assembly) kept its placeholder until a forced re-download
 - **Amplification item data** — Propellant Valve Assembly is now Epic, valued at 5,000 and counted in value totals (from RaidersData). Every component shows its weight and stack size. Existing databases gain `weight` and `stack_size` columns on startup
 - **Icon fallbacks by URL** — the icon downloader can fall back to a direct image URL when the wiki has no image; Propellant Valve Assembly uses this
