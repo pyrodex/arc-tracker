@@ -1,8 +1,12 @@
 'use strict';
 
 // Workshop stations (excludes the Workbench — it's free, starts unlocked, and
-// can't be upgraded) with the materials required to build/upgrade each one up
-// to level 3. Source: https://arcraiders.wiki/wiki/Workshop
+// can't be upgraded) with the materials required to build/upgrade each one —
+// up to level 3, or level 4 for the Gunsmith and Research Station (Frozen
+// Trail). Source: https://arcraiders.wiki/wiki/Workshop
+//
+// A level may carry a `note` for prerequisites beyond materials (e.g. the
+// Outpost); it's shown on that level in the Workshop page.
 //
 // A handful of requirement items (Bastion Cell, Bombardier Cell, Leaper Pulse
 // Unit, Rocketeer Driver) are also tracked as Epic ARC parts on the ARC Parts
@@ -17,6 +21,8 @@ const WORKSHOP_STATIONS = [
       { level: 1, materials: [{ name: 'Metal Parts', qty: 20 }, { name: 'Rubber Parts', qty: 30 }] },
       { level: 2, materials: [{ name: 'Rusted Tools', qty: 3 }, { name: 'Mechanical Components', qty: 5 }, { name: 'Wasp Driver', qty: 8 }] },
       { level: 3, materials: [{ name: 'Rusted Gear', qty: 3 }, { name: 'Advanced Mechanical Components', qty: 5 }, { name: 'Sentinel Firing Core', qty: 4 }] },
+      // Unlocks Weapon Amplification.
+      { level: 4, note: 'Requires the Outpost', materials: [{ name: 'Radial Press', qty: 3 }, { name: 'Magnetic Accelerator', qty: 3 }, { name: 'Emperor Modulator', qty: 1 }] },
     ],
   },
   {
@@ -62,6 +68,18 @@ const WORKSHOP_STATIONS = [
       { level: 1, materials: [{ name: 'Metal Parts', qty: 60 }, { name: 'ARC Powercell', qty: 5 }] },
       { level: 2, materials: [{ name: 'Toaster', qty: 3 }, { name: 'ARC Motion Core', qty: 5 }, { name: 'Fireball Burner', qty: 8 }] },
       { level: 3, materials: [{ name: 'Motor', qty: 3 }, { name: 'ARC Circuitry', qty: 10 }, { name: 'Bombardier Cell', qty: 6 }] },
+    ],
+  },
+  {
+    // Frozen Trail. Runs research projects (e.g. the Amplified Research that
+    // unlocks individual weapon amplifications at level 4).
+    name: 'Research Station',
+    sort_order: 70,
+    levels: [
+      { level: 1, materials: [{ name: 'Mini Pump', qty: 3 }, { name: 'Planks', qty: 35 }, { name: 'Battered Paperback', qty: 5 }] },
+      { level: 2, materials: [{ name: 'Calculator', qty: 3 }, { name: 'Raider Logbook', qty: 3 }, { name: 'Skulker Targeter', qty: 5 }] },
+      { level: 3, materials: [{ name: 'Differential Microphone', qty: 3 }, { name: 'Exodus Technical Handbook', qty: 3 }, { name: 'Bully Fragmenter', qty: 6 }] },
+      { level: 4, materials: [{ name: 'Thermal Shaker', qty: 3 }, { name: 'ARC Data Module', qty: 3 }, { name: 'Frigate Inductor', qty: 1 }] },
     ],
   },
 ];

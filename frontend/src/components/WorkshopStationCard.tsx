@@ -193,7 +193,7 @@ export default function WorkshopStationCard({
 
       {/* Levels */}
       <div className="divide-y divide-arc-border/50">
-        {station.levels.map(({ level, requirements }) => {
+        {station.levels.map(({ level, note, requirements }) => {
           const achieved = currentLevel >= level;
           const isNext = currentLevel + 1 === level;
 
@@ -210,6 +210,9 @@ export default function WorkshopStationCard({
                   <span className="badge bg-arc-accent/15 text-arc-accent border border-arc-accent/30 text-[10px]">
                     Next
                   </span>
+                )}
+                {note && (
+                  <span className="text-[10px] text-arc-dim ml-auto">{note}</span>
                 )}
               </div>
               <div className="px-1 pb-2">

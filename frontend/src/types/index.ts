@@ -307,6 +307,8 @@ export interface WorkshopRequirement {
 
 export interface WorkshopLevel {
   level: number;
+  /** Prerequisite beyond materials, e.g. "Requires the Outpost". */
+  note: string | null;
   requirements: WorkshopRequirement[];
 }
 
