@@ -188,6 +188,22 @@ const NAME_TO_FILE = {
   'Tick Pod':                         'File:Tick Pod.png',
   'Toaster':                          'File:Toaster.png',
   'Wasp Driver':                      'File:Wasp Driver.png',
+  // Gunsmith level 4 and Research Station (Frozen Trail)
+  'Radial Press':                     'File:Radial Press.png',
+  'Magnetic Accelerator':             'File:Magnetic Accelerator.png',
+  'Emperor Modulator':                'File:Emperor Modulator.png',
+  'Mini Pump':                        'File:Mini Pump.png',
+  'Planks':                           'File:Planks.png',
+  'Battered Paperback':               'File:Battered Paperback.png',
+  'Calculator':                       'File:Calculator.png',
+  'Raider Logbook':                   'File:Raider Logbook.png',
+  'Skulker Targeter':                 'File:Skulker Targeter.png',
+  'Differential Microphone':          'File:Differential Microphone.png',
+  'Exodus Technical Handbook':        'File:Exodus Technical Handbook.png',
+  'Bully Fragmenter':                 'File:Bully Fragmenter.png',
+  'Thermal Shaker':                   'File:Thermal Shaker.png',
+  'ARC Data Module':                  'File:ARC Data Module.png',
+  'Frigate Inductor':                 'File:Frigate Inductor.png',
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────

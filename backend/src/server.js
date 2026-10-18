@@ -9,6 +9,7 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
 const db = require('./db');
+const WORKSHOP_STATIONS = require('./workshop');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -911,12 +912,18 @@ app.get('/api/workshop/stations', (req, res) => {
     ORDER BY r.station_id, r.level, r.sort_order
   `).all();
 
+  // Level notes (e.g. "Requires the Outpost") live in the seed data only.
+  const levelNotes = new Map(
+    WORKSHOP_STATIONS.flatMap(s => s.levels.filter(l => l.note).map(l => [`${s.name}:${l.level}`, l.note]))
+  );
+
   const result = stations.map(station => {
     const stationReqs = requirements.filter(r => r.station_id === station.id);
     const levels = [...new Set(stationReqs.map(r => r.level))]
       .sort((a, b) => a - b)
       .map(level => ({
         level,
+        note: levelNotes.get(`${station.name}:${level}`) ?? null,
         requirements: stationReqs
           .filter(r => r.level === level)
           .map(r => ({
@@ -952,8 +959,18 @@ app.post('/api/workshop/progress', (req, res) => {
   if (!Number.isInteger(character_id) || !Number.isInteger(station_id)) {
     return res.status(400).json({ error: 'character_id and station_id must be integers' });
   }
-  if (!Number.isInteger(level) || level < 0 || level > 3) {
-    return res.status(400).json({ error: 'level must be an integer between 0 and 3' });
+  // Stations top out at different levels (3, or 4 for the Gunsmith and
+  // Research Station), so the cap comes from the seeded requirements.
+  const station = db.prepare(`
+    SELECT s.id, COALESCE(MAX(r.level), 0) as max_level
+    FROM workshop_stations s
+    LEFT JOIN workshop_requirements r ON r.station_id = s.id
+    WHERE s.id = ?
+    GROUP BY s.id
+  `).get(station_id);
+  if (!station) return res.status(404).json({ error: 'station not found' });
+  if (!Number.isInteger(level) || level < 0 || level > station.max_level) {
+    return res.status(400).json({ error: `level must be an integer between 0 and ${station.max_level}` });
   }
 
   db.prepare(`
