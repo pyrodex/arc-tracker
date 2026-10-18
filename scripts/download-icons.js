@@ -12,6 +12,8 @@
  * 4. SVG placeholder for any not found.
  *
  * A mapping may list several File: titles; the first one the wiki has is used.
+ * A candidate can also be a direct https:// image URL, for items the wiki has
+ * no image for yet; list it after the wiki title so the wiki wins once added.
  * Stencils rely on this to fall back to the wiki's generic stencil icon until
  * their own icon is uploaded (re-run with --force to pick those up later).
  *
@@ -322,14 +324,22 @@ for (const s of STENCILS) {
 const STENCIL_ITEMS = STENCILS.map(s => ({ name: s.name, category: 'stencil' }));
 
 // Amplification components use their wiki item image, e.g.
-// "Amplification Module Mk. III.png". Propellant Valve Assembly has no wiki
-// image yet, so it falls through to the placeholder until one is uploaded.
+// "Amplification Module Mk. III.png". Where the wiki has no image yet, a
+// direct URL to the item image used by RaidersData (MetaForge CDN) follows
+// as a fallback.
+const AMPLIFICATION_IMAGE_FALLBACKS = {
+  'Propellant Valve Assembly':
+    'https://static.metaforge.app/arc-raiders/preview/20261007/03481be900d013112a858dd034a4cb49a352f30078b505736a387061e72a78a1.png',
+};
 for (const c of AMPLIFICATION_COMPONENTS) {
-  NAME_TO_FILE[c.name] = `File:${c.name}.png`;
+  const fallback = AMPLIFICATION_IMAGE_FALLBACKS[c.name];
+  NAME_TO_FILE[c.name] = fallback ? [`File:${c.name}.png`, fallback] : `File:${c.name}.png`;
 }
 const AMPLIFICATION_ITEMS = AMPLIFICATION_COMPONENTS.map(c => ({ name: c.name, category: 'amplification' }));
 
-/** File: titles to try for an item, best first. */
+const isDirectUrl = candidate => candidate.startsWith('https://');
+
+/** File: titles (or direct image URLs) to try for an item, best first. */
 function fileCandidates(name) {
   const mapped = NAME_TO_FILE[name];
   if (!mapped) return [];
@@ -376,7 +386,7 @@ async function main() {
 
   // Collect the unique File: titles we need to resolve
   const titlesNeeded = [...new Set(
-    pending.flatMap(bp => fileCandidates(bp.name))
+    pending.flatMap(bp => fileCandidates(bp.name)).filter(c => !isDirectUrl(c))
   )];
 
   const unmapped = pending.filter(bp => fileCandidates(bp.name).length === 0);
@@ -429,8 +439,8 @@ async function main() {
 
 async function processOne(bp, resolvedMap) {
   const slug     = slugify(bp.name);
-  const fileTitle = fileCandidates(bp.name).find(title => resolvedMap[title]);
-  const imageUrl  = fileTitle ? resolvedMap[fileTitle] : null;
+  const fileTitle = fileCandidates(bp.name).find(c => resolvedMap[c] || isDirectUrl(c));
+  const imageUrl  = fileTitle ? (resolvedMap[fileTitle] ?? fileTitle) : null;
 
   if (imageUrl) {
     const dest = path.join(ICONS_DIR, `${slug}.png`);

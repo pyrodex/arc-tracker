@@ -26,9 +26,9 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 ### Amplification Tracking
 - **10 amplification components** from the Frozen Trail update, seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Amplified_Weapons): Amplification Modules Mk. I–V (one takes a weapon to Level 5; the Mk. matches the weapon's base rarity, Common → Legendary) and five materials spent on individual amplifications: Fluted Rotor Core, Fossilized Lightning, Pneumatic Actuator, Pressure Regulator and Propellant Valve Assembly
 - **Per-character counts** with click-to-edit input and value totals, grouped into Modules and Materials, with drop sources where the wiki lists them
-- **Unknowns left blank** — Propellant Valve Assembly has no wiki page yet, and Fluted Rotor Core has no listed source, so those show as unknown and are left out of value totals rather than guessed
+- **Item details** — value, rarity, drop source, weight and stack size per component. Propellant Valve Assembly's rarity and value come from [RaidersData](https://raidersdata.com/items/propellant-valve-assembly/), since the wiki has no page for it yet. Drop sources the wiki doesn't give (Fluted Rotor Core, Propellant Valve Assembly) show as unknown rather than guessed
 - **ARC parts not duplicated** — amplifications that cost Queen/Matriarch Reactors, Assessor Matrix or Turbine Compressors use the ARC Parts counts
-- **Icons** downloaded from arcraiders.wiki; a placeholder is used where the wiki has no image yet
+- **Icons** downloaded from arcraiders.wiki; Propellant Valve Assembly falls back to its RaidersData/MetaForge image until the wiki has one
 
 ### Characters
 - **Multi-character support** — add as many characters as you need
@@ -278,6 +278,8 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 ## Changelog
 
 ### Unreleased
+- **Amplification item data** — Propellant Valve Assembly is now Epic, valued at 5,000 and counted in value totals (from RaidersData). Every component shows its weight and stack size. Existing databases gain `weight` and `stack_size` columns on startup
+- **Icon fallbacks by URL** — the icon downloader can fall back to a direct image URL when the wiki has no image; Propellant Valve Assembly uses this
 - **Amplification** — new sidebar section for the Frozen Trail amplification components: Amplification Modules Mk. I–V and five materials (Fluted Rotor Core, Fossilized Lightning, Pneumatic Actuator, Pressure Regulator, Propellant Valve Assembly), counted per character with value totals. Also an Amplification report tab, a Dashboard card, an amplification count on each character, and an Amplification "last updated" area. New `amplification_components` and `amplification_tracking` tables are created on startup
 - **Dashboard** — the separate Blueprint Extras card is folded into the Blueprints card ("in-game · N extras held") to make room for Amplification
 

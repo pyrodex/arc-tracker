@@ -49,6 +49,14 @@ export default function AmplificationCard({ component, trackingMap, onSetCount }
               {valueKnown ? `${component.sell_value!.toLocaleString()} ea` : 'value unknown'}
             </span>
           </div>
+          {(component.weight !== null || component.stack_size !== null) && (
+            <p className="text-[10px] text-arc-dim mt-1">
+              {[
+                component.weight !== null && `Weight ${component.weight}`,
+                component.stack_size !== null && (component.stack_size > 1 ? `Stacks to ${component.stack_size}` : "Doesn't stack"),
+              ].filter(Boolean).join(' · ')}
+            </p>
+          )}
         </div>
       </div>
 

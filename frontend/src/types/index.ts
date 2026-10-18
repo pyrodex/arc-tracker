@@ -251,6 +251,10 @@ export interface AmplificationComponent {
   sell_value: number | null;
   /** Where it drops; null where unknown. */
   source: string | null;
+  /** In-game weight per unit. */
+  weight: number | null;
+  /** Units per inventory slot. */
+  stack_size: number | null;
   sort_order: number;
 }
 
