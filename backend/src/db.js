@@ -114,6 +114,8 @@ function initSchema() {
       rarity     TEXT,
       sell_value INTEGER,
       source     TEXT,
+      weight     REAL,
+      stack_size INTEGER,
       sort_order INTEGER DEFAULT 0
     );
 
@@ -411,9 +413,9 @@ function seedStencils() {
 function seedAmplification() {
   const insert = db.prepare(`
     INSERT OR IGNORE INTO amplification_components
-      (name, slug, kind, tier, unlocks, rarity, sell_value, source, sort_order)
+      (name, slug, kind, tier, unlocks, rarity, sell_value, source, weight, stack_size, sort_order)
     VALUES
-      (@name, @slug, @kind, @tier, @unlocks, @rarity, @sell_value, @source, @sort_order)
+      (@name, @slug, @kind, @tier, @unlocks, @rarity, @sell_value, @source, @weight, @stack_size, @sort_order)
   `);
 
   // Keep catalog details in step with seed corrections (e.g. a value that
@@ -421,7 +423,8 @@ function seedAmplification() {
   const sync = db.prepare(`
     UPDATE amplification_components
     SET kind = @kind, tier = @tier, unlocks = @unlocks, rarity = @rarity,
-        sell_value = @sell_value, source = @source, sort_order = @sort_order
+        sell_value = @sell_value, source = @source, weight = @weight,
+        stack_size = @stack_size, sort_order = @sort_order
     WHERE name = @name
   `);
 
@@ -436,6 +439,8 @@ function seedAmplification() {
         rarity: c.rarity ?? null,
         sell_value: c.sell_value ?? null,
         source: c.source ?? null,
+        weight: c.weight ?? null,
+        stack_size: c.stack_size ?? null,
         sort_order: (c.kind === 'module' ? 0 : 100) + i,
       };
       insert.run(row);
@@ -764,6 +769,14 @@ function runMigrations() {
   }
   if (!charCols.includes('expedition_stash')) {
     db.exec('ALTER TABLE characters ADD COLUMN expedition_stash INTEGER DEFAULT 0');
+  }
+
+  const ampCols = db.pragma('table_info(amplification_components)').map(c => c.name);
+  if (!ampCols.includes('weight')) {
+    db.exec('ALTER TABLE amplification_components ADD COLUMN weight REAL');
+  }
+  if (!ampCols.includes('stack_size')) {
+    db.exec('ALTER TABLE amplification_components ADD COLUMN stack_size INTEGER');
   }
 
   const arcCols = db.pragma('table_info(arc_parts)').map(c => c.name);
