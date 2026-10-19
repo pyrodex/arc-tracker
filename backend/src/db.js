@@ -11,6 +11,7 @@ const WORKSHOP_STATIONS = require('./workshop');
 const { WEAPON_MODS, MOD_SLOTS } = require('./weapon-mods');
 const WEAPON_PRICES = require('./weapon-prices');
 const { WEAPONS, WEAPON_CLASSES } = require('./weapons');
+const { WEAPON_AMPLIFICATIONS } = require('./weapon-amplifications');
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../../data');
 const DB_PATH = path.join(DATA_DIR, 'arc-tracker.db');
@@ -283,6 +284,37 @@ function initSchema() {
     );
 
     CREATE INDEX IF NOT EXISTS idx_gun_config_mods_config ON gun_config_mods(config_id);
+
+    -- Amplification options per weapon (Level 5). effects / materials /
+    -- requires / conflicts are JSON arrays; requires and conflicts hold option
+    -- names on the same weapon, or 'Magazine Mod' / 'Stock Mod' for a mod slot.
+    CREATE TABLE IF NOT EXISTS weapon_amplifications (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      weapon_id   INTEGER NOT NULL,
+      name        TEXT    NOT NULL,
+      description TEXT,
+      effects     TEXT    NOT NULL DEFAULT '[]',
+      research    TEXT,
+      materials   TEXT    NOT NULL DEFAULT '[]',
+      requires    TEXT    NOT NULL DEFAULT '[]',
+      conflicts   TEXT    NOT NULL DEFAULT '[]',
+      sort_order  INTEGER DEFAULT 0,
+      FOREIGN KEY (weapon_id) REFERENCES weapons(id),
+      UNIQUE(weapon_id, name)
+    );
+
+    -- Amplifications active on an amplified build. The rules (same weapon,
+    -- requires, conflicts) are checked by the API before rows are written.
+    CREATE TABLE IF NOT EXISTS gun_config_amplifications (
+      id               INTEGER PRIMARY KEY AUTOINCREMENT,
+      config_id        INTEGER NOT NULL,
+      amplification_id INTEGER NOT NULL,
+      FOREIGN KEY (config_id)        REFERENCES gun_configs(id) ON DELETE CASCADE,
+      FOREIGN KEY (amplification_id) REFERENCES weapon_amplifications(id),
+      UNIQUE(config_id, amplification_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_gun_config_amps_config ON gun_config_amplifications(config_id);
 
     -- Seeded weapon sale prices per tier. tier 0 means "cannot be upgraded"
     -- and holds the weapon's single price; 0 rather than NULL because SQLite
@@ -720,6 +752,9 @@ function migrateToWeaponCatalog() {
             notes         TEXT,
             created_at    TEXT    DEFAULT (datetime('now')),
             updated_at    TEXT    DEFAULT (datetime('now')),
+            -- Added later by runMigrations, which has already run on this old
+            -- table by now; kept here so the rebuild doesn't drop it.
+            amplified     INTEGER NOT NULL DEFAULT 0,
             FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE,
             FOREIGN KEY (weapon_id)    REFERENCES weapons(id)
           );
@@ -777,6 +812,54 @@ function migrateToWeaponCatalog() {
   console.log('Migrated gun configs and weapon prices to the weapon catalog.');
 }
 
+function seedWeaponAmplifications() {
+  const getWeapon = db.prepare('SELECT id FROM weapons WHERE name = ?');
+  const setModule = db.prepare('UPDATE weapons SET amp_module = ? WHERE id = ?');
+  const clearModules = db.prepare('UPDATE weapons SET amp_module = NULL');
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO weapon_amplifications
+      (weapon_id, name, description, effects, research, materials, requires, conflicts, sort_order)
+    VALUES
+      (@weapon_id, @name, @description, @effects, @research, @materials, @requires, @conflicts, @sort_order)
+  `);
+  // Keep details in step with seed corrections; build selections reference the
+  // row id, so they're untouched.
+  const sync = db.prepare(`
+    UPDATE weapon_amplifications
+    SET description = @description, effects = @effects, research = @research,
+        materials = @materials, requires = @requires, conflicts = @conflicts,
+        sort_order = @sort_order
+    WHERE weapon_id = @weapon_id AND name = @name
+  `);
+
+  const before = db.prepare('SELECT COUNT(*) as c FROM weapon_amplifications').get().c;
+  db.transaction(() => {
+    clearModules.run();
+    for (const entry of WEAPON_AMPLIFICATIONS) {
+      const weapon = getWeapon.get(entry.weapon);
+      if (!weapon) continue; // not in the weapon catalog — skip rather than fail
+      setModule.run(entry.module, weapon.id);
+      entry.amplifications.forEach((amp, i) => {
+        const row = {
+          weapon_id: weapon.id,
+          name: amp.name,
+          description: amp.description ?? null,
+          effects: JSON.stringify(amp.effects ?? []),
+          research: amp.research ?? null,
+          materials: JSON.stringify(amp.materials ?? []),
+          requires: JSON.stringify(amp.requires ?? []),
+          conflicts: JSON.stringify(amp.conflicts ?? []),
+          sort_order: i,
+        };
+        insert.run(row);
+        sync.run(row);
+      });
+    }
+  })();
+  const after = db.prepare('SELECT COUNT(*) as c FROM weapon_amplifications').get().c;
+  if (after > before) console.log(`Seeded ${after - before} weapon amplification option(s) (total: ${after})`);
+}
+
 function seedWeaponPrices() {
   const insert = db.prepare(`
     INSERT OR IGNORE INTO weapon_prices (weapon_id, tier, sell_value)
@@ -827,6 +910,17 @@ function runMigrations() {
     db.exec('ALTER TABLE characters ADD COLUMN expedition_stash INTEGER DEFAULT 0');
   }
 
+  // Weapon amplification: which Mk. module a weapon needs (NULL = can't be
+  // amplified), and whether a build has been amplified to Level 5.
+  const weaponCols = db.pragma('table_info(weapons)').map(c => c.name);
+  if (!weaponCols.includes('amp_module')) {
+    db.exec('ALTER TABLE weapons ADD COLUMN amp_module INTEGER');
+  }
+  const gunConfigCols = db.pragma('table_info(gun_configs)').map(c => c.name);
+  if (!gunConfigCols.includes('amplified')) {
+    db.exec('ALTER TABLE gun_configs ADD COLUMN amplified INTEGER NOT NULL DEFAULT 0');
+  }
+
   const ampCols = db.pragma('table_info(amplification_components)').map(c => c.name);
   if (!ampCols.includes('weight')) {
     db.exec('ALTER TABLE amplification_components ADD COLUMN weight REAL');
@@ -864,5 +958,6 @@ seedWeaponMods();
 seedWeapons();
 migrateToWeaponCatalog();
 seedWeaponPrices();
+seedWeaponAmplifications();
 
 module.exports = db;

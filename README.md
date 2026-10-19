@@ -73,6 +73,7 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 - **Unpriced-item warning** — a build whose weapon or mods still have no price is flagged, so a total is never quietly understated
 - **Quantity steppers** — +/– controls or direct entry for how many of a build you hold
 - **Craftable vs. loot-only** — loot-only mods are marked ◆ throughout, since they can't be produced at the Gunsmith
+- **Amplified builds (Level 5)** — the 15 weapons that can be amplified (Hairpin, Kettle, Rattler, Burletta, Il Toro, Anvil, Canto, Osprey, Rascal, Renegade, Bettina, Hullcracker, Aphelion, Equalizer, Jupiter) can be marked Amplified and given any of their 44 amplification options, seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Amplified_Weapons) with effects, research and material cost. The editor and API enforce the game's rules: options that require another, options that conflict with each other, and options that rule out a magazine or stock mod. Each build shows its per-gun cost (the matching Amplification Module Mk. plus materials). The wiki doesn't price Level 5 weapons, so the value is entered by hand
 
 > **Note on prices:** the wiki's *index* pages carry no prices — only the individual weapon and mod pages do, so values are seeded from those. Two gaps are left deliberately blank rather than guessed: **Canto** (its page states it has upgrade tiers but shows a single untiered figure, and every weapon's price ladder differs, so the tiers can't be inferred) and **Extended Medium Mag I** (no coin value anywhere on its page). Both are entered by hand; unpriced items count as zero and are flagged in the UI.
 >
@@ -212,11 +213,11 @@ arc-tracker/
 | POST | `/api/workshop/materials/tracking` | Upsert a workshop material count for a character |
 | GET | `/api/weapon-mods` | Gun mod catalog with slot metadata and seeded prices |
 | PUT | `/api/weapon-mods/:id` | Override a mod's sell value |
-| GET | `/api/weapons` | Weapon catalog (all 24, incl. Gunsmith-unlocked) with class metadata |
+| GET | `/api/weapons` | Weapon catalog (all 24, incl. Gunsmith-unlocked) with class metadata and each weapon's amplification options |
 | GET | `/api/weapon-prices` | Seeded weapon sale prices by weapon and tier |
 | GET | `/api/gun-configs/:characterId` | Gun builds for a character, with derived value totals |
-| POST | `/api/gun-configs` | Create a build (validates weapon, tier 1–4, one mod per slot) |
-| PUT | `/api/gun-configs/:id` | Update a build; omitting `mod_ids` leaves mods untouched, `[]` strips them |
+| POST | `/api/gun-configs` | Create a build (validates weapon, tier 1–4, one mod per slot, and `amplified` + `amplification_ids` against the weapon's amplification rules) |
+| PUT | `/api/gun-configs/:id` | Update a build; omitting `mod_ids` leaves mods untouched, `[]` strips them. Changing to a weapon that can't be amplified drops its amplification |
 | PATCH | `/api/gun-configs/:id/quantity` | Adjust quantity by `delta` or set it outright |
 | DELETE | `/api/gun-configs/:id` | Delete a build and its mods |
 | GET | `/api/reports/gun-configs` | Builds per character with counts, values, and weapon/mod breakdowns |
@@ -280,6 +281,7 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 ## Changelog
 
 ### Unreleased
+- **Amplified loadouts** — Loadouts builds can be amplified to Level 5 on the 15 weapons that support it, with the weapon's amplification options (44 in all, from arcraiders.wiki) picked in the build editor. Requirements and conflicts are enforced in the editor and the API, including options that block the magazine or stock mod slot. Cards show an Amplified badge, the chosen options and the per-gun module and material cost; the Loadouts report adds an Amplified guns tile, the options on each build and an amplification-usage breakdown. New `weapon_amplifications` and `gun_config_amplifications` tables plus `weapons.amp_module` and `gun_configs.amplified` columns are added on startup
 - **Bully Fragmenter on ARC Parts** — added as an Epic ARC part (5,000; from the Bully and ARC Courier). It's also a Research Station level 3 requirement, which now shares the ARC Parts count. Existing databases that tracked it as a Workshop material have those counts moved to ARC Parts on startup
 - **Workshop: Research Station and Gunsmith level 4** — the Frozen Trail Research Station (levels 1–4) and Gunsmith level 4 (3× Radial Press, 3× Magnetic Accelerator, 1× Emperor Modulator; requires the Outpost) are added with their material requirements and icons. Levels can now carry a note such as "Requires the Outpost", and the progress API checks each station's own max level instead of a fixed 3. Existing databases pick these up on startup
 - **Icon retries** — items that got a placeholder icon are now retried on every startup instead of keeping the placeholder forever; the placeholder is removed once a real icon downloads. Previously an item whose image appeared later (e.g. Propellant Valve Assembly) kept its placeholder until a forced re-download

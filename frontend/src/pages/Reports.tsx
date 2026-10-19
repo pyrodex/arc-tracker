@@ -861,7 +861,7 @@ function LoadingState() {
 
 // ── Loadouts ───────────────────────────────────────────────────────────────────
 
-const ROMAN = ['', 'I', 'II', 'III', 'IV'];
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 
 function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
   const { data, isLoading } = useGunConfigsReport();
@@ -885,17 +885,21 @@ function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
       config_count: acc.config_count + r.config_count,
       total_guns: acc.total_guns + r.total_guns,
       total_value: acc.total_value + r.total_value,
+      amplified_guns: acc.amplified_guns
+        + r.configs.filter(c => c.amplified).reduce((s, c) => s + c.quantity, 0),
     }),
-    { config_count: 0, total_guns: 0, total_value: 0 },
+    { config_count: 0, total_guns: 0, total_value: 0, amplified_guns: 0 },
   );
+  const ampMax = Math.max(...data.amplifications.map(a => a.gun_count), 1);
 
   return (
     <div className="space-y-6">
       {/* Summary tiles */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Builds', value: totals.config_count },
           { label: 'Guns held', value: totals.total_guns },
+          { label: 'Amplified guns', value: totals.amplified_guns },
           { label: 'Total value', value: totals.total_value, accent: true },
         ].map(({ label, value, accent }) => (
           <div key={label} className="card p-4">
@@ -945,7 +949,11 @@ function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm text-arc-text">
                           {cfg.weapon_name}
-                          {cfg.tier != null && (
+                          {cfg.amplified ? (
+                            <span className="ml-1.5 text-[10px] font-bold text-amber-400">
+                              {cfg.tier != null ? 'V' : 'Lv 5'} · Amplified
+                            </span>
+                          ) : cfg.tier != null && (
                             <span className="ml-1.5 text-[10px] font-bold text-arc-accent">
                               {ROMAN[cfg.tier] ?? cfg.tier}
                             </span>
@@ -957,6 +965,11 @@ function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
                             ? 'No mods'
                             : cfg.mods.map(m => m.name).join(', ')}
                         </p>
+                        {cfg.amplified && cfg.amplifications.length > 0 && (
+                          <p className="text-xs text-amber-400/80 mt-0.5">
+                            ⚡ {cfg.amplifications.map(a => a.name).join(', ')}
+                          </p>
+                        )}
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-xs text-arc-muted tabular-nums">
@@ -991,6 +1004,35 @@ function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
                   {w.config_count} build{w.config_count === 1 ? '' : 's'}
                 </span>
                 <span className="text-arc-text tabular-nums w-12 text-right">{w.total_guns}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {selectedCharId === null && data.amplifications.length > 0 && (
+        <div className="card p-4">
+          <h3 className="text-sm font-semibold text-arc-text mb-1">Amplification usage</h3>
+          <p className="text-xs text-arc-dim mb-3">
+            Amplified guns carrying each option, counting how many of every build you hold.
+          </p>
+          <div className="space-y-1.5">
+            {data.amplifications.map(a => (
+              <div key={a.amplification_id} className="flex items-center gap-3 text-sm">
+                <span className="text-arc-muted flex-1 min-w-0 truncate" title={`${a.weapon_name} · ${a.amplification_name}`}>
+                  {a.amplification_name}
+                  <span className="text-arc-dim text-xs ml-1.5">{a.weapon_name}</span>
+                </span>
+                <span className="hidden sm:block w-24 h-1.5 bg-arc-border rounded-full overflow-hidden shrink-0">
+                  <span
+                    className="block h-full bg-amber-400/70 rounded-full"
+                    style={{ width: `${(a.gun_count / ampMax) * 100}%` }}
+                  />
+                </span>
+                <span className="text-xs text-arc-dim tabular-nums w-16 text-right shrink-0">
+                  {a.build_count} build{a.build_count === 1 ? '' : 's'}
+                </span>
+                <span className="text-arc-text tabular-nums w-10 text-right shrink-0">{a.gun_count}</span>
               </div>
             ))}
           </div>

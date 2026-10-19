@@ -1067,6 +1067,73 @@ const { MOD_SLOTS } = require('./weapon-mods');
 const { WEAPON_CLASSES } = require('./weapons');
 const VALID_SLOTS = new Set(MOD_SLOTS.map(s => s.slot));
 
+// ── Weapon amplification ──────────────────────────────────────────────────────
+const { MOD_SLOT_CONFLICTS } = require('./weapon-amplifications');
+
+function parseAmplification(row) {
+  return {
+    id: row.id,
+    weapon_id: row.weapon_id,
+    name: row.name,
+    description: row.description,
+    effects: JSON.parse(row.effects || '[]'),
+    research: row.research,
+    materials: JSON.parse(row.materials || '[]'),
+    requires: JSON.parse(row.requires || '[]'),
+    conflicts: JSON.parse(row.conflicts || '[]'),
+  };
+}
+
+const ROMAN_MK = ['', 'I', 'II', 'III', 'IV', 'V'];
+
+/**
+ * Validates an amplified build. Returns { error } or { amplified, tier, rows }.
+ *   - only weapons with an amp_module can be amplified;
+ *   - an amplified tiered weapon is stored at tier IV (Level 5 comes after IV);
+ *   - every option must belong to the weapon and appear once;
+ *   - an option's `requires` must all be selected;
+ *   - no two selected options may conflict (either side listing the other);
+ *   - an option that conflicts with 'Magazine Mod' / 'Stock Mod' can't be
+ *     combined with a mod in that slot.
+ */
+function resolveAmplifications({ weapon, amplified, ampIds, modSlots, tier }) {
+  if (!amplified) {
+    if (ampIds.length) return { error: 'amplifications require the build to be amplified' };
+    return { amplified: 0, tier, rows: [] };
+  }
+  if (!weapon.amp_module) return { error: `${weapon.name} can't be amplified` };
+
+  const options = db.prepare('SELECT * FROM weapon_amplifications WHERE weapon_id = ?')
+    .all(weapon.id).map(parseAmplification);
+  const byId = new Map(options.map(o => [o.id, o]));
+
+  const chosen = [];
+  for (const rawId of ampIds) {
+    if (!Number.isInteger(rawId)) return { error: 'amplification_ids must contain integers' };
+    const opt = byId.get(rawId);
+    if (!opt) return { error: `amplification ${rawId} is not available on ${weapon.name}` };
+    if (chosen.includes(opt)) return { error: `${opt.name} is listed twice` };
+    chosen.push(opt);
+  }
+
+  const names = new Set(chosen.map(o => o.name));
+  for (const opt of chosen) {
+    const missing = opt.requires.filter(r => !names.has(r));
+    if (missing.length) return { error: `${opt.name} requires ${missing.join(', ')}` };
+    for (const other of chosen) {
+      if (other !== opt && (opt.conflicts.includes(other.name) || other.conflicts.includes(opt.name))) {
+        return { error: `${opt.name} can't be combined with ${other.name}` };
+      }
+    }
+    for (const c of opt.conflicts) {
+      const slot = MOD_SLOT_CONFLICTS[c];
+      if (slot && modSlots.has(slot)) return { error: `${opt.name} can't be combined with a ${slot} mod` };
+    }
+  }
+
+  return { amplified: 1, tier: weapon.tiered ? 4 : tier, rows: chosen.map(o => o.id) };
+}
+
 // Mod catalog. Craftable mods carry their blueprint id so the UI can link a mod
 // back to the blueprint page; loot-only mods have blueprint_id = null.
 app.get('/api/weapon-mods', (req, res) => {
@@ -1103,7 +1170,7 @@ function loadConfig(id) {
   const config = db.prepare(`
     SELECT gc.*, w.name as weapon_name, w.slug as weapon_slug,
            w.class as weapon_class, w.rarity as weapon_rarity,
-           w.gunsmith_level, w.tiered, w.blueprint_id
+           w.gunsmith_level, w.tiered, w.blueprint_id, w.amp_module
     FROM gun_configs gc
     JOIN weapons w ON w.id = gc.weapon_id
     WHERE gc.id = ?
@@ -1121,16 +1188,42 @@ function loadConfig(id) {
   const modsValue = mods.reduce((sum, m) => sum + (m.sell_value || 0), 0);
   const unitValue = (config.weapon_value || 0) + modsValue;
 
+  const amplifications = db.prepare(`
+    SELECT wa.*
+    FROM gun_config_amplifications gca
+    JOIN weapon_amplifications wa ON wa.id = gca.amplification_id
+    WHERE gca.config_id = ?
+    ORDER BY wa.sort_order
+  `).all(id).map(parseAmplification);
+
+  // What amplifying one of these guns costs: the module, then each active
+  // option's materials, summed by item.
+  let amplificationCost = null;
+  if (config.amplified && config.amp_module) {
+    const totals = new Map();
+    for (const amp of amplifications) {
+      for (const m of amp.materials) totals.set(m.name, (totals.get(m.name) ?? 0) + m.qty);
+    }
+    amplificationCost = {
+      module: `Amplification Module Mk. ${ROMAN_MK[config.amp_module]}`,
+      materials: [...totals].map(([name, qty]) => ({ name, qty })),
+      research: [...new Set(amplifications.map(a => a.research).filter(Boolean))],
+    };
+  }
+
   return {
     ...config,
     mods,
+    amplifications,
+    amplification_cost: amplificationCost,
     mods_value: modsValue,
     unit_value: unitValue,
     total_value: unitValue * (config.quantity || 0),
     // What the wiki says this weapon sells for at this tier, so the UI can
     // show when a build's stored value has been overridden. null when the
-    // wiki has no figure (Canto).
-    catalog_weapon_value: seededWeaponValue(config.weapon_id, config.tier),
+    // wiki has no figure (Canto), and for amplified (Level 5) builds, which the
+    // wiki doesn't price.
+    catalog_weapon_value: config.amplified ? null : seededWeaponValue(config.weapon_id, config.tier),
   };
 }
 
@@ -1172,7 +1265,11 @@ app.get('/api/weapons', (req, res) => {
     ORDER BY w.sort_order, w.name COLLATE NOCASE
   `).all();
 
-  res.json({ classes: WEAPON_CLASSES, weapons });
+  const amplifications = db.prepare(
+    'SELECT * FROM weapon_amplifications ORDER BY weapon_id, sort_order'
+  ).all().map(parseAmplification);
+
+  res.json({ classes: WEAPON_CLASSES, weapons, amplifications });
 });
 
 // Seeded weapon prices, keyed for the UI as { [weaponId]: { [tier]: value } }
@@ -1207,6 +1304,12 @@ function validateWeapon(weaponId) {
   return weapon ? null : 'weapon_id must reference a weapon';
 }
 
+function parseAmplifiedFlag(value) {
+  if (value === undefined) return { value: undefined };
+  if (typeof value === 'boolean' || value === 0 || value === 1) return { value: value ? 1 : 0 };
+  return { error: 'amplified must be boolean or 0/1' };
+}
+
 /**
  * Builds sort by weapon name, then by unit value high to low — so every build
  * of a weapon sits together, best build first.
@@ -1237,7 +1340,7 @@ app.get('/api/gun-configs/:characterId', (req, res) => {
 });
 
 app.post('/api/gun-configs', (req, res) => {
-  const { character_id, weapon_id, name, tier, quantity, weapon_value, notes, mod_ids } = req.body;
+  const { character_id, weapon_id, name, tier, quantity, weapon_value, notes, mod_ids, amplification_ids } = req.body;
 
   if (!Number.isInteger(character_id) || !Number.isInteger(weapon_id)) {
     return res.status(400).json({ error: 'character_id and weapon_id must be integers' });
@@ -1256,30 +1359,49 @@ app.post('/api/gun-configs', (req, res) => {
   const { rows: modRows, error: modError } = resolveMods(mod_ids);
   if (modError) return res.status(400).json({ error: modError });
 
+  const amplifiedFlag = parseAmplifiedFlag(req.body.amplified);
+  if (amplifiedFlag.error) return res.status(400).json({ error: amplifiedFlag.error });
+  if (amplification_ids !== undefined && !Array.isArray(amplification_ids)) {
+    return res.status(400).json({ error: 'amplification_ids must be an array' });
+  }
+  const weapon = db.prepare('SELECT id, name, tiered, amp_module FROM weapons WHERE id = ?').get(weapon_id);
+  const amp = resolveAmplifications({
+    weapon,
+    amplified: amplifiedFlag.value ?? 0,
+    ampIds: amplification_ids ?? [],
+    modSlots: new Set((modRows ?? []).map(r => r.slot)),
+    tier: tier ?? null,
+  });
+  if (amp.error) return res.status(400).json({ error: amp.error });
+
   // Omitting weapon_value falls back to the seeded price for this weapon and
   // tier; passing one (including 0) is an explicit override and is kept as-is.
+  // Amplified builds have no wiki price, so they start at 0 (flagged in the UI).
   const resolvedWeaponValue = weapon_value !== undefined
     ? weapon_value
-    : (seededWeaponValue(weapon_id, tier) ?? 0);
+    : (amp.amplified ? 0 : (seededWeaponValue(weapon_id, tier) ?? 0));
 
   const insertConfig = db.prepare(`
-    INSERT INTO gun_configs (character_id, weapon_id, name, tier, quantity, weapon_value, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO gun_configs (character_id, weapon_id, name, tier, quantity, weapon_value, notes, amplified)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertMod = db.prepare('INSERT INTO gun_config_mods (config_id, mod_id, slot) VALUES (?, ?, ?)');
+  const insertAmp = db.prepare('INSERT INTO gun_config_amplifications (config_id, amplification_id) VALUES (?, ?)');
 
   const create = db.transaction(() => {
     const result = insertConfig.run(
       character_id,
       weapon_id,
       name ? String(name).trim().slice(0, 64) : null,
-      tier ?? null,
+      amp.tier ?? null,
       Math.min(Math.max(0, quantity ?? 0), 9999),
       Math.min(Math.max(0, resolvedWeaponValue), 9_999_999),
       notes ? String(notes).trim().slice(0, 512) : null,
+      amp.amplified,
     );
     const configId = result.lastInsertRowid;
     for (const row of modRows ?? []) insertMod.run(configId, row.mod_id, row.slot);
+    for (const ampId of amp.rows) insertAmp.run(configId, ampId);
     return configId;
   });
 
@@ -1293,7 +1415,7 @@ app.put('/api/gun-configs/:id', (req, res) => {
   const current = db.prepare('SELECT * FROM gun_configs WHERE id = ?').get(id);
   if (!current) return res.status(404).json({ error: 'gun config not found' });
 
-  const { weapon_id, name, tier, quantity, weapon_value, notes, mod_ids } = req.body;
+  const { weapon_id, name, tier, quantity, weapon_value, notes, mod_ids, amplification_ids } = req.body;
 
   if (weapon_id !== undefined) {
     if (!Number.isInteger(weapon_id)) {
@@ -1309,25 +1431,62 @@ app.put('/api/gun-configs/:id', (req, res) => {
   const { rows: modRows, error: modError } = resolveMods(mod_ids);
   if (modError) return res.status(400).json({ error: modError });
 
+  const amplifiedFlag = parseAmplifiedFlag(req.body.amplified);
+  if (amplifiedFlag.error) return res.status(400).json({ error: amplifiedFlag.error });
+  if (amplification_ids !== undefined && !Array.isArray(amplification_ids)) {
+    return res.status(400).json({ error: 'amplification_ids must be an array' });
+  }
+
+  // Work out the build as it will be after this update, then validate it as a
+  // whole. Switching weapons drops amplifications from the old weapon, and
+  // turning amplification off drops them too, unless new ones are given.
+  const nextWeaponId = weapon_id ?? current.weapon_id;
+  const weaponChanged = nextWeaponId !== current.weapon_id;
+  const weapon = db.prepare('SELECT id, name, tiered, amp_module FROM weapons WHERE id = ?').get(nextWeaponId);
+  const nextAmplified = amplifiedFlag.value !== undefined
+    ? amplifiedFlag.value
+    : (weaponChanged && !weapon.amp_module ? 0 : current.amplified);
+  const currentAmpIds = db.prepare('SELECT amplification_id FROM gun_config_amplifications WHERE config_id = ?')
+    .all(id).map(r => r.amplification_id);
+  const nextAmpIds = amplification_ids !== undefined
+    ? amplification_ids
+    : (weaponChanged || !nextAmplified ? [] : currentAmpIds);
+  const nextModSlots = modRows !== null
+    ? new Set(modRows.map(r => r.slot))
+    : new Set(db.prepare('SELECT slot FROM gun_config_mods WHERE config_id = ?').all(id).map(r => r.slot));
+  const amp = resolveAmplifications({
+    weapon,
+    amplified: nextAmplified,
+    ampIds: nextAmpIds,
+    modSlots: nextModSlots,
+    tier: tier !== undefined ? (tier ?? null) : current.tier,
+  });
+  if (amp.error) return res.status(400).json({ error: amp.error });
+
   const updateConfig = db.prepare(`
     UPDATE gun_configs SET
-      weapon_id = ?, name = ?, tier = ?, quantity = ?, weapon_value = ?, notes = ?,
+      weapon_id = ?, name = ?, tier = ?, quantity = ?, weapon_value = ?, notes = ?, amplified = ?,
       updated_at = datetime('now')
     WHERE id = ?
   `);
   const clearMods = db.prepare('DELETE FROM gun_config_mods WHERE config_id = ?');
   const insertMod = db.prepare('INSERT INTO gun_config_mods (config_id, mod_id, slot) VALUES (?, ?, ?)');
+  const clearAmps = db.prepare('DELETE FROM gun_config_amplifications WHERE config_id = ?');
+  const insertAmp = db.prepare('INSERT INTO gun_config_amplifications (config_id, amplification_id) VALUES (?, ?)');
 
   const update = db.transaction(() => {
     updateConfig.run(
       weapon_id ?? current.weapon_id,
       name !== undefined ? (name ? String(name).trim().slice(0, 64) : null) : current.name,
-      tier !== undefined ? (tier ?? null) : current.tier,
+      amp.tier,
       quantity !== undefined ? Math.min(Math.max(0, quantity), 9999) : current.quantity,
       weapon_value !== undefined ? Math.min(Math.max(0, weapon_value), 9_999_999) : current.weapon_value,
       notes !== undefined ? (notes ? String(notes).trim().slice(0, 512) : null) : current.notes,
+      amp.amplified,
       id,
     );
+    clearAmps.run(id);
+    for (const ampId of amp.rows) insertAmp.run(id, ampId);
     // mod_ids omitted means "leave the mods alone"; an empty array strips them.
     if (modRows !== null) {
       clearMods.run(id);
@@ -1434,15 +1593,36 @@ app.get('/api/reports/gun-configs', (req, res) => {
     ORDER BY gun_count DESC, build_count DESC, wm.name COLLATE NOCASE
   `).all();
 
+  // Which amplifications are active, weighted by guns held like mod usage.
+  const amplificationUsage = db.prepare(`
+    SELECT
+      wa.id as amplification_id, wa.name as amplification_name,
+      w.id as weapon_id, w.name as weapon_name,
+      COUNT(gca.config_id)              as build_count,
+      COALESCE(SUM(gc.quantity), 0)     as gun_count
+    FROM gun_config_amplifications gca
+    JOIN weapon_amplifications wa ON wa.id = gca.amplification_id
+    JOIN weapons w                ON w.id = wa.weapon_id
+    JOIN gun_configs gc           ON gc.id = gca.config_id
+    GROUP BY wa.id
+    ORDER BY gun_count DESC, build_count DESC, w.name COLLATE NOCASE, wa.sort_order
+  `).all();
+
+  const allConfigs = rows.flatMap(r => r.configs);
+  const amplifiedConfigs = allConfigs.filter(c => c.amplified);
+
   res.json({
     characters: rows,
     weapons: weaponBreakdown,
     mods: modUsage,
+    amplifications: amplificationUsage,
     slots: MOD_SLOTS,
     totals: {
       config_count: rows.reduce((s, r) => s + r.config_count, 0),
       total_guns: rows.reduce((s, r) => s + r.total_guns, 0),
       total_value: rows.reduce((s, r) => s + r.total_value, 0),
+      amplified_builds: amplifiedConfigs.length,
+      amplified_guns: amplifiedConfigs.reduce((s, c) => s + (c.quantity || 0), 0),
     },
   });
 });
