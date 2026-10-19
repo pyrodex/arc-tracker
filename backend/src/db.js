@@ -454,6 +454,62 @@ function seedAmplification() {
   if (after > before) console.log(`Seeded ${after - before} new amplification component(s) (total: ${after})`);
 }
 
+/**
+ * A workshop material that later becomes an ARC part (e.g. Bully Fragmenter)
+ * would otherwise exist twice: the old material row plus a new arc_part
+ * requirement from seedWorkshop. Move it over before seeding the workshop:
+ * carry each character's material count into the ARC part count, repoint the
+ * requirement at the ARC part, and drop the material. Idempotent: once moved,
+ * there's no material row left to match.
+ */
+function migrateWorkshopMaterialsToArcParts() {
+  const overlaps = db.prepare(`
+    SELECT wm.id AS material_id, ap.id AS part_id, wm.name
+    FROM workshop_materials wm
+    JOIN arc_parts ap ON ap.name = wm.name
+  `).all();
+  if (!overlaps.length) return;
+
+  const moveCounts = db.prepare(`
+    INSERT INTO arc_parts_tracking (character_id, part_id, count, updated_at)
+    SELECT character_id, @part_id, count, updated_at
+    FROM workshop_material_tracking
+    WHERE material_id = @material_id AND count > 0
+    ON CONFLICT(character_id, part_id) DO UPDATE SET
+      count      = MAX(arc_parts_tracking.count, excluded.count),
+      updated_at = MAX(arc_parts_tracking.updated_at, excluded.updated_at)
+  `);
+  // If seeding already added the arc_part requirement, the material one is a
+  // duplicate; otherwise repoint it.
+  const dropDuplicateReqs = db.prepare(`
+    DELETE FROM workshop_requirements
+    WHERE item_type = 'material' AND item_id = @material_id
+      AND EXISTS (
+        SELECT 1 FROM workshop_requirements r2
+        WHERE r2.station_id = workshop_requirements.station_id
+          AND r2.level = workshop_requirements.level
+          AND r2.item_type = 'arc_part' AND r2.item_id = @part_id
+      )
+  `);
+  const repointReqs = db.prepare(`
+    UPDATE workshop_requirements SET item_type = 'arc_part', item_id = @part_id
+    WHERE item_type = 'material' AND item_id = @material_id
+  `);
+  const dropTracking = db.prepare('DELETE FROM workshop_material_tracking WHERE material_id = @material_id');
+  const dropMaterial = db.prepare('DELETE FROM workshop_materials WHERE id = @material_id');
+
+  db.transaction(() => {
+    for (const row of overlaps) {
+      moveCounts.run(row);
+      dropDuplicateReqs.run(row);
+      repointReqs.run(row);
+      dropTracking.run(row);
+      dropMaterial.run(row);
+      console.log(`Moved workshop material "${row.name}" to ARC parts`);
+    }
+  })();
+}
+
 function seedWorkshop() {
   const insertStation = db.prepare(`
     INSERT OR IGNORE INTO workshop_stations (name, slug, sort_order)
@@ -800,6 +856,7 @@ seedBlueprints();
 seedStencils();
 seedAmplification();
 seedArcParts();
+migrateWorkshopMaterialsToArcParts();
 seedWorkshop();
 seedWeaponMods();
 // Order matters: the catalog must exist before builds can be pointed at it,
