@@ -16,6 +16,9 @@ const ARC_PARTS = [
   { name: 'Vaporizer Regulator', rarity: 'epic', source: 'Vaporizer',   sell_value: 6000, sort_order: 150 },
   { name: 'Turbine Compressor',  rarity: 'epic', source: 'Turbine',     sell_value: 5000, sort_order: 160 },
   { name: 'Assessor Matrix',     rarity: 'epic', source: 'Assessor',    sell_value: 5000, sort_order: 170 },
+  // Frozen Trail. Also a Research Station level 3 requirement (6x), which
+  // shares this count.
+  { name: 'Bully Fragmenter',    rarity: 'epic', source: 'Bully, ARC Courier', sell_value: 5000, sort_order: 180 },
 ];
 
 module.exports = ARC_PARTS;
