@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Minus, Plus, Pencil, Trash2, AlertCircle, Copy } from 'lucide-react';
+import { Minus, Plus, Pencil, Trash2, AlertCircle, Copy, Zap } from 'lucide-react';
 import type { GunConfig, ModSlotMeta } from '../types';
 
-const ROMAN = ['', 'I', 'II', 'III', 'IV'];
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 
 interface Props {
   config: GunConfig;
@@ -43,7 +43,14 @@ export default function GunConfigCard({
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-semibold text-arc-text truncate">{config.weapon_name}</h3>
-            {config.tier != null && (
+            {config.amplified ? (
+              <span
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 tabular-nums"
+                title="Amplified — Level 5"
+              >
+                <Zap className="w-2.5 h-2.5" /> {config.tier != null ? 'V' : 'Lv 5'} · Amplified
+              </span>
+            ) : config.tier != null && (
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-arc-accent/15 text-arc-accent border border-arc-accent/25 tabular-nums">
                 {ROMAN[config.tier] ?? config.tier}
               </span>
@@ -89,6 +96,33 @@ export default function GunConfigCard({
               </span>
             );
           })}
+        </div>
+      )}
+
+      {/* Amplifications */}
+      {config.amplified && (
+        <div className="space-y-1.5">
+          {config.amplifications.length === 0 ? (
+            <p className="text-xs text-arc-dim italic">Amplified — no options picked yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {config.amplifications.map(a => (
+                <span
+                  key={a.id}
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/30 text-sm text-amber-200 leading-none"
+                  title={a.effects.join(' · ') || a.description || undefined}
+                >
+                  <Zap className="w-3 h-3 text-amber-400" /> {a.name}
+                </span>
+              ))}
+            </div>
+          )}
+          {config.amplification_cost && (
+            <p className="text-[11px] text-arc-dim">
+              Cost per gun: {config.amplification_cost.module}
+              {config.amplification_cost.materials.map(m => ` + ${m.qty}× ${m.name}`).join('')}
+            </p>
+          )}
         </div>
       )}
 
