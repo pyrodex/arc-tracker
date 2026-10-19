@@ -29,18 +29,19 @@ export default function Modal({ open, onClose, title, children, width = 'max-w-l
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
         ref={dialogRef}
-        className={`relative z-10 w-full ${width} card shadow-2xl animate-fade-in`}
+        className={`relative z-10 w-full ${width} max-h-[calc(100dvh-2rem)] flex flex-col card shadow-2xl animate-fade-in`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
       >
-        <div className="flex items-center justify-between p-5 border-b border-arc-border">
+        <div className="flex items-center justify-between p-5 border-b border-arc-border shrink-0">
           <h2 id="modal-title" className="text-base font-semibold text-arc-text">{title}</h2>
           <button onClick={onClose} className="btn-ghost p-1.5 -mr-1.5">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-5">{children}</div>
+        {/* The body scrolls so tall forms keep their actions reachable. */}
+        <div className="p-5 overflow-y-auto min-h-0">{children}</div>
       </div>
     </div>
   );

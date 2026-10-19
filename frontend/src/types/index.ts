@@ -431,12 +431,32 @@ export interface Weapon {
   /** null for the seven weapons unlocked by the Gunsmith with no blueprint. */
   blueprint_id: number | null;
   blueprint_slug: string | null;
+  /** Amplification Module Mk. (1–5) needed to amplify; null if it can't be. */
+  amp_module: number | null;
   sort_order: number;
+}
+
+/** One amplification option for a weapon (Level 5). */
+export interface WeaponAmplification {
+  id: number;
+  weapon_id: number;
+  name: string;
+  description: string | null;
+  effects: string[];
+  /** Amplified Research that unlocks it; null when none is listed. */
+  research: string | null;
+  /** Activation cost; names match the Amplification / ARC Parts catalogs. */
+  materials: Array<{ name: string; qty: number }>;
+  /** Options that must already be active on the weapon. */
+  requires: string[];
+  /** Options it can't be combined with; 'Magazine Mod' / 'Stock Mod' block a mod slot. */
+  conflicts: string[];
 }
 
 export interface WeaponCatalog {
   classes: WeaponClass[];
   weapons: Weapon[];
+  amplifications: WeaponAmplification[];
 }
 
 export interface GunConfig {
@@ -459,6 +479,16 @@ export interface GunConfig {
   /** The weapon's blueprint, if it has one. Null for Gunsmith-unlocked guns. */
   blueprint_id: number | null;
   mods: ConfigMod[];
+  /** 1 once amplified to Level 5. Tiered weapons are then stored at tier IV. */
+  amplified: 0 | 1;
+  amp_module: number | null;
+  amplifications: WeaponAmplification[];
+  /** Per-gun cost of the amplification; null unless amplified. */
+  amplification_cost: {
+    module: string;
+    materials: Array<{ name: string; qty: number }>;
+    research: string[];
+  } | null;
   /** Derived server-side: sum of attached mod prices. */
   mods_value: number;
   /** Derived server-side: weapon_value + mods_value. */
@@ -489,6 +519,8 @@ export type CreateGunConfigPayload = {
   weapon_value?: number;
   notes?: string | null;
   mod_ids?: number[];
+  amplified?: boolean;
+  amplification_ids?: number[];
 };
 
 /** Omitting mod_ids leaves the attached mods untouched; [] strips them. */
@@ -533,12 +565,24 @@ export interface GunConfigsReport {
   characters: GunConfigCharacterReport[];
   weapons: GunConfigWeaponReport[];
   mods: GunConfigModUsage[];
+  amplifications: GunConfigAmplificationUsage[];
   slots: ModSlotMeta[];
   totals: {
     config_count: number;
     total_guns: number;
     total_value: number;
+    amplified_builds: number;
+    amplified_guns: number;
   };
+}
+
+export interface GunConfigAmplificationUsage {
+  amplification_id: number;
+  amplification_name: string;
+  weapon_id: number;
+  weapon_name: string;
+  build_count: number;
+  gun_count: number;
 }
 
 // ── Activity ───────────────────────────────────────────────────────────────────

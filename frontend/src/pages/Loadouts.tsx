@@ -16,7 +16,7 @@ import {
 } from '../hooks/useApi';
 import LastUpdated from '../components/LastUpdated';
 import GunConfigCard from '../components/GunConfigCard';
-import GunConfigEditor from '../components/GunConfigEditor';
+import GunConfigEditor, { type GunConfigSavePayload } from '../components/GunConfigEditor';
 
 export default function Loadouts() {
   const { data: characters = [] } = useCharacters();
@@ -83,15 +83,7 @@ export default function Loadouts() {
     setCopying(null);
   };
 
-  const handleSave = (payload: {
-    weapon_id: number;
-    name: string | null;
-    tier: number | null;
-    weapon_value: number;
-    quantity: number;
-    notes: string | null;
-    mod_ids: number[];
-  }) => {
+  const handleSave = (payload: GunConfigSavePayload) => {
     setSaveError(null);
     const onError = (err: Error) => setSaveError(err.message);
     const onSuccess = () => closeEditor();
