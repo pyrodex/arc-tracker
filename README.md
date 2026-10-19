@@ -18,9 +18,9 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 - **Stencil icons** — downloaded from arcraiders.wiki; stencils without their own icon yet use the wiki's generic stencil icon (re-download icons to pick up new ones)
 
 ### ARC Parts Tracking *(new in v1.1.0)*
-- **9 Epic & Legendary ARC parts** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/ARC): Queen Reactor, Matriarch Reactor, Bastion Cell, Bombardier Cell, Leaper Pulse Unit, Rocketeer Driver, Vaporizer Regulator, Turbine Compressor, and Assessor Matrix
+- **10 Epic & Legendary ARC parts** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/ARC): Queen Reactor, Matriarch Reactor, Bastion Cell, Bombardier Cell, Leaper Pulse Unit, Rocketeer Driver, Vaporizer Regulator, Turbine Compressor, Assessor Matrix, and Bully Fragmenter
 - **Per-character count tracking** — increment or decrement how many of each part a character holds, with click-to-edit direct input
-- **In-game icons** — all 9 part icons downloaded from arcraiders.wiki; rarity-colored fallbacks (amber for Legendary, purple for Epic)
+- **In-game icons** — all 10 part icons downloaded from arcraiders.wiki; rarity-colored fallbacks (amber for Legendary, purple for Epic)
 - **Grouped display** — Legendary parts shown above Epic parts with distinct color coding
 
 ### Amplification Tracking
@@ -59,7 +59,7 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 - **Material stockpile tracking** — track how many of each required material a character currently holds, with +/– controls or direct input
 - **Acquired vs. required progress** — every requirement shows total acquired across *all* characters against the amount needed, turning green once you have enough
 - **Quick "which character has it" reference** — each material lists every character currently holding a nonzero amount, so you know where to pull materials from before upgrading
-- **Shared ARC part counts** — requirements that are also Epic ARC parts (Bastion Cell, Bombardier Cell, Leaper Pulse Unit, Rocketeer Driver) reuse the same count tracked on the ARC Parts page instead of double-counting
+- **Shared ARC part counts** — requirements that are also Epic ARC parts (Bastion Cell, Bombardier Cell, Leaper Pulse Unit, Rocketeer Driver, Bully Fragmenter) reuse the same count tracked on the ARC Parts page instead of double-counting
 - **Search** — filter stations/materials by name
 
 ### Loadouts *(new in v1.4.0)*
@@ -158,7 +158,7 @@ arc-tracker/
 │       ├── blueprints.js      Seed data (91 blueprints)
 │       ├── stencils.js        Seed data (14 weapon stencils)
 │       ├── amplification.js   Seed data (10 amplification modules and materials)
-│       ├── arc-parts.js       Seed data (9 Epic/Legendary ARC parts)
+│       ├── arc-parts.js       Seed data (10 Epic/Legendary ARC parts)
 │       ├── workshop.js        Seed data (7 stations, 3–4 levels each, of material requirements)
 │       ├── weapon-mods.js     Seed data (39 gun mods across 5 slots, incl. loot-only)
 │       ├── weapon-prices.js   Seed data (weapon sale prices per tier)
@@ -280,6 +280,7 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 ## Changelog
 
 ### Unreleased
+- **Bully Fragmenter on ARC Parts** — added as an Epic ARC part (5,000; from the Bully and ARC Courier). It's also a Research Station level 3 requirement, which now shares the ARC Parts count. Existing databases that tracked it as a Workshop material have those counts moved to ARC Parts on startup
 - **Workshop: Research Station and Gunsmith level 4** — the Frozen Trail Research Station (levels 1–4) and Gunsmith level 4 (3× Radial Press, 3× Magnetic Accelerator, 1× Emperor Modulator; requires the Outpost) are added with their material requirements and icons. Levels can now carry a note such as "Requires the Outpost", and the progress API checks each station's own max level instead of a fixed 3. Existing databases pick these up on startup
 - **Icon retries** — items that got a placeholder icon are now retried on every startup instead of keeping the placeholder forever; the placeholder is removed once a real icon downloads. Previously an item whose image appeared later (e.g. Propellant Valve Assembly) kept its placeholder until a forced re-download
 - **Amplification item data** — Propellant Valve Assembly is now Epic, valued at 5,000 and counted in value totals (from RaidersData). Every component shows its weight and stack size. Existing databases gain `weight` and `stack_size` columns on startup

@@ -149,6 +149,7 @@ const NAME_TO_FILE = {
   'Vaporizer Regulator': 'File:Vaporizer Regulator.png',
   'Turbine Compressor':  'File:Turbine Compressor.png',
   'Assessor Matrix':     'File:Assessor Matrix.png',
+  'Bully Fragmenter':    'File:Bully Fragmenter.png',
 
   // ── Workshop materials ──────────────────────────────────────────────────────
   'ARC Alloy':                        'File:ARC Alloy.png',
@@ -200,7 +201,6 @@ const NAME_TO_FILE = {
   'Skulker Targeter':                 'File:Skulker Targeter.png',
   'Differential Microphone':          'File:Differential Microphone.png',
   'Exodus Technical Handbook':        'File:Exodus Technical Handbook.png',
-  'Bully Fragmenter':                 'File:Bully Fragmenter.png',
   'Thermal Shaker':                   'File:Thermal Shaker.png',
   'ARC Data Module':                  'File:ARC Data Module.png',
   'Frigate Inductor':                 'File:Frigate Inductor.png',
