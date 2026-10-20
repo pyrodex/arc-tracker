@@ -1,12 +1,12 @@
 # ARC Tracker
 
-A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplification components across multiple characters in [ARC Raiders](https://arcraiders.com/).
+A self-hosted web tool for tracking blueprints, stencils, ARC parts, amplification components, workshop upgrades and gun builds across multiple characters in [ARC Raiders](https://arcraiders.com/). Works on desktop and phone.
 
 ## Features
 
 ### Blueprint Tracking
 - **91 blueprints** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Blueprints) and [Arc Blueprint Tracker](https://arcblueprinttracker.io/data/blueprints-grid) across 8 categories: Weapons, Mods, Explosives, Medicine, Augments, Utility, Keys, and Crafting
-- **Per-character tracking** — mark each blueprint as Learned/Consumed and track extra copies with +/– controls or direct input
+- **Per-character tracking** — mark each blueprint as Learned/Consumed and track extra copies with +/– controls (hold to repeat) or direct input
 - **Quick learn/unlearn all** — bulk-toggle all visible blueprints for a character in one click
 - **Blueprint icons** — downloaded from arcraiders.wiki on first startup using an explicit name→file mapping; SVG category-icon placeholders generated for any not found
 - **Alphabetical ordering** — all blueprint lists are sorted A→Z regardless of category filter
@@ -15,7 +15,7 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 - **14 weapon stencils** seeded from [Arc Blueprint Tracker](https://arcblueprinttracker.io/data/blueprints-grid) (names, rarity) and [arcraiders.wiki](https://arcraiders.wiki/wiki/Stencils) (compatible weapons), across Legendary, Epic, Rare and Uncommon
 - **Per-character tracking** — stencils are found, then learned and crafted, so they work like blueprints: mark each as learned and track extra copies
 - **Filter by rarity, weapon and status** — or search by stencil or weapon name; each card lists the weapons the stencil fits
-- **Stencil icons** — downloaded from arcraiders.wiki; stencils without their own icon yet use the wiki's generic stencil icon (re-download icons to pick up new ones)
+- **Stencil icons** — from arcraiders.wiki, with [MetaForge](https://metaforge.app/arc-raiders/stencil-tracker)'s images for the six the wiki hasn't uploaded yet (Bulwark, Dragon's Breath, Serac, Empyrean, Fortuna, Sacrifice). The wiki's generic stencil icon is the last resort and is replaced automatically once a real image is available
 
 ### ARC Parts Tracking *(new in v1.1.0)*
 - **10 Epic & Legendary ARC parts** seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/ARC): Queen Reactor, Matriarch Reactor, Bastion Cell, Bombardier Cell, Leaper Pulse Unit, Rocketeer Driver, Vaporizer Regulator, Turbine Compressor, Assessor Matrix, and Bully Fragmenter
@@ -25,7 +25,7 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 
 ### Amplification Tracking
 - **10 amplification components** from the Frozen Trail update, seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Amplified_Weapons): Amplification Modules Mk. I–V (one takes a weapon to Level 5; the Mk. matches the weapon's base rarity, Common → Legendary) and five materials spent on individual amplifications: Fluted Rotor Core, Fossilized Lightning, Pneumatic Actuator, Pressure Regulator and Propellant Valve Assembly
-- **Per-character counts** with click-to-edit input and value totals, grouped into Modules and Materials, with drop sources where the wiki lists them
+- **Per-character counts** with click-to-edit input and value totals, grouped into Modules and Materials, with drop sources where the wiki lists them, and a Held only filter
 - **Item details** — value, rarity, drop source, weight and stack size per component. Propellant Valve Assembly's rarity and value come from [RaidersData](https://raidersdata.com/items/propellant-valve-assembly/), since the wiki has no page for it yet. Drop sources the wiki doesn't give (Fluted Rotor Core, Propellant Valve Assembly) show as unknown rather than guessed
 - **ARC parts not duplicated** — amplifications that cost Queen/Matriarch Reactors, Assessor Matrix or Turbine Compressors use the ARC Parts counts
 - **Icons** downloaded from arcraiders.wiki; Propellant Valve Assembly falls back to its RaidersData/MetaForge image until the wiki has one
@@ -42,14 +42,15 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 
 ### Blueprints Page
 - **Filter by category** — Weapons, Mods, Explosives, Medicine, Augments, Utility, Keys, Crafting, or All
-- **Filter by status** — All, Learned, or Not Learned
+- **Filter by status** — All, Learned, Not Learned, or Has extras
 - **Full-text search** — filter blueprints by name in real time
-- **Character switcher** — switch between characters without leaving the page
+- **Character switcher** — the shared character choice (see [UI & Themes](#ui--themes)); switching here switches every page
 
 ### ARC Parts Page *(new in v1.1.0)*
 - **Filter by rarity** — All, Legendary, or Epic
 - **Full-text search** — filter by part name or source enemy
-- **Character switcher** — per-character counts, switching without leaving the page
+- **Held only** — show just the parts the character holds
+- **Character switcher** — the shared character choice; switching here switches every page
 - **Grouped sections** — Legendary parts at the top, Epic parts below
 
 ### Workshop *(new in v1.3.0)*
@@ -57,7 +58,7 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 - **Per-level requirements** — exact material lists for every level: 1–3 for most stations, 1–4 for the Gunsmith (level 4 requires the Outpost and unlocks Weapon Amplification) and the Research Station
 - **Per-character station levels** — mark each station's current level for a character with one click; completed levels are badged "Built", the next one is badged "Next"
 - **Material stockpile tracking** — track how many of each required material a character currently holds, with +/– controls or direct input
-- **Acquired vs. required progress** — every requirement shows total acquired across *all* characters against the amount needed, turning green once you have enough
+- **Have vs. need** *(v2.0.0)* — every requirement leads with the current character's own count against the amount needed ("need 3 more"), or how many all characters hold between them when pooling would cover it. Each unbuilt level is marked **Ready to build**, **Ready if pooled**, or **Short N items**; built levels don't nag about materials already spent
 - **Quick "which character has it" reference** — each material lists every character currently holding a nonzero amount, so you know where to pull materials from before upgrading
 - **Shared ARC part counts** — requirements that are also Epic ARC parts (Bastion Cell, Bombardier Cell, Leaper Pulse Unit, Rocketeer Driver, Bully Fragmenter) reuse the same count tracked on the ARC Parts page instead of double-counting
 - **Search** — filter stations/materials by name
@@ -71,9 +72,10 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 - **Seeded prices** — mod sale prices and weapon sale prices (per tier) are seeded from the individual item pages on [arcraiders.wiki](https://arcraiders.wiki); picking a weapon and tier auto-fills its value, and any figure can be overridden per build. Entered prices are never overwritten by re-seeding
 - **Value tracking** — a build shows `weapon + mods` as a unit value and `unit × quantity` as a total
 - **Unpriced-item warning** — a build whose weapon or mods still have no price is flagged, so a total is never quietly understated
-- **Quantity steppers** — +/– controls or direct entry for how many of a build you hold
+- **Quantity steppers** — +/– controls (hold to repeat) or direct entry for how many of a build you hold
+- **Undo delete** *(v2.0.0)* — deleting a build shows an Undo button that restores it
 - **Craftable vs. loot-only** — loot-only mods are marked ◆ throughout, since they can't be produced at the Gunsmith
-- **Amplified builds (Level 5)** — the 15 weapons that can be amplified (Hairpin, Kettle, Rattler, Burletta, Il Toro, Anvil, Canto, Osprey, Rascal, Renegade, Bettina, Hullcracker, Aphelion, Equalizer, Jupiter) can be marked Amplified and given any of their 44 amplification options, seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Amplified_Weapons) with effects, research and material cost. The editor and API enforce the game's rules: options that require another, options that conflict with each other, and options that rule out a magazine or stock mod. Each build shows its per-gun cost (the matching Amplification Module Mk. plus materials). The wiki doesn't price Level 5 weapons, so the value is entered by hand
+- **Amplified builds (Level 5)** — the 15 weapons that can be amplified (Hairpin, Kettle, Rattler, Burletta, Il Toro, Anvil, Canto, Osprey, Rascal, Renegade, Bettina, Hullcracker, Aphelion, Equalizer, Jupiter) can be marked Amplified and given any of their 44 amplification options, seeded from [arcraiders.wiki](https://arcraiders.wiki/wiki/Amplified_Weapons) with effects, research and material cost. The editor and API enforce the game's rules: options that require another, options that conflict with each other, and options that rule out a magazine or stock mod. Each build shows its per-gun cost (the matching Amplification Module Mk. plus materials), and the editor shows how many of the module and each material the character holds. The wiki doesn't price Level 5 weapons, so the value is entered by hand
 
 > **Note on prices:** the wiki's *index* pages carry no prices — only the individual weapon and mod pages do, so values are seeded from those. Two gaps are left deliberately blank rather than guessed: **Canto** (its page states it has upgrade tiers but shows a single untiered figure, and every weapon's price ladder differs, so the tiers can't be inferred) and **Extended Medium Mag I** (no coin value anywhere on its page). Both are entered by hand; unpriced items count as zero and are flagged in the UI.
 >
@@ -87,7 +89,7 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 - **Unlearned Stencils** / **Stencil Extras** — the same two views for stencils, with rarity badges
 - **ARC Parts Inventory** *(new in v1.1.0)* — total ARC parts collected per part type; expand to see per-character counts with rarity badges and source enemy info; sorted Legendary-first
 - **Workshop Materials** *(new in v1.3.0)* — total workshop materials collected per material type; expand to see per-character counts
-- **Loadouts** *(new in v1.4.0)* — builds, guns held and total value per character; expand a character to see every build with its mods and value, plus most-built-weapons and mod-usage breakdowns across all characters
+- **Loadouts** *(new in v1.4.0)* — builds, guns held, amplified guns and total value per character; expand a character to see every build with its mods, amplifications and value, plus most-built-weapons, amplification-usage and mod-usage breakdowns across all characters
 
 ### UI & Themes
 - **Dark, Light, and System/Auto** color schemes — toggle between dark (default), light, or follow the OS preference; choice persisted in `localStorage`
@@ -112,7 +114,7 @@ docker compose -f docker-compose.ghcr.yml up -d
 Pin to a specific release:
 
 ```bash
-IMAGE_TAG=v1.2.0 docker compose -f docker-compose.ghcr.yml up -d
+IMAGE_TAG=v2.0.0 docker compose -f docker-compose.ghcr.yml up -d
 ```
 
 Open <http://localhost:3001>
@@ -173,6 +175,7 @@ arc-tracker/
 │       ├── blueprints.js      Seed data (91 blueprints)
 │       ├── stencils.js        Seed data (14 weapon stencils)
 │       ├── amplification.js   Seed data (10 amplification modules and materials)
+│       ├── weapon-amplifications.js  Seed data (44 amplification options for 15 weapons)
 │       ├── arc-parts.js       Seed data (10 Epic/Legendary ARC parts)
 │       ├── workshop.js        Seed data (7 stations, 3–4 levels each, of material requirements)
 │       ├── weapon-mods.js     Seed data (39 gun mods across 5 slots, incl. loot-only)
@@ -180,18 +183,20 @@ arc-tracker/
 │       └── weapons.js        Seed data (24 weapons incl. 7 Gunsmith-unlocked)
 ├── frontend/
 │   └── src/
-│       ├── pages/             Dashboard, Characters, Blueprints, Stencils, ArcParts, Workshop,
-│       │                      Loadouts, Reports
-│       ├── components/        BlueprintCard, BlueprintIcon, StencilCard, StencilIcon, ArcPartCard, ArcPartIcon,
-│       │                      GunConfigCard, GunConfigEditor, LastUpdated,
-│       │                      WorkshopStationCard, WorkshopMaterialIcon,
-│       │                      CategoryIcon, CharacterForm, Layout, Modal, ThemeToggle, …
+│       ├── pages/             Dashboard, Characters, Blueprints, Stencils, ArcParts, Amplification,
+│       │                      Workshop, Loadouts, Reports
+│       ├── components/        Layout (sidebar + mobile menu), CharacterSwitcher, QuickEntry, CountStepper,
+│       │                      Toaster, WhatsNext, BlueprintCard, StencilCard, ArcPartCard, AmplificationCard,
+│       │                      WorkshopStationCard, GunConfigCard, GunConfigEditor, LastUpdated, Modal, …
 │       ├── hooks/
 │       │   ├── useApi.ts      TanStack Query hooks for all API calls
+│       │   ├── useActiveCharacter.tsx  The shared character choice (context + localStorage)
+│       │   ├── useWorkshopRequirements.ts  Per-character have/need for workshop requirements
+│       │   ├── toast.ts       Toast store (usable outside React, e.g. the global save-error handler)
 │       │   └── useTheme.ts    Dark/light/system theme hook
 │       └── types/             TypeScript interfaces
 ├── scripts/
-│   └── download-icons.js      arcraiders.wiki icon downloader + SVG fallback
+│   └── download-icons.js      Icon downloader: arcraiders.wiki, fallback URLs, SVG placeholders
 ├── Dockerfile                 Multi-stage build (frontend → backend → runtime)
 ├── docker-compose.yml         Local build deployment
 └── docker-compose.ghcr.yml    GHCR pre-built image deployment
@@ -234,7 +239,7 @@ arc-tracker/
 | PUT | `/api/gun-configs/:id` | Update a build; omitting `mod_ids` leaves mods untouched, `[]` strips them. Changing to a weapon that can't be amplified drops its amplification |
 | PATCH | `/api/gun-configs/:id/quantity` | Adjust quantity by `delta` or set it outright |
 | DELETE | `/api/gun-configs/:id` | Delete a build and its mods |
-| GET | `/api/reports/gun-configs` | Builds per character with counts, values, and weapon/mod breakdowns |
+| GET | `/api/reports/gun-configs` | Builds per character with counts, values, and weapon, mod and amplification breakdowns |
 | GET | `/api/reports/summary` | Dashboard summary stats (per-character learned, extras, stencils, ARC parts, and loadout counts/value) |
 | GET | `/api/reports/unlearned` | Unlearned blueprints with per-character status |
 | GET | `/api/reports/extras` | Extras by blueprint with character breakdown |
@@ -246,6 +251,7 @@ arc-tracker/
 | POST | `/api/icons/refresh` | Trigger a background icon re-download |
 | GET | `/health` | Server health check (status, blueprint/character counts, uptime) |
 | GET | `/icons/:slug.png` | Item icon PNG |
+| GET | `/icons/:slug.webp` | Item icon WebP (images that are only available as WebP, e.g. some stencils) |
 | GET | `/icons/:slug.svg` | Item icon SVG placeholder |
 
 ## Security
@@ -289,30 +295,56 @@ arc.yourdomain.com {
 
 ## Data Source
 
-Blueprint, stencil and ARC parts data sourced from [arcraiders.wiki](https://arcraiders.wiki/) and [Arc Blueprint Tracker](https://arcblueprinttracker.io/).
+Blueprint, stencil, ARC part, workshop, weapon, mod and amplification data sourced from [arcraiders.wiki](https://arcraiders.wiki/) and [Arc Blueprint Tracker](https://arcblueprinttracker.io/). Propellant Valve Assembly details come from [RaidersData](https://raidersdata.com/), and a few icons the wiki doesn't have yet from [MetaForge](https://metaforge.app/).
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
 
-### Unreleased
-- **`FORCE_ICON_DOWNLOAD`** — set to `true` (or `1`/`yes`/`on`) to re-download every icon on each container start, the same as `--force`. Defaults to `false`; listed (commented out) in both compose files
-- **Stencil icons** — Bulwark, Dragon's Breath, Serac, Empyrean, Fortuna and Sacrifice now have their own icons, from MetaForge's stencil images, since the wiki hasn't uploaded them yet. Existing installs re-check stencil icons once on startup, so the generic stand-ins are replaced without `--force`, and stencil icon URLs carry a version so browsers don't keep the cached generic image for the 7-day icon cache
-- **Icon downloader** — saves WebP images as `.webp` (the frontend already tries `.png`, then `.webp`); tries each source in turn, so a fallback URL that's down falls through to the next instead of an SVG placeholder; and marks generic stand-ins so they keep being retried until the real image appears
-- **UX overhaul** — one shared character choice across every tracking page (replacing six separate selector rows); a mobile layout with a slide-out menu; Quick entry (`Ctrl+K`, `⌘K` or `/`); hold-to-repeat counters shared by every page; Undo for deleted builds and an error toast whenever a save fails (previously silent); "Held only" filters on ARC Parts and Amplification and "Has extras" on Blueprints and Stencils; and a Dashboard "What's next" panel in place of the shortcut tiles that repeated the sidebar
-- **Have vs. need** — Workshop requirement rows lead with the current character's count against the requirement ("need 3 more", or how many all characters hold between them), and each unbuilt level is marked Ready to build, Ready if pooled, or Short N items. The amplified-build editor shows how many of the module and of each option's materials (including ARC parts such as Assessor Matrix) the character holds
-- **Readability** — the dim text colour is lightened to meet WCAG AA (4.5:1) on every background in both themes (it was 3.4–4.1:1 in dark), and 9–10px text is raised to 11px for labels and 12px elsewhere
-- **Fix: lost clicks** — clicking + quickly sent "current + 1" from a value that hadn't refreshed yet, so some clicks were dropped. Counters now keep their own value until the server catches up
-- **Fix: stray "0" on build cards** — builds that aren't amplified showed a lone `0` (the API sends `amplified` as 0/1), on Loadouts cards and in the Loadouts report
+### v2.0.0
+
+A major release: Amplification arrives (as its own section and on Loadouts), the Frozen Trail workshop additions land, and the whole interface gets a usability overhaul on top of Tailwind CSS 4.
+
+#### Highlights
+- **Amplification** — new sidebar section for the Frozen Trail amplification components: Amplification Modules Mk. I–V and five materials (Fluted Rotor Core, Fossilized Lightning, Pneumatic Actuator, Pressure Regulator, Propellant Valve Assembly), counted per character with value, weight and stack size. Also an Amplification report tab, a Dashboard card, a count on each character and an Amplification "last updated" area
+- **Amplified loadouts** — builds of the 15 weapons that support it can be amplified to Level 5 with any of their 44 amplification options (effects, research and material cost from arcraiders.wiki). Requirements and conflicts are enforced in the editor and the API, including options that block the magazine or stock mod slot. Cards show an Amplified badge, the chosen options and the per-gun cost; the Loadouts report adds amplified-gun totals and an amplification-usage breakdown
+- **One character choice everywhere** — a shared switcher replaces the six separate character rows; pick a character once and Blueprints, Stencils, ARC Parts, Amplification, Workshop and Loadouts all follow it, remembered between visits (`?character=<id>` links select one on arrival)
+- **Dashboard "What's next"** — the current character's closest workshop upgrades (Ready / Ready if pooled / Short N), builds it could amplify, blueprints no character has learned, and spares one character holds that another still needs. Replaces the shortcut tiles that repeated the sidebar
+- **Works on phones** — below tablet width the sidebar becomes a slide-out menu behind a top bar, pages scroll as a whole, and rows reflow; nothing scrolls sideways
+
+#### New
+- **Quick entry** — `Ctrl+K` / `⌘K` or `/` from anywhere: type an item name, press Enter, type a count, press Enter. Covers blueprints and stencils (extras and learned), ARC parts, amplification components and workshop materials
+- **Workshop: Research Station and Gunsmith level 4** — the Frozen Trail Research Station (levels 1–4) and Gunsmith level 4 (3× Radial Press, 3× Magnetic Accelerator, 1× Emperor Modulator; requires the Outpost), with requirements and icons. Levels can carry a note such as "Requires the Outpost"
+- **Bully Fragmenter** — added as an Epic ARC part (5,000; from the Bully and ARC Courier). It's a Research Station level 3 requirement and shares the ARC Parts count
+- **Have vs. need** — Workshop requirement rows lead with the current character's own count ("need 3 more", or how many all characters hold between them); the amplified-build editor shows how many of the module and of each option's materials (ARC parts included) the character holds
+- **Undo** for deleted builds, and an **error toast** whenever a save fails (previously silent)
+- **Filters** — "Held only" on ARC Parts and Amplification, "Has extras" on Blueprints and Stencils
+- **`FORCE_ICON_DOWNLOAD`** — set to `true` (or `1`/`yes`/`on`) to re-download every icon on each container start, like `--force`. Defaults to `false`; listed, commented out, in both compose files
+
+#### Improvements
+- **Counters** — one shared stepper everywhere: hold − or + to repeat (it speeds up), with a single save on release
+- **Readability** — the dim text colour meets WCAG AA (4.5:1) on every background in both themes (it was 3.4–4.1:1 in dark); 9–10px text is raised to 11px for labels and 12px elsewhere
+- **Stencil icons** — Bulwark, Dragon's Breath, Serac, Empyrean, Fortuna and Sacrifice get their own icons from MetaForge, since the wiki hasn't uploaded them yet
+- **Icon downloader** — tries each source in turn (wiki, fallback URLs, generic stand-in); saves WebP images as `.webp`; keeps retrying placeholders and generic stand-ins on every start until the real image appears; can fall back to direct image URLs (Propellant Valve Assembly, the six stencils)
+- **Propellant Valve Assembly** — Epic, valued at 5,000 and counted in value totals (from RaidersData)
+- **Dashboard** — the Blueprint Extras card is folded into the Blueprints card; clicking a character's progress card selects that character
 - **Workshop** — already-built levels no longer say "need N more" for materials that were spent; Research Station gets its own icon
-- **Tailwind CSS 4** — the frontend moves from Tailwind 3.4 to 4.3 (replaces Dependabot #134, which couldn't build on its own). The theme now lives in `index.css` (`@theme`) instead of `tailwind.config.js`, PostCSS uses `@tailwindcss/postcss`, and `autoprefixer` is dropped since v4 handles prefixing. Every page was compared against the v3 build in light and dark themes and looks the same: v3's line heights, default border colour, button cursor and placeholder colour are kept, and a few classes that v3 silently ignored (`/8` and `/12` opacities, `w-4.5`, `w-13`, a conflicting `text-[11px]`) are removed so they don't start applying now. `braces` is no longer in the dependency tree, so its `npm audit` exception is removed. Tailwind 4 targets current browsers (Chrome/Edge 111+, Safari 16.4+, Firefox 128+)
-- **Amplified loadouts** — Loadouts builds can be amplified to Level 5 on the 15 weapons that support it, with the weapon's amplification options (44 in all, from arcraiders.wiki) picked in the build editor. Requirements and conflicts are enforced in the editor and the API, including options that block the magazine or stock mod slot. Cards show an Amplified badge, the chosen options and the per-gun module and material cost; the Loadouts report adds an Amplified guns tile, the options on each build and an amplification-usage breakdown. New `weapon_amplifications` and `gun_config_amplifications` tables plus `weapons.amp_module` and `gun_configs.amplified` columns are added on startup
-- **Bully Fragmenter on ARC Parts** — added as an Epic ARC part (5,000; from the Bully and ARC Courier). It's also a Research Station level 3 requirement, which now shares the ARC Parts count. Existing databases that tracked it as a Workshop material have those counts moved to ARC Parts on startup
-- **Workshop: Research Station and Gunsmith level 4** — the Frozen Trail Research Station (levels 1–4) and Gunsmith level 4 (3× Radial Press, 3× Magnetic Accelerator, 1× Emperor Modulator; requires the Outpost) are added with their material requirements and icons. Levels can now carry a note such as "Requires the Outpost", and the progress API checks each station's own max level instead of a fixed 3. Existing databases pick these up on startup
-- **Icon retries** — items that got a placeholder icon are now retried on every startup instead of keeping the placeholder forever; the placeholder is removed once a real icon downloads. Previously an item whose image appeared later (e.g. Propellant Valve Assembly) kept its placeholder until a forced re-download
-- **Amplification item data** — Propellant Valve Assembly is now Epic, valued at 5,000 and counted in value totals (from RaidersData). Every component shows its weight and stack size. Existing databases gain `weight` and `stack_size` columns on startup
-- **Icon fallbacks by URL** — the icon downloader can fall back to a direct image URL when the wiki has no image; Propellant Valve Assembly uses this
-- **Amplification** — new sidebar section for the Frozen Trail amplification components: Amplification Modules Mk. I–V and five materials (Fluted Rotor Core, Fossilized Lightning, Pneumatic Actuator, Pressure Regulator, Propellant Valve Assembly), counted per character with value totals. Also an Amplification report tab, a Dashboard card, an amplification count on each character, and an Amplification "last updated" area. New `amplification_components` and `amplification_tracking` tables are created on startup
-- **Dashboard** — the separate Blueprint Extras card is folded into the Blueprints card ("in-game · N extras held") to make room for Amplification
+- **Build editor** — the dialog body scrolls, so tall forms keep Save reachable
+
+#### Fixes
+- **Lost clicks** — clicking + quickly sent "current + 1" from a value that hadn't refreshed yet, dropping clicks; counters now keep their own value until the server catches up
+- **Stray "0" on build cards** — builds that weren't amplified showed a lone `0` on Loadouts cards and in the Loadouts report
+- **Icons stuck on placeholders** — items whose image appeared after first download kept their placeholder until a forced re-download; stencils kept the generic icon for good
+
+#### Under the hood
+- **Tailwind CSS 4** — from 3.4 to 4.3 (replaces Dependabot #134, which couldn't build on its own). The theme lives in `index.css` (`@theme`) instead of `tailwind.config.js`, PostCSS uses `@tailwindcss/postcss`, and `autoprefixer` is dropped. v3's look is kept (line heights, default border colour, button cursor, placeholder colour)
+- **npm audit** — `braces` is no longer in the dependency tree, so its audit exception is removed
+- **Dependencies** — `@tanstack/react-query` 5.104.2 → 5.104.3; lockfiles refreshed
+
+#### Upgrade notes
+- **Database** — migrations run automatically on startup: new `amplification_components`, `amplification_tracking`, `weapon_amplifications` and `gun_config_amplifications` tables; `weapons.amp_module`, `gun_configs.amplified`, and component `weight`/`stack_size` columns; the Research Station and Gunsmith level 4 are added; Bully Fragmenter counts tracked as a workshop material move to ARC Parts. No manual steps
+- **Icons** — stencil icons are re-checked once on the first start of 2.0.0, so the generic stand-ins are replaced without `--force`
+- **Browsers** — Tailwind CSS 4 needs a current browser: Chrome/Edge 111+, Safari 16.4+, Firefox 128+ (anything from roughly the last two years)
+- **Character selection** — the character picked on any tracking page now applies to all of them, and is remembered per browser
 
 ### v1.6.0
 - **Stencils** *(new)* — sidebar section for the 14 weapon stencils (Legendary to Uncommon). Stencils are found, then learned and crafted, so they're tracked like blueprints: learned + extras per character. Filter by rarity, weapon and status, search by stencil or weapon name, and see which weapons each one fits. Icons come from arcraiders.wiki, falling back to the wiki's generic stencil icon until a stencil's own is uploaded. New `stencils` and `stencil_tracking` tables are created on startup
