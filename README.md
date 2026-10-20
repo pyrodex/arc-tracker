@@ -143,7 +143,15 @@ cd frontend && npm install && npm run dev
 
 Missing icons are retried automatically on every container start: anything still showing a placeholder, or a generic stand-in such as the wiki's plain stencil icon, is looked up again and replaced once its own image is available. Each item's sources are tried in order (the wiki first, then fallback URLs such as MetaForge, then any generic stand-in), and images are saved in their real format (`.png` or `.webp`). A forced re-download is only needed to replace icons that already downloaded.
 
+To re-download **every** icon on each container start, set `FORCE_ICON_DOWNLOAD=true` (accepts `true`, `1`, `yes` or `on`; default `false`). Leave it off normally — it re-fetches about 180 images from the wiki on every restart.
+
 ```bash
+# docker run
+docker run -e FORCE_ICON_DOWNLOAD=true ... ghcr.io/pyrodex/arc-tracker:latest
+
+# docker compose — under the service's environment:
+#   FORCE_ICON_DOWNLOAD: "true"
+
 # Trigger a re-download from a running container via the API
 curl -X POST http://localhost:3001/api/icons/refresh
 
@@ -287,6 +295,7 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 ## Changelog
 
 ### Unreleased
+- **`FORCE_ICON_DOWNLOAD`** — set to `true` (or `1`/`yes`/`on`) to re-download every icon on each container start, the same as `--force`. Defaults to `false`; listed (commented out) in both compose files
 - **Stencil icons** — Bulwark, Dragon's Breath, Serac, Empyrean, Fortuna and Sacrifice now have their own icons, from MetaForge's stencil images, since the wiki hasn't uploaded them yet. Existing installs re-check stencil icons once on startup, so the generic stand-ins are replaced without `--force`, and stencil icon URLs carry a version so browsers don't keep the cached generic image for the 7-day icon cache
 - **Icon downloader** — saves WebP images as `.webp` (the frontend already tries `.png`, then `.webp`); tries each source in turn, so a fallback URL that's down falls through to the next instead of an SVG placeholder; and marks generic stand-ins so they keep being retried until the real image appears
 - **UX overhaul** — one shared character choice across every tracking page (replacing six separate selector rows); a mobile layout with a slide-out menu; Quick entry (`Ctrl+K`, `⌘K` or `/`); hold-to-repeat counters shared by every page; Undo for deleted builds and an error toast whenever a save fails (previously silent); "Held only" filters on ARC Parts and Amplification and "Has extras" on Blueprints and Stencils; and a Dashboard "What's next" panel in place of the shortcut tiles that repeated the sidebar
