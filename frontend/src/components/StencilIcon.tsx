@@ -11,6 +11,11 @@ interface Props {
 
 type IconSrc = 'png' | 'webp' | 'svg' | 'fallback';
 
+// Icons are cached for 7 days. Bump this when stencil images change so
+// browsers fetch them again instead of showing the old copy (v2: real icons
+// replace the generic stand-in for six stencils).
+const ICON_VERSION = 2;
+
 function StencilFallback({ name, rarity, size }: { name: string; rarity: StencilRarity; size: number }) {
   const meta     = stencilRarityMeta(rarity);
   const initials = name.replace(/\s+Stencil$/i, '').split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
@@ -36,7 +41,7 @@ export default function StencilIcon({ slug, name, rarity, size = 40 }: Props) {
 
   return (
     <img
-      src={`/icons/${slug}.${src}`}
+      src={`/icons/${slug}.${src}?v=${ICON_VERSION}`}
       alt={name}
       width={size}
       height={size}
