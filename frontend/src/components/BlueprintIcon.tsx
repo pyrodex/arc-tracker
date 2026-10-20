@@ -27,7 +27,7 @@ export default function BlueprintIcon({ slug, name, category, size = 40 }: Props
       alt={name}
       width={size}
       height={size}
-      className="rounded object-contain"
+      className="rounded-sm object-contain"
       style={{ width: size, height: size }}
       onError={() => setSrc(prev => next[prev])}
     />

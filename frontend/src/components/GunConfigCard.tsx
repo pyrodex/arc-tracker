@@ -45,13 +45,13 @@ export default function GunConfigCard({
             <h3 className="font-semibold text-arc-text truncate">{config.weapon_name}</h3>
             {config.amplified ? (
               <span
-                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 tabular-nums"
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 tabular-nums"
                 title="Amplified — Level 5"
               >
                 <Zap className="w-2.5 h-2.5" /> {config.tier != null ? 'V' : 'Lv 5'} · Amplified
               </span>
             ) : config.tier != null && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-arc-accent/15 text-arc-accent border border-arc-accent/25 tabular-nums">
+              <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-arc-accent/15 text-arc-accent border border-arc-accent/25 tabular-nums">
                 {ROMAN[config.tier] ?? config.tier}
               </span>
             )}

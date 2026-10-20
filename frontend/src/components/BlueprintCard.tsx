@@ -69,7 +69,7 @@ export default function BlueprintCard({ blueprint, trackingMap, onToggleLearned,
             {editingExtras ? (
               <input
                 className="w-10 bg-arc-panel border border-arc-border rounded px-1 py-0.5
-                           text-xs text-center text-arc-text focus:outline-none focus:border-arc-accent/50"
+                           text-xs text-center text-arc-text focus:outline-hidden focus:border-arc-accent/50"
                 value={extrasInput}
                 onChange={e => setExtrasInput(e.target.value)}
                 onBlur={handleExtrasBlur}

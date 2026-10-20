@@ -56,7 +56,7 @@ function InlineCounter({ value, onCommit }: { value: number; onCommit: (n: numbe
             if (e.key === 'Enter') commit();
             if (e.key === 'Escape') setEditing(false);
           }}
-          className="w-12 text-center text-xs font-bold rounded-md border px-1 py-0.5 bg-arc-panel text-arc-accent border-arc-accent/30 outline-none focus:ring-1"
+          className="w-12 text-center text-xs font-bold rounded-md border px-1 py-0.5 bg-arc-panel text-arc-accent border-arc-accent/30 outline-hidden focus:ring-1"
         />
       ) : (
         <button
@@ -107,7 +107,7 @@ function RequirementRow({
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-sm font-medium text-arc-text truncate">{requirement.name}</span>
           {requirement.item_type === 'arc_part' && (
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-400 border border-purple-500/30 shrink-0">
+            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-sm bg-purple-500/15 text-purple-400 border border-purple-500/30 shrink-0">
               ARC Part
             </span>
           )}
@@ -165,7 +165,7 @@ export default function WorkshopStationCard({
       <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-arc-border bg-arc-panel/40 flex-wrap">
         <div className="flex items-center gap-3">
           <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isMaxed ? 'bg-arc-learned/15 text-arc-learned' : 'bg-arc-accent/10 text-arc-accent'}`}>
-            <Icon className="w-4.5 h-4.5" />
+            <Icon className="w-6 h-6" />
           </div>
           <div>
             <p className="text-sm font-semibold text-arc-text">{station.name}</p>
@@ -198,7 +198,7 @@ export default function WorkshopStationCard({
           const isNext = currentLevel + 1 === level;
 
           return (
-            <div key={level} className={achieved ? 'bg-arc-learned/[0.03]' : ''}>
+            <div key={level} className={achieved ? 'bg-arc-learned/3' : ''}>
               <div className="flex items-center gap-2 px-4 pt-3 pb-1">
                 <span className="text-xs font-semibold text-arc-text uppercase tracking-wide">Level {level}</span>
                 {achieved && (

@@ -92,7 +92,7 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 ### UI & Themes
 - **Dark, Light, and System/Auto** color schemes — toggle between dark (default), light, or follow the OS preference; choice persisted in `localStorage`
 - **Responsive layout** — sidebar navigation with the official ARC Raiders icon
-- **Modern design** — built with Tailwind CSS, smooth transitions, and consistent arc-themed color tokens
+- **Modern design** — built with Tailwind CSS 4, smooth transitions, and consistent arc-themed color tokens
 
 ## Quick Start
 
@@ -281,6 +281,7 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 ## Changelog
 
 ### Unreleased
+- **Tailwind CSS 4** — the frontend moves from Tailwind 3.4 to 4.3 (replaces Dependabot #134, which couldn't build on its own). The theme now lives in `index.css` (`@theme`) instead of `tailwind.config.js`, PostCSS uses `@tailwindcss/postcss`, and `autoprefixer` is dropped since v4 handles prefixing. Every page was compared against the v3 build in light and dark themes and looks the same: v3's line heights, default border colour, button cursor and placeholder colour are kept, and a few classes that v3 silently ignored (`/8` and `/12` opacities, `w-4.5`, `w-13`, a conflicting `text-[11px]`) are removed so they don't start applying now. `braces` is no longer in the dependency tree, so its `npm audit` exception is removed. Tailwind 4 targets current browsers (Chrome/Edge 111+, Safari 16.4+, Firefox 128+)
 - **Amplified loadouts** — Loadouts builds can be amplified to Level 5 on the 15 weapons that support it, with the weapon's amplification options (44 in all, from arcraiders.wiki) picked in the build editor. Requirements and conflicts are enforced in the editor and the API, including options that block the magazine or stock mod slot. Cards show an Amplified badge, the chosen options and the per-gun module and material cost; the Loadouts report adds an Amplified guns tile, the options on each build and an amplification-usage breakdown. New `weapon_amplifications` and `gun_config_amplifications` tables plus `weapons.amp_module` and `gun_configs.amplified` columns are added on startup
 - **Bully Fragmenter on ARC Parts** — added as an Epic ARC part (5,000; from the Bully and ARC Courier). It's also a Research Station level 3 requirement, which now shares the ARC Parts count. Existing databases that tracked it as a Workshop material have those counts moved to ARC Parts on startup
 - **Workshop: Research Station and Gunsmith level 4** — the Frozen Trail Research Station (levels 1–4) and Gunsmith level 4 (3× Radial Press, 3× Magnetic Accelerator, 1× Emperor Modulator; requires the Outpost) are added with their material requirements and icons. Levels can now carry a note such as "Requires the Outpost", and the progress API checks each station's own max level instead of a fixed 3. Existing databases pick these up on startup

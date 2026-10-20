@@ -12,9 +12,9 @@ const rarityConfig = {
   legendary: {
     label: 'Legendary',
     border: 'border-amber-500/50',
-    bg: 'bg-amber-500/8',
+    bg: '',
     badge: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
-    glow: 'shadow-[0_0_12px_rgb(245_158_11_/_0.15)]',
+    glow: 'shadow-[0_0_12px_rgb(245_158_11/0.15)]',
     countColor: 'text-amber-400',
     countBg: 'bg-amber-500/10 border-amber-500/30',
     valueColor: 'text-amber-300',
@@ -22,9 +22,9 @@ const rarityConfig = {
   epic: {
     label: 'Epic',
     border: 'border-purple-500/50',
-    bg: 'bg-purple-500/8',
+    bg: '',
     badge: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
-    glow: 'shadow-[0_0_12px_rgb(168_85_247_/_0.12)]',
+    glow: 'shadow-[0_0_12px_rgb(168_85_247/0.12)]',
     countColor: 'text-purple-400',
     countBg: 'bg-purple-500/10 border-purple-500/30',
     valueColor: 'text-purple-300',
@@ -67,7 +67,7 @@ export default function ArcPartCard({ part, trackingMap, onSetCount }: ArcPartCa
           <p className="font-medium text-arc-text text-sm leading-snug truncate">{part.name}</p>
           <p className="text-xs text-arc-dim mt-0.5">from {part.source}</p>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${config.badge}`}>
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${config.badge}`}>
               {config.label}
             </span>
             {part.sell_value > 0 && (
@@ -105,7 +105,7 @@ export default function ArcPartCard({ part, trackingMap, onSetCount }: ArcPartCa
                   if (e.key === 'Enter') commitEdit();
                   if (e.key === 'Escape') setEditing(false);
                 }}
-                className={`w-14 text-center text-sm font-bold rounded-md border px-1 py-0.5 bg-arc-panel outline-none focus:ring-1 ${config.countColor} ${config.countBg}`}
+                className={`w-14 text-center text-sm font-bold rounded-md border px-1 py-0.5 bg-arc-panel outline-hidden focus:ring-1 ${config.countColor} ${config.countBg}`}
               />
             ) : (
               <button

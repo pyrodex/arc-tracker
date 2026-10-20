@@ -42,7 +42,7 @@ export default function AmplificationCard({ component, trackingMap, onSetCount }
             {component.source ? `from ${component.source}` : 'Source unknown'}
           </p>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${style.badge}`}>
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${style.badge}`}>
               {ampBadgeLabel(component)}
             </span>
             <span className="text-[10px] text-arc-dim">
@@ -84,7 +84,7 @@ export default function AmplificationCard({ component, trackingMap, onSetCount }
                   if (e.key === 'Enter') commitEdit();
                   if (e.key === 'Escape') setEditing(false);
                 }}
-                className={`w-14 text-center text-sm font-bold rounded-md border px-1 py-0.5 bg-arc-panel outline-none focus:ring-1 ${style.text} ${style.border}`}
+                className={`w-14 text-center text-sm font-bold rounded-md border px-1 py-0.5 bg-arc-panel outline-hidden focus:ring-1 ${style.text} ${style.border}`}
               />
             ) : (
               <button

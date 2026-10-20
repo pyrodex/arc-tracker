@@ -17,7 +17,7 @@ const navItems = [
 
 function ArcRaidersLogo() {
   return (
-    <img src="/arc-icon.png" alt="ARC Raiders" className="w-9 h-9 rounded-sm" />
+    <img src="/arc-icon.png" alt="ARC Raiders" className="w-9 h-9 rounded-xs" />
   );
 }
 
@@ -44,7 +44,7 @@ export default function Layout() {
           </div>
 
           {/* Decorative scan-line */}
-          <div className="mt-4 h-px bg-gradient-to-r from-transparent via-arc-accent/40 to-transparent" />
+          <div className="mt-4 h-px bg-linear-to-r from-transparent via-arc-accent/40 to-transparent" />
         </div>
 
         {/* Nav */}
@@ -57,7 +57,7 @@ export default function Layout() {
               className={({ isActive }) =>
                 `group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                 ${isActive
-                  ? 'bg-arc-accent/12 text-arc-accent border border-arc-accent/25 shadow-[0_0_12px_rgb(var(--arc-accent)/0.08)]'
+                  ? 'text-arc-accent border border-arc-accent/25 shadow-[0_0_12px_rgb(var(--arc-accent)/0.08)]'
                   : 'text-arc-muted hover:text-arc-text hover:bg-arc-hover border border-transparent'
                 }`
               }
