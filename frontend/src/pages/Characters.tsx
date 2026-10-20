@@ -110,7 +110,7 @@ function ActivityGrid({ activity }: { activity?: CharacterActivity }) {
       {ACTIVITY_AREAS.map(({ key, label }) => (
         <div key={key} className="min-w-0">
           <p className="text-[10px] text-arc-dim uppercase tracking-wider">{label}</p>
-          <LastUpdated value={activity?.[key] ?? null} showIcon={false} stacked className="text-[11px]" />
+          <LastUpdated value={activity?.[key] ?? null} showIcon={false} stacked />
         </div>
       ))}
     </div>
@@ -143,18 +143,18 @@ function StashCounter({ source, value, pending, onChange }: StashCounterProps) {
       <span className="text-[10px] font-medium text-arc-muted uppercase tracking-wide">{label}</span>
       <div className="flex items-center gap-1">
         <button
-          className="btn-ghost p-1 rounded disabled:opacity-40"
+          className="btn-ghost p-1 rounded-sm disabled:opacity-40"
           title={`Decrease ${label}`}
           disabled={value <= 0 || pending}
           onClick={() => onChange(Math.max(0, value - 1))}
         >
           <Minus className="w-3.5 h-3.5" />
         </button>
-        <span className="min-w-[2.75rem] text-center text-sm font-semibold text-arc-text tabular-nums">
+        <span className="min-w-11 text-center text-sm font-semibold text-arc-text tabular-nums">
           {value}<span className="text-arc-dim font-normal">/{max}</span>
         </span>
         <button
-          className="btn-ghost p-1 rounded disabled:opacity-40"
+          className="btn-ghost p-1 rounded-sm disabled:opacity-40"
           title={`Increase ${label}`}
           disabled={value >= max || pending}
           onClick={() => onChange(Math.min(max, value + 1))}

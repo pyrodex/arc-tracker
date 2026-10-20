@@ -160,7 +160,7 @@ export default function Reports() {
                   aria-selected={view === id}
                   onClick={() => update({ view: id === 'unlearned' ? null : id })}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors
-                    ${view === id ? 'bg-arc-card text-arc-text shadow-sm border border-arc-border' : 'text-arc-muted hover:text-arc-text border border-transparent'}`}
+                    ${view === id ? 'bg-arc-card text-arc-text shadow-xs border border-arc-border' : 'text-arc-muted hover:text-arc-text border border-transparent'}`}
                 >
                   <Icon className="w-3.5 h-3.5" />{label}
                 </button>
@@ -561,7 +561,7 @@ function ArcPartsInventory({ selectedCharId }: { selectedCharId: number | null }
                 <ArcPartIcon slug={part.slug} name={part.part_name} rarity={part.rarity} size={40} />
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-medium text-arc-text">{part.part_name}</span>
-                  <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded border hidden sm:inline-block ${badgeClass}`}>
+                  <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm border hidden sm:inline-block ${badgeClass}`}>
                     {part.rarity === 'legendary' ? '👑' : '⚡'} {part.rarity}
                   </span>
                   <p className="text-xs text-arc-dim mt-0.5">from {part.source}</p>
@@ -688,7 +688,7 @@ function AmplificationInventory({ selectedCharId }: { selectedCharId: number | n
                       <AmplificationIcon component={{ slug: row.slug, name: row.component_name, kind: row.kind, tier: row.tier, unlocks: row.unlocks, rarity: row.rarity }} size={40} />
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-arc-text">{row.component_name}</span>
-                        <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded hidden sm:inline-block ${style.badge}`}>
+                        <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm hidden sm:inline-block ${style.badge}`}>
                           {ampBadgeLabel(row)}
                         </span>
                         <p className="text-xs text-arc-dim mt-0.5">{row.source ? `from ${row.source}` : 'Source unknown'}</p>

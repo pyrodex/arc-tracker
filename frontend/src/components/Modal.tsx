@@ -26,7 +26,7 @@ export default function Modal({ open, onClose, title, children, width = 'max-w-l
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" />
       <div
         ref={dialogRef}
         className={`relative z-10 w-full ${width} max-h-[calc(100dvh-2rem)] flex flex-col card shadow-2xl animate-fade-in`}

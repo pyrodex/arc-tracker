@@ -1,41 +1,159 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
 /* ── Theme tokens ──────────────────────────────────────────────────────────── */
 :root {
   /* Dark (default) */
-  --arc-bg:      8  12  20;
-  --arc-panel:  13  21  32;
-  --arc-card:   17  26  44;
-  --arc-border: 30  45  71;
-  --arc-hover:  22  32  53;
+  --arc-bg: 8 12 20;
+  --arc-panel: 13 21 32;
+  --arc-card: 17 26 44;
+  --arc-border: 30 45 71;
+  --arc-hover: 22 32 53;
 
-  --arc-accent:  56 189 248;
-  --arc-learned: 34 197  94;
-  --arc-extra:  245 158  11;
-  --arc-danger: 239  68  68;
+  --arc-accent: 56 189 248;
+  --arc-learned: 34 197 94;
+  --arc-extra: 245 158 11;
+  --arc-danger: 239 68 68;
 
-  --arc-text:       241 245 249;   /* slate-100  */
-  --arc-text-muted: 148 163 184;   /* slate-400  */
-  --arc-text-dim:   100 116 139;   /* slate-500  */
+  --arc-text: 241 245 249; /* slate-100  */
+  --arc-text-muted: 148 163 184; /* slate-400  */
+  --arc-text-dim: 100 116 139; /* slate-500  */
 }
 
-[data-theme="light"] {
-  --arc-bg:      248 250 252;   /* slate-50   */
-  --arc-panel:   241 245 249;   /* slate-100  */
-  --arc-card:    255 255 255;
-  --arc-border:  226 232 240;   /* slate-200  */
-  --arc-hover:   243 244 246;   /* gray-100   */
+[data-theme='light'] {
+  --arc-bg: 248 250 252; /* slate-50   */
+  --arc-panel: 241 245 249; /* slate-100  */
+  --arc-card: 255 255 255;
+  --arc-border: 226 232 240; /* slate-200  */
+  --arc-hover: 243 244 246; /* gray-100   */
 
-  --arc-accent:   14 165 233;   /* sky-500    */
-  --arc-learned:  22 163  74;   /* green-600  */
-  --arc-extra:   217 119   6;   /* amber-600  */
-  --arc-danger:  220  38  38;   /* red-600    */
+  --arc-accent: 14 165 233; /* sky-500    */
+  --arc-learned: 22 163 74; /* green-600  */
+  --arc-extra: 217 119 6; /* amber-600  */
+  --arc-danger: 220 38 38; /* red-600    */
 
-  --arc-text:        15  23  42;   /* slate-900  */
-  --arc-text-muted:  71  85 105;   /* slate-600  */
-  --arc-text-dim:   100 116 139;   /* slate-500  */
+  --arc-text: 15 23 42; /* slate-900  */
+  --arc-text-muted: 71 85 105; /* slate-600  */
+  --arc-text-dim: 100 116 139; /* slate-500  */
+}
+
+/* Tailwind color utilities (bg-arc-card, text-arc-muted/50, …) map onto the
+   theme tokens above, so switching data-theme recolors everything. */
+@theme {
+  --color-arc-bg: rgb(var(--arc-bg));
+  --color-arc-panel: rgb(var(--arc-panel));
+  --color-arc-card: rgb(var(--arc-card));
+  --color-arc-border: rgb(var(--arc-border));
+  --color-arc-hover: rgb(var(--arc-hover));
+  --color-arc-accent: rgb(var(--arc-accent));
+  --color-arc-learned: rgb(var(--arc-learned));
+  --color-arc-extra: rgb(var(--arc-extra));
+  --color-arc-danger: rgb(var(--arc-danger));
+  --color-arc-text: rgb(var(--arc-text));
+  --color-arc-muted: rgb(var(--arc-text-muted));
+  --color-arc-dim: rgb(var(--arc-text-dim));
+
+  /* v3 line heights. v4 uses ratios (text-xs → 1.333), which shrink the many
+     text-[10px]/text-[11px] spans that sit inside text-xs/text-sm elements.
+     Absolute values keep the v3 rhythm. */
+  --text-xs--line-height: 1rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-mono: JetBrains Mono, monospace;
+
+  --animate-fade-in: fade-in 0.2s ease-out;
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+
+  Buttons and placeholders also keep their v3 defaults: v4 gives buttons the
+  default cursor and makes placeholders 50% of the text color.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-gray-400);
+  }
+}
+
+/* ── Component shortcuts ───────────────────────────────────────────────────── */
+
+@utility btn {
+  @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors
+           focus:outline-hidden focus:ring-2 focus:ring-arc-accent/50
+           disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+@utility btn-primary {
+  @apply btn bg-arc-accent text-arc-bg hover:brightness-110;
+  color: rgb(var(--arc-bg));
+}
+
+@utility btn-ghost {
+  @apply btn hover:bg-arc-hover;
+  color: rgb(var(--arc-text-muted));
+  &:hover {
+    color: rgb(var(--arc-text));
+  }
+}
+
+@utility btn-danger {
+  @apply btn border border-arc-danger/30 hover:bg-arc-danger/10;
+  color: rgb(var(--arc-danger));
+}
+
+@utility card {
+  @apply bg-arc-card border border-arc-border rounded-xl;
+}
+
+@utility input {
+  @apply bg-arc-panel border border-arc-border rounded-lg px-3 py-2 text-sm
+           focus:outline-hidden focus:ring-2 focus:ring-arc-accent/50 focus:border-arc-accent/50
+           transition-colors w-full;
+  color: rgb(var(--arc-text));
+  &::placeholder {
+    color: rgb(var(--arc-text-dim));
+  }
+}
+
+@utility badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
 }
 
 /* ── Base ──────────────────────────────────────────────────────────────────── */
@@ -52,42 +170,4 @@
   ::-webkit-scrollbar-track { background: rgb(var(--arc-panel)) }
   ::-webkit-scrollbar-thumb { background: rgb(var(--arc-border)); border-radius: 9999px }
   ::-webkit-scrollbar-thumb:hover { background: rgb(var(--arc-text-dim)) }
-}
-
-/* ── Component shortcuts ───────────────────────────────────────────────────── */
-@layer components {
-  .btn {
-    @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors
-           focus:outline-none focus:ring-2 focus:ring-arc-accent/50
-           disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-  .btn-primary {
-    @apply btn bg-arc-accent text-arc-bg hover:brightness-110;
-    color: rgb(var(--arc-bg));
-  }
-  .btn-ghost {
-    @apply btn hover:bg-arc-hover;
-    color: rgb(var(--arc-text-muted));
-  }
-  .btn-ghost:hover { color: rgb(var(--arc-text)) }
-  .btn-danger {
-    @apply btn border border-arc-danger/30 hover:bg-arc-danger/10;
-    color: rgb(var(--arc-danger));
-  }
-
-  .card {
-    @apply bg-arc-card border border-arc-border rounded-xl;
-  }
-
-  .input {
-    @apply bg-arc-panel border border-arc-border rounded-lg px-3 py-2 text-sm
-           focus:outline-none focus:ring-2 focus:ring-arc-accent/50 focus:border-arc-accent/50
-           transition-colors w-full;
-    color: rgb(var(--arc-text));
-  }
-  .input::placeholder { color: rgb(var(--arc-text-dim)) }
-
-  .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
-  }
 }
