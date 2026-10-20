@@ -141,7 +141,7 @@ cd frontend && npm install && npm run dev
 
 ### Re-download icons
 
-Missing icons are retried automatically on every container start: anything still showing a placeholder is looked up again, and the placeholder is replaced once an image is available. A forced re-download is only needed to replace icons that already downloaded.
+Missing icons are retried automatically on every container start: anything still showing a placeholder, or a generic stand-in such as the wiki's plain stencil icon, is looked up again and replaced once its own image is available. Each item's sources are tried in order (the wiki first, then fallback URLs such as MetaForge, then any generic stand-in), and images are saved in their real format (`.png` or `.webp`). A forced re-download is only needed to replace icons that already downloaded.
 
 ```bash
 # Trigger a re-download from a running container via the API
@@ -287,6 +287,8 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 ## Changelog
 
 ### Unreleased
+- **Stencil icons** — Bulwark, Dragon's Breath, Serac, Empyrean, Fortuna and Sacrifice now have their own icons, from MetaForge's stencil images, since the wiki hasn't uploaded them yet. Existing installs re-check stencil icons once on startup, so the generic stand-ins are replaced without `--force`, and stencil icon URLs carry a version so browsers don't keep the cached generic image for the 7-day icon cache
+- **Icon downloader** — saves WebP images as `.webp` (the frontend already tries `.png`, then `.webp`); tries each source in turn, so a fallback URL that's down falls through to the next instead of an SVG placeholder; and marks generic stand-ins so they keep being retried until the real image appears
 - **UX overhaul** — one shared character choice across every tracking page (replacing six separate selector rows); a mobile layout with a slide-out menu; Quick entry (`Ctrl+K`, `⌘K` or `/`); hold-to-repeat counters shared by every page; Undo for deleted builds and an error toast whenever a save fails (previously silent); "Held only" filters on ARC Parts and Amplification and "Has extras" on Blueprints and Stencils; and a Dashboard "What's next" panel in place of the shortcut tiles that repeated the sidebar
 - **Have vs. need** — Workshop requirement rows lead with the current character's count against the requirement ("need 3 more", or how many all characters hold between them), and each unbuilt level is marked Ready to build, Ready if pooled, or Short N items. The amplified-build editor shows how many of the module and of each option's materials (including ARC parts such as Assessor Matrix) the character holds
 - **Readability** — the dim text colour is lightened to meet WCAG AA (4.5:1) on every background in both themes (it was 3.4–4.1:1 in dark), and 9–10px text is raised to 11px for labels and 12px elsewhere

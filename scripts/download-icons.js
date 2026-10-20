@@ -255,13 +255,19 @@ async function fetchJson(url) {
   return JSON.parse(body.toString());
 }
 
-async function downloadImage(url, destPath) {
+// Formats the frontend icon components try, in order.
+const IMAGE_EXTS = ['png', 'webp'];
+
+/** Saves the image as <destBase>.png or .webp to match its real format. */
+async function downloadImage(url, destBase) {
   const { statusCode, body, headers } = await fetchUrl(url);
   if (statusCode !== 200) throw new Error(`HTTP ${statusCode}`);
   const ct = headers['content-type'] ?? '';
   if (!ct.startsWith('image/')) throw new Error(`Not an image: ${ct}`);
   if (body.length < 200) throw new Error(`Suspiciously small (${body.length} bytes)`);
-  fs.writeFileSync(destPath, body);
+  const ext = ct.startsWith('image/webp') ? 'webp' : 'png';
+  fs.writeFileSync(`${destBase}.${ext}`, body);
+  return ext;
 }
 
 // ── MediaWiki batch image resolution ──────────────────────────────────────────
@@ -328,15 +334,36 @@ const AMPLIFICATION_COMPONENTS = require('../backend/src/amplification');
 const ARC_PARTS        = require('../backend/src/arc-parts');
 const WORKSHOP_STATIONS = require('../backend/src/workshop');
 
-// Stencil icons on the wiki are named "Icon Stencil <Name>.png". Each one falls
-// back to the generic stencil icon while its own hasn't been uploaded yet.
+// Stencil icons on the wiki are named "Icon Stencil <Name>.png". Six weapon
+// stencils have no wiki image yet, so MetaForge's stencil images (WebP) come
+// next, and the wiki's generic stencil icon is the last resort.
 const STENCIL_WIKI_NAMES = {
   'Milky Terracotta Stencil': 'Milky Terraccota', // wiki file name is misspelled
 };
+const METAFORGE_STENCILS = 'https://static.metaforge.app/arc-raiders/ui/stencils';
+const STENCIL_IMAGE_FALLBACKS = {
+  'Bulwark Stencil':         `${METAFORGE_STENCILS}/bulwark-stencil.webp`,
+  "Dragon's Breath Stencil": `${METAFORGE_STENCILS}/dragons-breath-stencil.webp`,
+  'Serac Stencil':           `${METAFORGE_STENCILS}/serac-stencil.webp`,
+  'Empyrean Stencil':        `${METAFORGE_STENCILS}/empyrean-stencil.webp`,
+  'Fortuna Stencil':         `${METAFORGE_STENCILS}/fortuna-stencil.webp`,
+  'Sacrifice Stencil':       `${METAFORGE_STENCILS}/sacrifice-stencil.webp`,
+};
+const GENERIC_STENCIL = 'File:Icon Stencil.png';
 for (const s of STENCILS) {
   const base = STENCIL_WIKI_NAMES[s.name] ?? s.name.replace(/\s+Stencil$/i, '');
-  NAME_TO_FILE[s.name] = [`File:Icon Stencil ${base}.png`, 'File:Icon Stencil.png'];
+  const fallback = STENCIL_IMAGE_FALLBACKS[s.name];
+  NAME_TO_FILE[s.name] = [`File:Icon Stencil ${base}.png`, ...(fallback ? [fallback] : []), GENERIC_STENCIL];
 }
+
+// Generic images used in place of an item's own. An icon saved from one of
+// these is marked so later runs keep looking for the real image.
+const STAND_INS = new Set([GENERIC_STENCIL]);
+
+// Bump to make existing installs re-check stencil icons once. v2: earlier
+// runs saved the generic stencil icon for six stencils without marking it as
+// a stand-in, so they'd never have been retried.
+const STENCIL_REFRESH_STAMP = '.stencil-icons-v2';
 const STENCIL_ITEMS = STENCILS.map(s => ({ name: s.name, category: 'stencil' }));
 
 // Amplification components use their wiki item image, e.g.
@@ -385,18 +412,27 @@ async function main() {
 
   const allItems = [...BLUEPRINTS, ...STENCIL_ITEMS, ...AMPLIFICATION_ITEMS, ...ARC_PART_ITEMS, ...WORKSHOP_MATERIAL_ITEMS];
 
-  // Which items still need icons? Only a downloaded PNG counts as done: an SVG
-  // placeholder means the image wasn't available last time, so try again in
-  // case the wiki (or a fallback URL) has one now. That's one batched API call
-  // per startup for whatever is still missing.
-  const pending = FORCE
-    ? allItems
-    : allItems.filter(bp => !fs.existsSync(path.join(ICONS_DIR, `${slugify(bp.name)}.png`)));
+  // Which items still need icons? Only a downloaded image counts as done: an
+  // SVG placeholder means the image wasn't available last time, and a
+  // stand-in marker means a generic image is filling in, so both are retried
+  // in case the wiki (or a fallback URL) has the real one now. That's one
+  // batched API call per startup for whatever is still missing.
+  const stampPath = path.join(ICONS_DIR, STENCIL_REFRESH_STAMP);
+  const refreshStencils = !fs.existsSync(stampPath);
+  const stencilNames = new Set(STENCILS.map(s => s.name));
+  const needsIcon = bp => {
+    const slug = slugify(bp.name);
+    if (refreshStencils && stencilNames.has(bp.name)) return true;
+    if (fs.existsSync(path.join(ICONS_DIR, `${slug}.standin`))) return true;
+    return !IMAGE_EXTS.some(ext => fs.existsSync(path.join(ICONS_DIR, `${slug}.${ext}`)));
+  };
+  const pending = FORCE ? allItems : allItems.filter(needsIcon);
 
   if (pending.length === 0) {
     console.log('✅ All icons already present. Use --force to re-download.\n');
     return;
   }
+
   console.log(`Fetching icons for ${pending.length} item(s)…\n`);
 
   // Collect the unique File: titles we need to resolve
@@ -445,27 +481,40 @@ async function main() {
     if (i + CONCURRENCY < pending.length) await delay(150);
   }
 
+  fs.writeFileSync(stampPath, new Date().toISOString());
+
   console.log('\n✅ Done!');
   console.log(`   Downloaded:       ${results.downloaded}`);
-  console.log(`   Placeholder SVGs: ${results.placeholder}`);
+  console.log(`   Placeholders:     ${results.placeholder}`);
   if (results.error) console.log(`   Errors:           ${results.error}`);
   console.log();
 }
 
 async function processOne(bp, resolvedMap) {
-  const slug     = slugify(bp.name);
-  const fileTitle = fileCandidates(bp.name).find(c => resolvedMap[c] || isDirectUrl(c));
-  const imageUrl  = fileTitle ? (resolvedMap[fileTitle] ?? fileTitle) : null;
+  const slug = slugify(bp.name);
+  // Try each available source in order, so a fallback URL that's down falls
+  // through to the next one (e.g. the generic stencil icon) instead of
+  // straight to an SVG placeholder.
+  const sources = fileCandidates(bp.name).filter(c => resolvedMap[c] || isDirectUrl(c));
 
-  if (imageUrl) {
-    const dest = path.join(ICONS_DIR, `${slug}.png`);
+  for (const fileTitle of sources) {
+    const imageUrl = resolvedMap[fileTitle] ?? fileTitle;
     try {
-      await downloadImage(imageUrl, dest);
-      // Drop the placeholder from an earlier run now that a real icon exists.
-      fs.rmSync(path.join(ICONS_DIR, `${slug}.svg`), { force: true });
+      const ext = await downloadImage(imageUrl, path.join(ICONS_DIR, slug));
+      // One icon per item: drop the placeholder and any copy in another format
+      // from an earlier run (e.g. a generic .png replaced by a real .webp).
+      for (const other of [...IMAGE_EXTS.filter(e => e !== ext), 'svg']) {
+        fs.rmSync(path.join(ICONS_DIR, `${slug}.${other}`), { force: true });
+      }
+      const marker = path.join(ICONS_DIR, `${slug}.standin`);
+      if (STAND_INS.has(fileTitle)) {
+        fs.writeFileSync(marker, fileTitle);
+        return { name: bp.name, status: 'placeholder' };
+      }
+      fs.rmSync(marker, { force: true });
       return { name: bp.name, status: 'downloaded' };
     } catch (err) {
-      console.error(`    ⚠️  Download failed for ${bp.name}: ${err.message}`);
+      console.error(`    ⚠️  Download failed for ${bp.name} (${imageUrl}): ${err.message}`);
     }
   }
 
