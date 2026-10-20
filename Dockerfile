@@ -70,9 +70,12 @@ RUN mkdir -p /data/icons && chown -R arcapp:arcapp /data
 USER arcapp
 
 # Runtime env defaults (override via docker-compose or -e flags)
+# FORCE_ICON_DOWNLOAD=true re-downloads every icon on each start instead of
+# only the missing ones.
 ENV NODE_ENV=production \
     PORT=3001 \
-    DATA_DIR=/data
+    DATA_DIR=/data \
+    FORCE_ICON_DOWNLOAD=false
 
 EXPOSE 3001
 

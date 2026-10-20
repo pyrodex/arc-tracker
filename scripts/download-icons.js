@@ -8,17 +8,20 @@
  * 1. Use an explicit name→file mapping derived from the Blueprints page on arcraiders.wiki,
  *    so every icon points to the exact file the wiki uses.
  * 2. Batch-resolve image URLs via the arcraiders.wiki MediaWiki API (50 titles per call).
- * 3. Download to DATA_DIR/icons/<slug>.png
+ * 3. Download to DATA_DIR/icons/<slug>.png (or .webp when that's the format)
  * 4. SVG placeholder for any not found.
  *
  * A mapping may list several File: titles; the first one the wiki has is used.
  * A candidate can also be a direct https:// image URL, for items the wiki has
  * no image for yet; list it after the wiki title so the wiki wins once added.
  * Stencils rely on this to fall back to the wiki's generic stencil icon until
- * their own icon is uploaded (re-run with --force to pick those up later).
+ * their own icon is uploaded; those stand-ins are retried on every run.
  *
  * Usage:
  *   DATA_DIR=/data node scripts/download-icons.js [--force]
+ *
+ * --force, or FORCE_ICON_DOWNLOAD=true in the environment, re-downloads every
+ * icon instead of only the missing ones.
  */
 
 const https   = require('https');
@@ -29,7 +32,8 @@ const { URL } = require('url');
 
 const DATA_DIR  = process.env.DATA_DIR || path.join(__dirname, '../data');
 const ICONS_DIR = path.join(DATA_DIR, 'icons');
-const FORCE     = process.argv.includes('--force');
+const FORCE_FROM_ENV = /^(1|true|yes|on)$/i.test((process.env.FORCE_ICON_DOWNLOAD ?? '').trim());
+const FORCE     = process.argv.includes('--force') || FORCE_FROM_ENV;
 
 const WIKI_API = 'https://arcraiders.wiki/w/api.php';
 
@@ -408,7 +412,7 @@ const WORKSHOP_MATERIAL_ITEMS = [...workshopMaterialNames].map(name => ({ name, 
 async function main() {
   console.log('\n🎮 ARC Tracker — Icon Download (arcraiders.wiki)\n');
   console.log(`Icons directory: ${ICONS_DIR}`);
-  console.log(`Force re-download: ${FORCE}\n`);
+  console.log(`Force re-download: ${FORCE}${FORCE_FROM_ENV ? ' (FORCE_ICON_DOWNLOAD)' : ''}\n`);
 
   const allItems = [...BLUEPRINTS, ...STENCIL_ITEMS, ...AMPLIFICATION_ITEMS, ...ARC_PART_ITEMS, ...WORKSHOP_MATERIAL_ITEMS];
 
@@ -429,7 +433,7 @@ async function main() {
   const pending = FORCE ? allItems : allItems.filter(needsIcon);
 
   if (pending.length === 0) {
-    console.log('✅ All icons already present. Use --force to re-download.\n');
+    console.log('✅ All icons already present. Use --force or FORCE_ICON_DOWNLOAD=true to re-download.\n');
     return;
   }
 

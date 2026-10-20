@@ -19,6 +19,8 @@ services:
       NODE_ENV: production
       PORT: 3001
       DATA_DIR: /data
+      # Re-download every icon on each start (default: only missing ones)
+      # FORCE_ICON_DOWNLOAD: "true"
 
     # Resource limits (adjust to your host)
     deploy:
