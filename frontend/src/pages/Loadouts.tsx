@@ -2,7 +2,6 @@ import { useCallback, useMemo, useState } from 'react';
 import { Plus, Coins, Crosshair } from 'lucide-react';
 import type { GunConfig } from '../types';
 import {
-  useCharacters,
   useWeapons,
   useWeaponMods,
   useWeaponPrices,
@@ -15,25 +14,25 @@ import {
   useCharacterActivity,
 } from '../hooks/useApi';
 import LastUpdated from '../components/LastUpdated';
+import CharacterSwitcher from '../components/CharacterSwitcher';
+import { useActiveCharacter } from '../hooks/useActiveCharacter';
+import { toast } from '../hooks/toast';
 import GunConfigCard from '../components/GunConfigCard';
 import GunConfigEditor, { type GunConfigSavePayload } from '../components/GunConfigEditor';
 
 export default function Loadouts() {
-  const { data: characters = [] } = useCharacters();
+  const { characters, activeCharId, activeChar } = useActiveCharacter();
   const { data: weaponCatalog } = useWeapons();
   const { data: catalog } = useWeaponMods();
   const { data: priceCatalog } = useWeaponPrices();
 
-  const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editing, setEditing] = useState<GunConfig | null>(null);
   const [copying, setCopying] = useState<GunConfig | null>(null);
   const [showPrices, setShowPrices] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const activeCharId = selectedCharId ?? characters[0]?.id ?? null;
   const activity = useCharacterActivity(activeCharId);
-  const activeChar = characters.find(c => c.id === activeCharId);
 
   const { data: configs = [] } = useGunConfigs(activeCharId);
   const createConfig = useCreateGunConfig();
@@ -48,18 +47,40 @@ export default function Loadouts() {
     value: configs.reduce((sum, c) => sum + c.total_value, 0),
   }), [configs]);
 
-  const handleQuantity = useCallback((id: number, delta: number) => {
-    setQuantity.mutate({ id, delta });
-  }, [setQuantity]);
 
   const handleSetQuantity = useCallback((id: number, quantity: number) => {
     setQuantity.mutate({ id, quantity });
   }, [setQuantity]);
 
+  // Delete straight away, then offer Undo, which recreates the build from the
+  // copy held here. Its id changes; everything you can see stays the same.
   const handleDelete = useCallback((config: GunConfig) => {
     if (activeCharId === null) return;
-    deleteConfig.mutate({ id: config.id, characterId: activeCharId });
-  }, [deleteConfig, activeCharId]);
+    const characterId = activeCharId;
+    const label = config.name ? `${config.weapon_name} · ${config.name}` : config.weapon_name;
+    deleteConfig.mutate({ id: config.id, characterId }, {
+      onSuccess: () => toast(`Deleted ${label}`, {
+        action: {
+          label: 'Undo',
+          run: () => createConfig.mutate({
+            character_id: characterId,
+            weapon_id: config.weapon_id,
+            name: config.name,
+            tier: config.tier,
+            weapon_value: config.weapon_value,
+            quantity: config.quantity,
+            notes: config.notes,
+            mod_ids: config.mods.map(m => m.id),
+            amplified: !!config.amplified,
+            amplification_ids: config.amplifications.map(a => a.id),
+          }, {
+            onSuccess: () => toast(`Restored ${label}`, { tone: 'success' }),
+            onError: err => toast(`Couldn't restore ${label}: ${err.message}`, { tone: 'error' }),
+          }),
+        },
+      }),
+    });
+  }, [deleteConfig, createConfig, activeCharId]);
 
   const openEditor = (config: GunConfig | null) => {
     setEditing(config);
@@ -104,10 +125,10 @@ export default function Loadouts() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col md:h-full">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b border-arc-border bg-arc-panel/50 shrink-0">
-        <div className="flex items-center justify-between mb-4 gap-3">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b border-arc-border bg-arc-panel/50 shrink-0">
+        <div className="flex items-start sm:items-center justify-between mb-4 gap-3 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-arc-text">Loadouts</h1>
             <p className="text-xs text-arc-dim mt-0.5">Gun builds with mods, counts and value</p>
@@ -132,30 +153,9 @@ export default function Loadouts() {
           </div>
         </div>
 
-        {/* Character selector */}
+        {/* Character (shared across pages) */}
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className="text-xs text-arc-dim uppercase tracking-wide shrink-0">Character:</span>
-          <div className="flex flex-wrap gap-2">
-            {characters.map(char => (
-              <button
-                key={char.id}
-                onClick={() => setSelectedCharId(char.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
-                  ${activeCharId === char.id ? '' : 'border-arc-border text-arc-muted hover:text-arc-text hover:border-arc-muted/60'}`}
-                style={activeCharId === char.id ? {
-                  backgroundColor: char.color + '20',
-                  borderColor: char.color + '60',
-                  color: char.color,
-                } : {}}
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: activeCharId === char.id ? char.color : 'rgb(var(--arc-border))' }}
-                />
-                {char.name}
-              </button>
-            ))}
-          </div>
+          <CharacterSwitcher />
 
           {/* When this character last touched this area. */}
           <LastUpdated value={activity?.loadouts ?? null} label="Updated" className="ml-auto" />
@@ -171,7 +171,7 @@ export default function Loadouts() {
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="md:flex-1 md:overflow-auto p-4 sm:p-6">
         {/* Mod price editor. Prices are per-install because no public source
             lists them, and they feed every build's value. */}
         {showPrices && catalog && (
@@ -235,7 +235,6 @@ export default function Loadouts() {
                 key={config.id}
                 config={config}
                 slots={catalog?.slots ?? []}
-                onQuantity={handleQuantity}
                 onSetQuantity={handleSetQuantity}
                 onEdit={openEditor}
                 onCopy={openCopy}

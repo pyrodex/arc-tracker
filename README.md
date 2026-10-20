@@ -91,7 +91,13 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts and amplific
 
 ### UI & Themes
 - **Dark, Light, and System/Auto** color schemes — toggle between dark (default), light, or follow the OS preference; choice persisted in `localStorage`
-- **Responsive layout** — sidebar navigation with the official ARC Raiders icon
+- **Responsive layout** — sidebar navigation with the official ARC Raiders icon; on phones it becomes a slide-out menu behind a top bar, and pages scroll as a whole
+- **One character choice everywhere** — pick the character once from the switcher on any tracking page; Blueprints, Stencils, ARC Parts, Amplification, Workshop and Loadouts all follow it, and it's remembered between visits. `?character=<id>` links select a character on arrival
+- **Quick entry** — `Ctrl+K` / `⌘K` or `/` from anywhere: type an item name, press Enter, type a count, press Enter. Covers blueprints and stencils (extras and learned), ARC parts, amplification components and workshop materials
+- **Counters** — hold − or + to repeat (it speeds up), saving once on release; rapid clicks all count
+- **Feedback** — failed saves show an error toast; deleting a build offers Undo
+- **What's next** — the Dashboard shows the current character's closest workshop upgrades (ready / ready if pooled / short), builds it could amplify, blueprints no character has learned, and spares one character holds that another still needs
+- **Readable** — 11px minimum for labels, 12px for text, and a dim text colour that meets WCAG AA contrast on every surface in both themes
 - **Modern design** — built with Tailwind CSS 4, smooth transitions, and consistent arc-themed color tokens
 
 ## Quick Start
@@ -281,6 +287,12 @@ This project is not affiliated with Embark Studios or ARC Raiders.
 ## Changelog
 
 ### Unreleased
+- **UX overhaul** — one shared character choice across every tracking page (replacing six separate selector rows); a mobile layout with a slide-out menu; Quick entry (`Ctrl+K`, `⌘K` or `/`); hold-to-repeat counters shared by every page; Undo for deleted builds and an error toast whenever a save fails (previously silent); "Held only" filters on ARC Parts and Amplification and "Has extras" on Blueprints and Stencils; and a Dashboard "What's next" panel in place of the shortcut tiles that repeated the sidebar
+- **Have vs. need** — Workshop requirement rows lead with the current character's count against the requirement ("need 3 more", or how many all characters hold between them), and each unbuilt level is marked Ready to build, Ready if pooled, or Short N items. The amplified-build editor shows how many of the module and of each option's materials (including ARC parts such as Assessor Matrix) the character holds
+- **Readability** — the dim text colour is lightened to meet WCAG AA (4.5:1) on every background in both themes (it was 3.4–4.1:1 in dark), and 9–10px text is raised to 11px for labels and 12px elsewhere
+- **Fix: lost clicks** — clicking + quickly sent "current + 1" from a value that hadn't refreshed yet, so some clicks were dropped. Counters now keep their own value until the server catches up
+- **Fix: stray "0" on build cards** — builds that aren't amplified showed a lone `0` (the API sends `amplified` as 0/1), on Loadouts cards and in the Loadouts report
+- **Workshop** — already-built levels no longer say "need N more" for materials that were spent; Research Station gets its own icon
 - **Tailwind CSS 4** — the frontend moves from Tailwind 3.4 to 4.3 (replaces Dependabot #134, which couldn't build on its own). The theme now lives in `index.css` (`@theme`) instead of `tailwind.config.js`, PostCSS uses `@tailwindcss/postcss`, and `autoprefixer` is dropped since v4 handles prefixing. Every page was compared against the v3 build in light and dark themes and looks the same: v3's line heights, default border colour, button cursor and placeholder colour are kept, and a few classes that v3 silently ignored (`/8` and `/12` opacities, `w-4.5`, `w-13`, a conflicting `text-[11px]`) are removed so they don't start applying now. `braces` is no longer in the dependency tree, so its `npm audit` exception is removed. Tailwind 4 targets current browsers (Chrome/Edge 111+, Safari 16.4+, Firefox 128+)
 - **Amplified loadouts** — Loadouts builds can be amplified to Level 5 on the 15 weapons that support it, with the weapon's amplification options (44 in all, from arcraiders.wiki) picked in the build editor. Requirements and conflicts are enforced in the editor and the API, including options that block the magazine or stock mod slot. Cards show an Amplified badge, the chosen options and the per-gun module and material cost; the Loadouts report adds an Amplified guns tile, the options on each build and an amplification-usage breakdown. New `weapon_amplifications` and `gun_config_amplifications` tables plus `weapons.amp_module` and `gun_configs.amplified` columns are added on startup
 - **Bully Fragmenter on ARC Parts** — added as an Epic ARC part (5,000; from the Bully and ARC Courier). It's also a Research Station level 3 requirement, which now shares the ARC Parts count. Existing databases that tracked it as a Workshop material have those counts moved to ARC Parts on startup

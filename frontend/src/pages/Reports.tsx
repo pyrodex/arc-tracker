@@ -119,7 +119,7 @@ export default function Reports() {
   const description = typeof report.description === 'string' ? report.description : report.description[view];
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       <div className="mb-5">
         <h1 className="text-2xl font-bold text-arc-text mb-1">Reports</h1>
         <p className="text-arc-muted text-sm">Collection gaps, spares and inventory across all your characters.</p>
@@ -561,7 +561,7 @@ function ArcPartsInventory({ selectedCharId }: { selectedCharId: number | null }
                 <ArcPartIcon slug={part.slug} name={part.part_name} rarity={part.rarity} size={40} />
                 <div className="flex-1 min-w-0">
                   <span className="text-sm font-medium text-arc-text">{part.part_name}</span>
-                  <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm border hidden sm:inline-block ${badgeClass}`}>
+                  <span className={`ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-sm border hidden sm:inline-block ${badgeClass}`}>
                     {part.rarity === 'legendary' ? '👑' : '⚡'} {part.rarity}
                   </span>
                   <p className="text-xs text-arc-dim mt-0.5">from {part.source}</p>
@@ -688,7 +688,7 @@ function AmplificationInventory({ selectedCharId }: { selectedCharId: number | n
                       <AmplificationIcon component={{ slug: row.slug, name: row.component_name, kind: row.kind, tier: row.tier, unlocks: row.unlocks, rarity: row.rarity }} size={40} />
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-arc-text">{row.component_name}</span>
-                        <span className={`ml-2 text-[10px] font-semibold px-1.5 py-0.5 rounded-sm hidden sm:inline-block ${style.badge}`}>
+                        <span className={`ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-sm hidden sm:inline-block ${style.badge}`}>
                           {ampBadgeLabel(row)}
                         </span>
                         <p className="text-xs text-arc-dim mt-0.5">{row.source ? `from ${row.source}` : 'Source unknown'}</p>
@@ -743,7 +743,7 @@ function AmplificationInventory({ selectedCharId }: { selectedCharId: number | n
       })}
 
       {hasUnpriced && (
-        <p className="text-[11px] text-arc-dim mt-4">* Total value excludes components whose sell value isn’t known yet.</p>
+        <p className="text-xs text-arc-dim mt-4">* Total value excludes components whose sell value isn’t known yet.</p>
       )}
     </div>
   );
@@ -903,7 +903,7 @@ function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
           { label: 'Total value', value: totals.total_value, accent: true },
         ].map(({ label, value, accent }) => (
           <div key={label} className="card p-4">
-            <p className="text-[10px] text-arc-dim uppercase tracking-wider">{label}</p>
+            <p className="text-[11px] text-arc-dim uppercase tracking-wider">{label}</p>
             <p className={`text-xl font-semibold tabular-nums mt-1 ${accent ? 'text-arc-extra' : 'text-arc-text'}`}>
               {value.toLocaleString()}
             </p>
@@ -950,11 +950,11 @@ function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
                         <p className="text-sm text-arc-text">
                           {cfg.weapon_name}
                           {cfg.amplified ? (
-                            <span className="ml-1.5 text-[10px] font-bold text-amber-400">
+                            <span className="ml-1.5 text-xs font-bold text-amber-400">
                               {cfg.tier != null ? 'V' : 'Lv 5'} · Amplified
                             </span>
                           ) : cfg.tier != null && (
-                            <span className="ml-1.5 text-[10px] font-bold text-arc-accent">
+                            <span className="ml-1.5 text-xs font-bold text-arc-accent">
                               {ROMAN[cfg.tier] ?? cfg.tier}
                             </span>
                           )}
@@ -965,7 +965,7 @@ function LoadoutsReport({ selectedCharId }: { selectedCharId: number | null }) {
                             ? 'No mods'
                             : cfg.mods.map(m => m.name).join(', ')}
                         </p>
-                        {cfg.amplified && cfg.amplifications.length > 0 && (
+                        {!!cfg.amplified && cfg.amplifications.length > 0 && (
                           <p className="text-xs text-amber-400/80 mt-0.5">
                             ⚡ {cfg.amplifications.map(a => a.name).join(', ')}
                           </p>

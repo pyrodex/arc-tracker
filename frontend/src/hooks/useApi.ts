@@ -466,6 +466,7 @@ export function useCreateGunConfig() {
   return useMutation({
     mutationFn: (payload: CreateGunConfigPayload) =>
       apiFetch<GunConfig>('/api/gun-configs', { method: 'POST', body: JSON.stringify(payload) }),
+    meta: { inlineErrors: true },
     onSuccess: (_, variables) => invalidateConfigs(qc, variables.character_id),
   });
 }
@@ -475,6 +476,7 @@ export function useUpdateGunConfig() {
   return useMutation({
     mutationFn: ({ id, ...payload }: { id: number } & UpdateGunConfigPayload) =>
       apiFetch<GunConfig>(`/api/gun-configs/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+    meta: { inlineErrors: true },
     onSuccess: (config) => invalidateConfigs(qc, config.character_id),
   });
 }

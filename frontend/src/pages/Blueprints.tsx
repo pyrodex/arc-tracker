@@ -4,29 +4,27 @@ import type { Blueprint, BlueprintCategory, TrackingMap } from '../types';
 import {
   useBlueprints,
   useBlueprintCategories,
-  useCharacters,
   useTrackingMap,
   useUpsertTracking,
   useCharacterActivity,
 } from '../hooks/useApi';
 import LastUpdated from '../components/LastUpdated';
+import CharacterSwitcher from '../components/CharacterSwitcher';
+import { useActiveCharacter } from '../hooks/useActiveCharacter';
 import BlueprintCard from '../components/BlueprintCard';
 import { categoryMeta } from '../components/CategoryIcon';
 
-type FilterStatus = 'all' | 'learned' | 'not-learned';
+type FilterStatus = 'all' | 'learned' | 'not-learned' | 'extras';
 
 export default function Blueprints() {
-  const { data: characters = [] } = useCharacters();
+  const { characters, activeCharId, activeChar } = useActiveCharacter();
   const { data: categories = [] } = useBlueprintCategories();
 
-  const [selectedCharId, setSelectedCharId]     = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<BlueprintCategory | 'all'>('all');
   const [statusFilter, setStatusFilter]         = useState<FilterStatus>('all');
   const [search, setSearch]                     = useState('');
 
-  const activeCharId = selectedCharId ?? characters[0]?.id ?? null;
   const activity = useCharacterActivity(activeCharId);
-  const activeChar   = characters.find(c => c.id === activeCharId);
 
   const { data: blueprints = [] } = useBlueprints(selectedCategory === 'all' ? undefined : selectedCategory);
   const { trackingMap }           = useTrackingMap(activeCharId);
@@ -40,6 +38,7 @@ export default function Blueprints() {
     }
     if (statusFilter === 'learned')     list = list.filter(bp => trackingMap[bp.id]?.learned === 1);
     if (statusFilter === 'not-learned') list = list.filter(bp => !trackingMap[bp.id]?.learned);
+    if (statusFilter === 'extras')      list = list.filter(bp => (trackingMap[bp.id]?.extras ?? 0) > 0);
     return list;
   }, [blueprints, search, statusFilter, trackingMap]);
 
@@ -64,10 +63,10 @@ export default function Blueprints() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col md:h-full">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b border-arc-border bg-arc-panel/50 shrink-0">
-        <div className="flex items-center justify-between mb-4">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b border-arc-border bg-arc-panel/50 shrink-0">
+        <div className="flex items-start sm:items-center justify-between mb-4 gap-3 flex-wrap">
           <h1 className="text-2xl font-bold text-arc-text">Blueprints</h1>
           {activeChar && (
             <span className="text-sm text-arc-muted">
@@ -76,33 +75,9 @@ export default function Blueprints() {
           )}
         </div>
 
-        {/* Character selector */}
+        {/* Character (shared across pages) */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-xs text-arc-dim uppercase tracking-wide shrink-0">Character:</span>
-          <div className="flex flex-wrap gap-2">
-            {characters.map(char => (
-              <button
-                key={char.id}
-                onClick={() => setSelectedCharId(char.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
-                  ${activeCharId === char.id ? '' : 'border-arc-border text-arc-muted hover:text-arc-text hover:border-arc-muted/60'}`}
-                style={activeCharId === char.id ? {
-                  backgroundColor: char.color + '20',
-                  borderColor: char.color + '60',
-                  color: char.color,
-                } : {}}
-              >
-                <span className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: activeCharId === char.id ? char.color : 'rgb(var(--arc-border))' }} />
-                {char.name}
-                {char.label && (
-                  <span className="text-xs opacity-70">
-                    · {char.label.split(',').map((l: string) => l.trim()).filter(Boolean).slice(0, 2).join(', ')}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          <CharacterSwitcher />
 
           {/* When this character last touched this area. */}
           <LastUpdated value={activity?.blueprints ?? null} label="Updated" className="ml-auto" />
@@ -110,10 +85,10 @@ export default function Blueprints() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-arc-dim" />
             <input
-              className="input pl-8 py-1.5 text-sm w-48"
+              className="input pl-8 py-1.5 text-sm w-full sm:w-48"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search blueprints…"
@@ -149,7 +124,7 @@ export default function Blueprints() {
 
           <div className="flex items-center gap-1 ml-auto">
             <Filter className="w-3.5 h-3.5 text-arc-dim" />
-            {(['all', 'learned', 'not-learned'] as const).map(s => (
+            {(['all', 'learned', 'not-learned', 'extras'] as const).map(s => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
@@ -159,10 +134,12 @@ export default function Blueprints() {
                       ? 'bg-arc-learned/15 text-arc-learned border-arc-learned/30'
                       : s === 'not-learned'
                         ? 'bg-arc-danger/10 text-arc-danger border-arc-danger/30'
-                        : 'bg-arc-accent/15 text-arc-accent border-arc-accent/30'
+                        : s === 'extras'
+                          ? 'bg-arc-extra/15 text-arc-extra border-arc-extra/30'
+                          : 'bg-arc-accent/15 text-arc-accent border-arc-accent/30'
                     : 'border-arc-border text-arc-muted hover:border-arc-muted/60'}`}
               >
-                {s === 'all' ? 'All' : s === 'learned' ? '✓ Learned' : '○ Not learned'}
+                {s === 'all' ? 'All' : s === 'learned' ? '✓ Learned' : s === 'not-learned' ? '○ Not learned' : '◆ Has extras'}
               </button>
             ))}
 
@@ -179,7 +156,7 @@ export default function Blueprints() {
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="md:flex-1 md:overflow-auto p-4 sm:p-6">
         {filtered.length === 0 ? (
           <div className="text-center py-16"><p className="text-arc-dim">No blueprints match your filters.</p></div>
         ) : (

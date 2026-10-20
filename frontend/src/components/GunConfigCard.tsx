@@ -1,13 +1,12 @@
-import { useState } from 'react';
-import { Minus, Plus, Pencil, Trash2, AlertCircle, Copy, Zap } from 'lucide-react';
+import { Pencil, Trash2, AlertCircle, Copy, Zap } from 'lucide-react';
 import type { GunConfig, ModSlotMeta } from '../types';
+import CountStepper from './CountStepper';
 
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
 
 interface Props {
   config: GunConfig;
   slots: ModSlotMeta[];
-  onQuantity: (id: number, delta: number) => void;
   onSetQuantity: (id: number, quantity: number) => void;
   onEdit: (config: GunConfig) => void;
   onCopy: (config: GunConfig) => void;
@@ -15,10 +14,8 @@ interface Props {
 }
 
 export default function GunConfigCard({
-  config, slots, onQuantity, onSetQuantity, onEdit, onCopy, onDelete,
+  config, slots, onSetQuantity, onEdit, onCopy, onDelete,
 }: Props) {
-  const [draftQty, setDraftQty] = useState<string | null>(null);
-
   const bySlot = new Map(config.mods.map(m => [m.slot, m]));
   const filledSlots = slots.filter(s => bySlot.has(s.slot));
 
@@ -27,14 +24,6 @@ export default function GunConfigCard({
   const unpricedMods = config.mods.filter(m => m.sell_value === 0);
   const incomplete = config.weapon_value === 0 || unpricedMods.length > 0;
 
-  const commitQty = () => {
-    if (draftQty === null) return;
-    const parsed = parseInt(draftQty, 10);
-    if (Number.isFinite(parsed) && parsed >= 0 && parsed !== config.quantity) {
-      onSetQuantity(config.id, Math.min(parsed, 9999));
-    }
-    setDraftQty(null);
-  };
 
   return (
     <div className="card p-4 flex flex-col gap-3">
@@ -45,13 +34,13 @@ export default function GunConfigCard({
             <h3 className="font-semibold text-arc-text truncate">{config.weapon_name}</h3>
             {config.amplified ? (
               <span
-                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 tabular-nums"
+                className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-sm text-xs font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 tabular-nums"
                 title="Amplified — Level 5"
               >
                 <Zap className="w-2.5 h-2.5" /> {config.tier != null ? 'V' : 'Lv 5'} · Amplified
               </span>
             ) : config.tier != null && (
-              <span className="px-1.5 py-0.5 rounded-sm text-[10px] font-bold bg-arc-accent/15 text-arc-accent border border-arc-accent/25 tabular-nums">
+              <span className="px-1.5 py-0.5 rounded-sm text-xs font-bold bg-arc-accent/15 text-arc-accent border border-arc-accent/25 tabular-nums">
                 {ROMAN[config.tier] ?? config.tier}
               </span>
             )}
@@ -90,7 +79,7 @@ export default function GunConfigCard({
                 className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-arc-border/40 border border-arc-border"
                 title={`${slot.label}${mod.craftable ? '' : ' · loot-only'}`}
               >
-                <span className="text-arc-dim uppercase tracking-wider text-[10px] leading-none">{slot.label}</span>
+                <span className="text-arc-dim uppercase tracking-wider text-[11px] leading-none">{slot.label}</span>
                 <span className="text-sm text-arc-text leading-none">{mod.name}</span>
                 {!mod.craftable && <span className="text-amber-400 leading-none" title="Loot-only">◆</span>}
               </span>
@@ -100,7 +89,7 @@ export default function GunConfigCard({
       )}
 
       {/* Amplifications */}
-      {config.amplified && (
+      {!!config.amplified && (
         <div className="space-y-1.5">
           {config.amplifications.length === 0 ? (
             <p className="text-xs text-arc-dim italic">Amplified — no options picked yet.</p>
@@ -118,7 +107,7 @@ export default function GunConfigCard({
             </div>
           )}
           {config.amplification_cost && (
-            <p className="text-[11px] text-arc-dim">
+            <p className="text-xs text-arc-dim">
               Cost per gun: {config.amplification_cost.module}
               {config.amplification_cost.materials.map(m => ` + ${m.qty}× ${m.name}`).join('')}
             </p>
@@ -132,13 +121,13 @@ export default function GunConfigCard({
       <div className="pt-2 border-t border-arc-border space-y-1.5">
         <div className="flex items-baseline justify-between gap-3">
           <div>
-            <p className="text-[10px] text-arc-dim uppercase tracking-wider">Each</p>
+            <p className="text-[11px] text-arc-dim uppercase tracking-wider">Each</p>
             <p className="text-lg font-semibold text-arc-text tabular-nums leading-tight">
               {config.unit_value.toLocaleString()}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-arc-dim uppercase tracking-wider">Total value</p>
+            <p className="text-[11px] text-arc-dim uppercase tracking-wider">Total value</p>
             <p className="text-lg font-semibold text-arc-extra tabular-nums leading-tight">
               {config.total_value.toLocaleString()}
             </p>
@@ -170,38 +159,9 @@ export default function GunConfigCard({
 
       {/* Quantity stepper */}
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-arc-dim uppercase tracking-wide">Owned</span>
-        <div className="flex items-center gap-1 ml-auto">
-          <button
-            onClick={() => onQuantity(config.id, -1)}
-            disabled={config.quantity === 0}
-            className="btn-ghost p-1.5 disabled:opacity-30 disabled:cursor-not-allowed"
-            aria-label="Decrease quantity"
-          >
-            <Minus className="w-3.5 h-3.5" />
-          </button>
-
-          <input
-            className="input w-16 py-1 text-center text-sm tabular-nums"
-            value={draftQty ?? config.quantity}
-            onChange={e => setDraftQty(e.target.value.replace(/[^0-9]/g, ''))}
-            onFocus={() => setDraftQty(String(config.quantity))}
-            onBlur={commitQty}
-            onKeyDown={e => {
-              if (e.key === 'Enter') e.currentTarget.blur();
-              if (e.key === 'Escape') { setDraftQty(null); e.currentTarget.blur(); }
-            }}
-            inputMode="numeric"
-            aria-label="Quantity owned"
-          />
-
-          <button
-            onClick={() => onQuantity(config.id, 1)}
-            className="btn-ghost p-1.5"
-            aria-label="Increase quantity"
-          >
-            <Plus className="w-3.5 h-3.5" />
-          </button>
+        <span className="text-[11px] text-arc-dim uppercase tracking-wide">Owned</span>
+        <div className="ml-auto">
+          <CountStepper value={config.quantity} onChange={n => onSetQuantity(config.id, n)} name={`${config.weapon_name} builds`} />
         </div>
       </div>
     </div>

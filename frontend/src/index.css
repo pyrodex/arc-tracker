@@ -16,7 +16,7 @@
 
   --arc-text: 241 245 249; /* slate-100  */
   --arc-text-muted: 148 163 184; /* slate-400  */
-  --arc-text-dim: 100 116 139; /* slate-500  */
+  --arc-text-dim: 125 139 161; /* ≥4.7:1 on every dark surface */
 }
 
 [data-theme='light'] {
@@ -33,7 +33,7 @@
 
   --arc-text: 15 23 42; /* slate-900  */
   --arc-text-muted: 71 85 105; /* slate-600  */
-  --arc-text-dim: 100 116 139; /* slate-500  */
+  --arc-text-dim: 90 104 125; /* ≥5.1:1 on every light surface */
 }
 
 /* Tailwind color utilities (bg-arc-card, text-arc-muted/50, …) map onto the

@@ -3,12 +3,13 @@ import { Search, RotateCcw } from 'lucide-react';
 import type { AmplificationComponent, AmplificationKind } from '../types';
 import {
   useAmplificationComponents,
-  useCharacters,
   useAmplificationTrackingMap,
   useUpsertAmplificationTracking,
   useCharacterActivity,
 } from '../hooks/useApi';
 import LastUpdated from '../components/LastUpdated';
+import CharacterSwitcher from '../components/CharacterSwitcher';
+import { useActiveCharacter } from '../hooks/useActiveCharacter';
 import AmplificationCard from '../components/AmplificationCard';
 
 type KindFilter = 'all' | AmplificationKind;
@@ -27,16 +28,14 @@ const SECTIONS: Array<{ kind: AmplificationKind; title: string; blurb: string }>
 ];
 
 export default function Amplification() {
-  const { data: characters = [] } = useCharacters();
+  const { characters, activeCharId, activeChar } = useActiveCharacter();
   const { data: components = [] } = useAmplificationComponents();
 
-  const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
   const [kindFilter, setKindFilter]         = useState<KindFilter>('all');
   const [search, setSearch]                 = useState('');
+  const [heldOnly, setHeldOnly]             = useState(false);
 
-  const activeCharId = selectedCharId ?? characters[0]?.id ?? null;
   const activity     = useCharacterActivity(activeCharId);
-  const activeChar   = characters.find(c => c.id === activeCharId);
 
   const { trackingMap } = useAmplificationTrackingMap(activeCharId);
   const upsert          = useUpsertAmplificationTracking();
@@ -48,8 +47,9 @@ export default function Amplification() {
       const q = search.toLowerCase();
       list = list.filter(c => c.name.toLowerCase().includes(q) || (c.source ?? '').toLowerCase().includes(q));
     }
+    if (heldOnly) list = list.filter(c => (trackingMap[c.id]?.count ?? 0) > 0);
     return list;
-  }, [components, kindFilter, search]);
+  }, [components, kindFilter, search, heldOnly, trackingMap]);
 
   const handleSetCount = useCallback((componentId: number, count: number) => {
     if (!activeCharId) return;
@@ -71,10 +71,10 @@ export default function Amplification() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col md:h-full">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b border-arc-border bg-arc-panel/50 shrink-0">
-        <div className="flex items-center justify-between mb-4">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b border-arc-border bg-arc-panel/50 shrink-0">
+        <div className="flex items-start sm:items-center justify-between mb-4 gap-3 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-arc-text">Amplification</h1>
             <p className="text-xs text-arc-dim mt-0.5">Modules and materials for Level 5 amplified weapons</p>
@@ -92,35 +92,9 @@ export default function Amplification() {
           )}
         </div>
 
-        {/* Character selector */}
+        {/* Character (shared across pages) */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-xs text-arc-dim uppercase tracking-wide shrink-0">Character:</span>
-          <div className="flex flex-wrap gap-2">
-            {characters.map(char => (
-              <button
-                key={char.id}
-                onClick={() => setSelectedCharId(char.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
-                  ${activeCharId === char.id ? '' : 'border-arc-border text-arc-muted hover:text-arc-text hover:border-arc-muted/60'}`}
-                style={activeCharId === char.id ? {
-                  backgroundColor: char.color + '20',
-                  borderColor: char.color + '60',
-                  color: char.color,
-                } : {}}
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: activeCharId === char.id ? char.color : 'rgb(var(--arc-border))' }}
-                />
-                {char.name}
-                {char.label && (
-                  <span className="text-xs opacity-70">
-                    · {char.label.split(',').map((l: string) => l.trim()).filter(Boolean).slice(0, 2).join(', ')}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          <CharacterSwitcher />
 
           {/* When this character last touched this area. */}
           <LastUpdated value={activity?.amplification ?? null} label="Updated" className="ml-auto" />
@@ -128,10 +102,10 @@ export default function Amplification() {
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-arc-dim" />
             <input
-              className="input pl-8 py-1.5 text-sm w-56"
+              className="input pl-8 py-1.5 text-sm w-full sm:w-56"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search components…"
@@ -157,9 +131,21 @@ export default function Amplification() {
             ))}
           </div>
 
-          {(search || kindFilter !== 'all') && (
+          <button
+            onClick={() => setHeldOnly(h => !h)}
+            aria-pressed={heldOnly}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors
+              ${heldOnly
+                ? 'bg-arc-extra/15 text-arc-extra border-arc-extra/30'
+                : 'border-arc-border text-arc-muted hover:border-arc-muted/60 hover:text-arc-text'}`}
+            title="Only show items this character holds"
+          >
+            Held only
+          </button>
+
+          {(search || kindFilter !== 'all' || heldOnly) && (
             <button
-              onClick={() => { setSearch(''); setKindFilter('all'); }}
+              onClick={() => { setSearch(''); setKindFilter('all'); setHeldOnly(false); }}
               className="btn-ghost text-xs gap-1 py-1.5 ml-auto"
             >
               <RotateCcw className="w-3 h-3" /> Reset
@@ -169,7 +155,7 @@ export default function Amplification() {
       </div>
 
       {/* Grid */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="md:flex-1 md:overflow-auto p-4 sm:p-6">
         {filtered.length === 0 ? (
           <div className="text-center py-16">
             <p className="text-arc-dim">No components match your filters.</p>
@@ -193,7 +179,7 @@ export default function Amplification() {
         )}
 
         {heldUnpriced && (
-          <p className="text-[11px] text-arc-dim mt-6">* Total value excludes components whose sell value isn’t known yet.</p>
+          <p className="text-xs text-arc-dim mt-6">* Total value excludes components whose sell value isn’t known yet.</p>
         )}
       </div>
     </div>

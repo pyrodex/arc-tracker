@@ -65,20 +65,20 @@ function CharacterStats({ stats }: { stats: SummaryCharacter }) {
   const missing = stats.total_blueprints - stats.learned_count;
   return (
     <div className="flex items-center gap-2.5 mt-1.5">
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400" title="Blueprints learned">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400" title="Blueprints learned">
         <BookCheck className="w-3 h-3" />{stats.learned_count}
       </span>
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-arc-muted" title="Blueprints not yet learned">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-arc-muted" title="Blueprints not yet learned">
         <BookX className="w-3 h-3" />{missing}
       </span>
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-sky-400" title="Spare blueprints">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-sky-400" title="Spare blueprints">
         <Layers className="w-3 h-3" />{stats.total_extras}
       </span>
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-fuchsia-400"
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-fuchsia-400"
         title={`Stencils learned (${stats.stencil_extras} spare)`}>
         <SprayCan className="w-3 h-3" />{stats.stencils_learned}/{stats.total_stencils}
       </span>
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-purple-400" title="ARC Parts collected">
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-400" title="ARC Parts collected">
         <Cpu className="w-3 h-3" />{stats.total_arc_parts}
         {stats.arc_parts_value > 0 && (
           <span className="text-arc-extra font-medium">
@@ -86,7 +86,7 @@ function CharacterStats({ stats }: { stats: SummaryCharacter }) {
           </span>
         )}
       </span>
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-400"
+      <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-400"
         title={`Amplification components held (${stats.amplification_modules} module${stats.amplification_modules === 1 ? '' : 's'})`}>
         <Zap className="w-3 h-3" />{stats.total_amplification}
       </span>
@@ -109,7 +109,7 @@ function ActivityGrid({ activity }: { activity?: CharacterActivity }) {
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-4 gap-y-1 mt-2 pt-2 border-t border-arc-border/60">
       {ACTIVITY_AREAS.map(({ key, label }) => (
         <div key={key} className="min-w-0">
-          <p className="text-[10px] text-arc-dim uppercase tracking-wider">{label}</p>
+          <p className="text-[11px] text-arc-dim uppercase tracking-wider">{label}</p>
           <LastUpdated value={activity?.[key] ?? null} showIcon={false} stacked />
         </div>
       ))}
@@ -140,7 +140,7 @@ function StashCounter({ source, value, pending, onChange }: StashCounterProps) {
   const { label, slotsEach, max } = source;
   return (
     <div className="flex flex-col items-center gap-0.5">
-      <span className="text-[10px] font-medium text-arc-muted uppercase tracking-wide">{label}</span>
+      <span className="text-[11px] font-medium text-arc-muted uppercase tracking-wide">{label}</span>
       <div className="flex items-center gap-1">
         <button
           className="btn-ghost p-1 rounded-sm disabled:opacity-40"
@@ -162,7 +162,7 @@ function StashCounter({ source, value, pending, onChange }: StashCounterProps) {
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
-      <span className="text-[10px] text-arc-dim tabular-nums">+{slotsEach} each</span>
+      <span className="text-xs text-arc-dim tabular-nums">+{slotsEach} each</span>
     </div>
   );
 }
@@ -180,12 +180,12 @@ function StashPanel({
   return (
     <div className="mt-3 pt-3 border-t border-arc-border/40 flex flex-wrap items-center gap-x-6 gap-y-3">
       <div className="flex flex-col">
-        <span className="text-[10px] font-medium text-arc-muted uppercase tracking-wide">Total Stash</span>
+        <span className="text-[11px] font-medium text-arc-muted uppercase tracking-wide">Total Stash</span>
         <span className="text-lg font-semibold text-arc-text tabular-nums leading-tight">
           {total}
           <span className="text-xs text-arc-dim font-normal"> / {MAX_STASH_SLOTS} slots</span>
         </span>
-        <span className="text-[10px] text-arc-dim">{BASE_STASH_SLOTS} base</span>
+        <span className="text-xs text-arc-dim">{BASE_STASH_SLOTS} base</span>
       </div>
       {STASH_SOURCES.map(source => (
         <StashCounter
@@ -227,13 +227,13 @@ function CharacterRow({
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <span className={`font-medium text-arc-text ${nested ? 'text-sm' : ''}`}>{char.name}</span>
           {nested && parentName && (
-            <span className="text-[10px] text-arc-dim">under {parentName}</span>
+            <span className="text-xs text-arc-dim">under {parentName}</span>
           )}
         </div>
         <LabelBadges label={char.label} color={char.color} />
         {char.notes && <p className="text-xs text-arc-dim mt-1 truncate">{char.notes}</p>}
         {stats && <CharacterStats stats={stats} />}
-        <p className="text-[10px] text-arc-dim mt-0.5">
+        <p className="text-xs text-arc-dim mt-0.5">
           Created {new Date(char.created_at).toLocaleDateString()}
         </p>
       </div>
@@ -279,7 +279,7 @@ export default function Characters() {
   const [deleteTarget, setDeleteTarget] = useState<Character | null>(null);
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-3xl mx-auto">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-arc-text mb-1">Characters</h1>

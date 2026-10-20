@@ -24,7 +24,7 @@ function ArcPartFallback({ name, rarity, size }: { name: string; rarity: ArcPart
       style={{ width: size, height: size }}
     >
       <span className="text-base leading-none">{cfg.emoji}</span>
-      <span className={`text-[9px] font-bold mt-0.5 ${cfg.text}`}>{initials}</span>
+      <span className={`text-xs font-bold mt-0.5 ${cfg.text}`}>{initials}</span>
     </div>
   );
 }

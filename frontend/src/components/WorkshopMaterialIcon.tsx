@@ -16,7 +16,7 @@ function WorkshopMaterialFallback({ name, size }: { name: string; size: number }
       style={{ width: size, height: size }}
     >
       <span className="text-base leading-none">⚙️</span>
-      <span className="text-[9px] font-bold mt-0.5 text-arc-muted">{initials}</span>
+      <span className="text-xs font-bold mt-0.5 text-arc-muted">{initials}</span>
     </div>
   );
 }
