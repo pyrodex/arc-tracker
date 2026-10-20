@@ -1,20 +1,18 @@
 import { useMemo, useState, useCallback } from 'react';
-import { Search, RotateCcw, Wrench, Shield, HeartPulse, Bomb, Zap, Recycle, type LucideIcon } from 'lucide-react';
-import type { WorkshopCharacterCount, WorkshopRequirement } from '../types';
+import { Search, RotateCcw, Wrench, Shield, HeartPulse, Bomb, Zap, Recycle, FlaskConical, type LucideIcon } from 'lucide-react';
+import type { WorkshopRequirement } from '../types';
+import { useWorkshopRequirements } from '../hooks/useWorkshopRequirements';
 import {
-  useCharacters,
   useWorkshopStations,
   useWorkshopProgressMap,
   useUpsertWorkshopProgress,
-  useWorkshopMaterialsTrackingMap,
   useUpsertWorkshopMaterialTracking,
-  useWorkshopMaterialsReport,
-  useArcPartsTrackingMap,
   useUpsertArcPartTracking,
-  useArcPartsReport,
   useCharacterActivity,
 } from '../hooks/useApi';
 import LastUpdated from '../components/LastUpdated';
+import CharacterSwitcher from '../components/CharacterSwitcher';
+import { useActiveCharacter } from '../hooks/useActiveCharacter';
 import WorkshopStationCard from '../components/WorkshopStationCard';
 
 const STATION_ICONS: Record<string, LucideIcon> = {
@@ -24,62 +22,23 @@ const STATION_ICONS: Record<string, LucideIcon> = {
   'explosives-station': Bomb,
   'utility-station': Zap,
   refiner: Recycle,
+  'research-station': FlaskConical,
 };
 
 export default function Workshop() {
-  const { data: characters = [] } = useCharacters();
+  const { characters, activeCharId, activeChar } = useActiveCharacter();
   const { data: stations = [], isLoading: stationsLoading } = useWorkshopStations();
 
-  const [selectedCharId, setSelectedCharId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
 
-  const activeCharId = selectedCharId ?? characters[0]?.id ?? null;
   const activity = useCharacterActivity(activeCharId);
-  const activeChar = characters.find(c => c.id === activeCharId);
 
   const { progressMap } = useWorkshopProgressMap(activeCharId);
   const upsertProgress = useUpsertWorkshopProgress();
 
-  const { trackingMap: materialTrackingMap } = useWorkshopMaterialsTrackingMap(activeCharId);
   const upsertMaterial = useUpsertWorkshopMaterialTracking();
-
-  const { trackingMap: arcPartTrackingMap } = useArcPartsTrackingMap(activeCharId);
   const upsertArcPart = useUpsertArcPartTracking();
-
-  const { data: materialsReport = [] } = useWorkshopMaterialsReport();
-  const { data: arcPartsReport = [] } = useArcPartsReport();
-
-  const materialReportById = useMemo(
-    () => Object.fromEntries(materialsReport.map(r => [r.material_id, r])),
-    [materialsReport],
-  );
-  const arcPartReportById = useMemo(
-    () => Object.fromEntries(arcPartsReport.map(r => [r.part_id, r])),
-    [arcPartsReport],
-  );
-
-  const getRequirementData = useCallback((req: WorkshopRequirement) => {
-    if (req.item_type === 'arc_part') {
-      const report = arcPartReportById[req.item_id];
-      return {
-        totalCount: report?.total_count ?? 0,
-        breakdown: (report?.character_breakdown ?? []).map((cb): WorkshopCharacterCount => ({
-          character_id: cb.character_id,
-          character_name: cb.character_name,
-          character_label: cb.character_label,
-          character_color: cb.character_color,
-          count: cb.count,
-        })),
-        activeCount: arcPartTrackingMap[req.item_id]?.count ?? 0,
-      };
-    }
-    const report = materialReportById[req.item_id];
-    return {
-      totalCount: report?.total_count ?? 0,
-      breakdown: report?.character_breakdown ?? [],
-      activeCount: materialTrackingMap[req.item_id]?.count ?? 0,
-    };
-  }, [arcPartReportById, materialReportById, arcPartTrackingMap, materialTrackingMap]);
+  const getRequirementData = useWorkshopRequirements(activeCharId);
 
   const handleSetCount = useCallback((req: WorkshopRequirement, count: number) => {
     if (!activeCharId) return;
@@ -123,10 +82,10 @@ export default function Workshop() {
   }
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col md:h-full">
       {/* Header */}
-      <div className="px-6 pt-6 pb-4 border-b border-arc-border bg-arc-panel/50 shrink-0">
-        <div className="flex items-center justify-between mb-4">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-6 pb-4 border-b border-arc-border bg-arc-panel/50 shrink-0">
+        <div className="flex items-start sm:items-center justify-between mb-4 gap-3 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-arc-text">Workshop</h1>
             <p className="text-xs text-arc-dim mt-0.5">Station upgrade requirements &amp; material stockpiles per character</p>
@@ -145,35 +104,9 @@ export default function Workshop() {
           )}
         </div>
 
-        {/* Character selector */}
+        {/* Character (shared across pages) */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          <span className="text-xs text-arc-dim uppercase tracking-wide shrink-0">Character:</span>
-          <div className="flex flex-wrap gap-2">
-            {characters.map(char => (
-              <button
-                key={char.id}
-                onClick={() => setSelectedCharId(char.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors
-                  ${activeCharId === char.id ? '' : 'border-arc-border text-arc-muted hover:text-arc-text hover:border-arc-muted/60'}`}
-                style={activeCharId === char.id ? {
-                  backgroundColor: char.color + '20',
-                  borderColor: char.color + '60',
-                  color: char.color,
-                } : {}}
-              >
-                <span
-                  className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: activeCharId === char.id ? char.color : 'rgb(var(--arc-border))' }}
-                />
-                {char.name}
-                {char.label && (
-                  <span className="text-xs opacity-70">
-                    · {char.label.split(',').map((l: string) => l.trim()).filter(Boolean).slice(0, 2).join(', ')}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          <CharacterSwitcher />
 
           {/* When this character last touched this area. */}
           <LastUpdated value={activity?.workshop ?? null} label="Updated" className="ml-auto" />
@@ -181,10 +114,10 @@ export default function Workshop() {
 
         {/* Search */}
         <div className="flex flex-wrap gap-2 items-center">
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-arc-dim" />
             <input
-              className="input pl-8 py-1.5 text-sm w-56"
+              className="input pl-8 py-1.5 text-sm w-full sm:w-56"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search stations or materials…"
@@ -202,7 +135,7 @@ export default function Workshop() {
       </div>
 
       {/* Stations */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="md:flex-1 md:overflow-auto p-4 sm:p-6">
         {stationsLoading ? (
           <div className="text-center py-16">
             <div className="inline-block w-6 h-6 border-2 border-arc-accent/30 border-t-arc-accent rounded-full animate-spin mb-3" />

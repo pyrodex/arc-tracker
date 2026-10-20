@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, BarChart3, ChevronRight, Trophy, Cpu, Wrench, Crosshair, SprayCan, Zap } from 'lucide-react';
+import { Users, BookOpen, ChevronRight, Trophy, Cpu, Crosshair, SprayCan, Zap } from 'lucide-react';
 import { useSummary, useCharacters } from '../hooks/useApi';
+import { useActiveCharacter } from '../hooks/useActiveCharacter';
+import WhatsNext from '../components/WhatsNext';
 
 function ProgressBar({ value, max, color = 'rgb(var(--arc-accent))' }: { value: number; max: number; color?: string }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
@@ -17,7 +19,7 @@ function LabelPills({ label }: { label: string | null }) {
   return (
     <div className="flex flex-wrap gap-1">
       {label.split(',').map(l => l.trim()).filter(Boolean).map(l => (
-        <span key={l} className="badge bg-arc-border/60 text-arc-muted text-[10px]">{l}</span>
+        <span key={l} className="badge bg-arc-border/60 text-arc-muted text-xs">{l}</span>
       ))}
     </div>
   );
@@ -25,6 +27,7 @@ function LabelPills({ label }: { label: string | null }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { activeCharId, setActiveCharId } = useActiveCharacter();
   const summary    = useSummary();
   const characters = useCharacters();
   const hasCharacters = (characters.data?.length ?? 0) > 0;
@@ -43,7 +46,7 @@ export default function Dashboard() {
   const totalAmpValue = chars?.reduce((s, c) => s + c.amplification_value, 0) ?? 0;
 
   return (
-    <div className="p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-8 max-w-5xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-arc-text mb-1">Dashboard</h1>
         <p className="text-arc-muted text-sm">Track blueprints, stencils, ARC parts, amplification and gun builds across all your characters.</p>
@@ -113,10 +116,12 @@ export default function Dashboard() {
                 ? Math.round((char.learned_count / char.total_blueprints) * 100) : 0;
 
               return (
-                <div
+                <button
                   key={char.id}
-                  className="card p-4 hover:border-arc-muted/40 cursor-pointer transition-colors"
-                  onClick={() => navigate('/blueprints')}
+                  type="button"
+                  className={`card p-4 text-left hover:border-arc-muted/40 transition-colors ${char.id === activeCharId ? 'ring-1 ring-arc-accent/40' : ''}`}
+                  onClick={() => { setActiveCharId(char.id); navigate('/blueprints'); }}
+                  title={`Switch to ${char.name} and open Blueprints`}
                 >
                   <div className="flex items-start gap-3 mb-3">
                     <div className="w-3 h-3 rounded-full shrink-0 mt-1" style={{ backgroundColor: char.color }} />
@@ -155,23 +160,14 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
         </div>
       )}
 
-      {/* Quick nav */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <QuickNav icon={<BookOpen  className="w-5 h-5" />} title="Track Blueprints" desc="View and update learned/extra status per character"          onClick={() => navigate('/blueprints')} color="text-arc-accent"  />
-        <QuickNav icon={<SprayCan  className="w-5 h-5" />} title="Stencils"         desc="Track learned and spare weapon stencils per character"       onClick={() => navigate('/stencils')}   color="text-fuchsia-400" />
-        <QuickNav icon={<Cpu       className="w-5 h-5" />} title="ARC Parts"        desc="Track Epic and Legendary drops per character"                onClick={() => navigate('/arc-parts')}  color="text-purple-400" />
-        <QuickNav icon={<Zap       className="w-5 h-5" />} title="Amplification"    desc="Amplification modules and materials held per character"      onClick={() => navigate('/amplification')} color="text-amber-400" />
-        <QuickNav icon={<Wrench    className="w-5 h-5" />} title="Workshop"         desc="Station upgrade requirements and material stockpiles"       onClick={() => navigate('/workshop')}   color="text-sky-400"    />
-        <QuickNav icon={<Crosshair className="w-5 h-5" />} title="Loadouts"         desc="Gun builds with mods, counts held, and value"                onClick={() => navigate('/loadouts')}   color="text-sky-400"    />
-        <QuickNav icon={<BarChart3 className="w-5 h-5" />} title="Reports"          desc="Unlearned blueprints and stencils, extras, ARC parts, amplification and loadouts across all characters" onClick={() => navigate('/reports')} color="text-arc-extra"  />
-      </div>
+      <WhatsNext />
     </div>
   );
 }
@@ -186,23 +182,5 @@ function StatCard({ icon, label, value, sub }: { icon: ReactNode; label: string;
       <p className="text-3xl font-bold text-arc-text">{value}</p>
       <p className="text-xs text-arc-dim mt-0.5">{sub}</p>
     </div>
-  );
-}
-
-function QuickNav({ icon, title, desc, onClick, color }: {
-  icon: ReactNode; title: string; desc: string; onClick: () => void; color: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="card p-4 text-left hover:border-arc-muted/40 transition-colors group flex items-start gap-3"
-    >
-      <div className={`mt-0.5 ${color} group-hover:scale-110 transition-transform`}>{icon}</div>
-      <div>
-        <p className="text-sm font-medium text-arc-text">{title}</p>
-        <p className="text-xs text-arc-muted mt-0.5">{desc}</p>
-      </div>
-      <ChevronRight className="w-4 h-4 text-arc-dim group-hover:text-arc-muted ml-auto mt-0.5 transition-colors" />
-    </button>
   );
 }

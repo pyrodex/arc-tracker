@@ -2,6 +2,23 @@ import { useEffect, useMemo, useState } from 'react';
 import { Zap } from 'lucide-react';
 import type { GunConfig, WeaponAmplification, WeaponCatalog, WeaponModCatalog, WeaponPriceCatalog } from '../types';
 import Modal from './Modal';
+import { useActiveCharacter } from '../hooks/useActiveCharacter';
+import {
+  useAmplificationComponents,
+  useAmplificationTrackingMap,
+  useArcParts,
+  useArcPartsTrackingMap,
+} from '../hooks/useApi';
+
+/** "have/need" chip: green when this character holds enough. */
+function Have({ have, need }: { have: number; need: number }) {
+  const ok = have >= need;
+  return (
+    <span className={`tabular-nums ${ok ? 'text-arc-learned' : 'text-arc-extra'}`} title="Held by this character / needed per gun">
+      {have}/{need}
+    </span>
+  );
+}
 
 const TIERS = [1, 2, 3, 4];
 const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V'];
@@ -111,6 +128,25 @@ export default function GunConfigEditor({
 
   const canAmplify = !!selectedWeapon?.amp_module;
   const isAmplified = canAmplify && amplified;
+
+  // What this character holds of each amplification cost. Options can cost
+  // amplification materials or ARC parts (e.g. Assessor Matrix), so both feed
+  // one name → count lookup.
+  const { activeCharId } = useActiveCharacter();
+  const { data: ampComponents = [] } = useAmplificationComponents();
+  const { trackingMap: ampHeld } = useAmplificationTrackingMap(activeCharId);
+  const { data: arcParts = [] } = useArcParts();
+  const { trackingMap: arcHeld } = useArcPartsTrackingMap(activeCharId);
+  const heldByName = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of arcParts) m.set(p.name.toLowerCase(), arcHeld[p.id]?.count ?? 0);
+    for (const a of ampComponents) m.set(a.name.toLowerCase(), ampHeld[a.id]?.count ?? 0);
+    return m;
+  }, [arcParts, arcHeld, ampComponents, ampHeld]);
+  const held = (name: string) => heldByName.get(name.toLowerCase()) ?? 0;
+  const moduleName = selectedWeapon?.amp_module
+    ? ampComponents.find(a => a.kind === 'module' && a.tier === selectedWeapon.amp_module)?.name ?? null
+    : null;
   const ampOptions = useMemo(
     () => (weaponCatalog?.amplifications ?? []).filter(a => a.weapon_id === weaponId),
     [weaponCatalog, weaponId],
@@ -253,7 +289,7 @@ export default function GunConfigEditor({
               })}
             </select>
             {selectedWeapon && selectedWeapon.blueprint_id === null && (
-              <span className="text-[10px] text-arc-dim">
+              <span className="text-xs text-arc-dim">
                 Unlocked at Gunsmith {selectedWeapon.gunsmith_level} — no blueprint to find.
               </span>
             )}
@@ -272,9 +308,9 @@ export default function GunConfigEditor({
               {isAmplified && canTier && <option value={5}>V · Amplified</option>}
             </select>
             {isAmplified ? (
-              <span className="text-[10px] text-arc-dim">Level 5 — upgraded past IV by amplifying.</span>
+              <span className="text-xs text-arc-dim">Level 5 — upgraded past IV by amplifying.</span>
             ) : !canTier && selectedWeapon && (
-              <span className="text-[10px] text-arc-dim">
+              <span className="text-xs text-arc-dim">
                 {selectedWeapon.rarity ?? 'This weapon'} — cannot be upgraded.
               </span>
             )}
@@ -283,7 +319,7 @@ export default function GunConfigEditor({
 
         <label className="block">
           <span className="text-xs text-arc-dim uppercase tracking-wide">
-            Build name <span className="text-arc-dim/60 normal-case">(optional)</span>
+            Build name <span className="text-arc-dim normal-case">(optional)</span>
           </span>
           <input
             className="input mt-1 w-full"
@@ -300,7 +336,7 @@ export default function GunConfigEditor({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
             {catalog.slots.map(slot => (
               <label key={slot.slot} className="block">
-                <span className="text-[11px] text-arc-muted">
+                <span className="text-xs text-arc-muted">
                   {slot.label}
                   {blockedSlots.has(slot.slot) && (
                     <span className="text-amber-400/90"> · blocked by {blockedSlots.get(slot.slot)}</span>
@@ -344,8 +380,10 @@ export default function GunConfigEditor({
                 <span className="flex items-center gap-1.5 text-sm font-medium text-arc-text">
                   <Zap className="w-3.5 h-3.5 text-amber-400" /> Amplified (Level 5)
                 </span>
-                <span className="block text-[11px] text-arc-dim">
-                  Needs Amplification Module Mk. {ROMAN[selectedWeapon.amp_module!]}, Gunsmith 4 and Research Station 4.
+                <span className="block text-xs text-arc-dim">
+                  Needs Amplification Module Mk. {ROMAN[selectedWeapon.amp_module!]}
+                  {moduleName && <> (<Have have={held(moduleName)} need={1} />)</>}
+                  , Gunsmith 4 and Research Station 4.
                 </span>
               </span>
             </label>
@@ -373,14 +411,19 @@ export default function GunConfigEditor({
                       <span className="min-w-0 flex-1">
                         <span className="flex items-baseline justify-between gap-2 flex-wrap">
                           <span className="text-sm text-arc-text">{opt.name}</span>
-                          <span className="text-[11px] text-arc-muted tabular-nums">
-                            {opt.materials.map(m => `${m.qty}× ${m.name}`).join(', ')}
+                          <span className="text-xs text-arc-muted tabular-nums">
+                            {opt.materials.map((m, i) => (
+                              <span key={m.name}>
+                                {i > 0 && ', '}
+                                {m.name} <Have have={held(m.name)} need={m.qty} />
+                              </span>
+                            ))}
                           </span>
                         </span>
                         {opt.effects.length > 0 && (
-                          <span className="block text-[11px] text-arc-dim mt-0.5">{opt.effects.join(' · ')}</span>
+                          <span className="block text-xs text-arc-dim mt-0.5">{opt.effects.join(' · ')}</span>
                         )}
-                        <span className="block text-[10px] text-arc-dim mt-0.5">
+                        <span className="block text-xs text-arc-dim mt-0.5">
                           {opt.research ? `Research: ${opt.research}` : 'No research needed'}
                           {reason && <span className="text-amber-400/90"> · {reason}</span>}
                         </span>
@@ -390,7 +433,7 @@ export default function GunConfigEditor({
                 })}
 
                 {pickedAmps.length > 0 && (
-                  <p className="text-[11px] text-arc-muted">
+                  <p className="text-xs text-arc-muted">
                     Per gun: Module Mk. {ROMAN[selectedWeapon.amp_module!]}
                     {ampCost.map(([name, qty]) => ` + ${qty}× ${name}`).join('')}
                   </p>
@@ -414,7 +457,7 @@ export default function GunConfigEditor({
               inputMode="numeric"
             />
             {catalogValue === null ? (
-              <span className="text-[10px] text-arc-dim">
+              <span className="text-xs text-arc-dim">
                 {isAmplified
                   ? 'No wiki price for amplified (Level 5) weapons — enter it yourself.'
                   : 'No wiki price for this weapon/tier — enter it yourself.'}
@@ -423,12 +466,12 @@ export default function GunConfigEditor({
               <button
                 type="button"
                 onClick={() => { setValueTouched(true); setWeaponValue(String(catalogValue)); }}
-                className="text-[10px] text-arc-accent hover:underline"
+                className="text-xs text-arc-accent hover:underline"
               >
                 Wiki price is {catalogValue.toLocaleString()} — use it
               </button>
             ) : (
-              <span className="text-[10px] text-arc-dim">Wiki price for this tier.</span>
+              <span className="text-xs text-arc-dim">Wiki price for this tier.</span>
             )}
           </label>
 
@@ -446,7 +489,7 @@ export default function GunConfigEditor({
 
         <label className="block">
           <span className="text-xs text-arc-dim uppercase tracking-wide">
-            Notes <span className="text-arc-dim/60 normal-case">(optional)</span>
+            Notes <span className="text-arc-dim normal-case">(optional)</span>
           </span>
           <textarea
             className="input mt-1 w-full text-sm"

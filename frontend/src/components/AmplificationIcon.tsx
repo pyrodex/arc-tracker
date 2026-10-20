@@ -20,7 +20,7 @@ export default function AmplificationIcon({ component, size = 40 }: Props) {
         style={{ width: size, height: size }}
       >
         <span className="text-base leading-none">⚡</span>
-        <span className={`text-[9px] font-bold mt-0.5 ${style.text}`}>{ampShortLabel(component)}</span>
+        <span className={`text-xs font-bold mt-0.5 ${style.text}`}>{ampShortLabel(component)}</span>
       </div>
     );
   }

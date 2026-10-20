@@ -20,7 +20,7 @@ function StencilFallback({ name, rarity, size }: { name: string; rarity: Stencil
       style={{ width: size, height: size }}
     >
       <span className="text-base leading-none">🎨</span>
-      <span className={`text-[9px] font-bold mt-0.5 ${meta.text}`}>{initials}</span>
+      <span className={`text-xs font-bold mt-0.5 ${meta.text}`}>{initials}</span>
     </div>
   );
 }
