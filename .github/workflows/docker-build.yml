@@ -120,6 +120,10 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: ${{ github.event_name != 'pull_request' }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Re-run `apk upgrade` on every build so Alpine security fixes are not
+          # masked by the layer cache (see APK_CACHE_BUST in the Dockerfile).
+          build-args: |
+            APK_CACHE_BUST=${{ github.run_id }}-${{ github.run_attempt }}
           # Push by digest only — tags are applied in the merge job
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true,push=${{ github.event_name != 'pull_request' }}
           cache-from: type=gha,scope=${{ steps.platform.outputs.safe }}
