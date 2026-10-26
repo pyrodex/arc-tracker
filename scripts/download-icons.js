@@ -215,9 +215,22 @@ function slugify(name) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-function fetchUrl(urlStr, retries = 2) {
+// Limits for outbound fetches. Icons are small, and the wiki API answers in a
+// few hundred KB at most, so anything far beyond that is not a real response.
+const MAX_REDIRECTS      = 5;
+const MAX_RESPONSE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+function fetchUrl(urlStr, retries = 2, redirectsLeft = MAX_REDIRECTS) {
   return new Promise((resolve, reject) => {
-    const parsed  = new URL(urlStr);
+    let parsed;
+    try {
+      parsed = new URL(urlStr);
+    } catch (err) {
+      return reject(new Error(`Invalid URL: ${urlStr}`));
+    }
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return reject(new Error(`Unsupported protocol: ${parsed.protocol}`));
+    }
     const lib     = parsed.protocol === 'https:' ? https : http;
     const options = {
       hostname: parsed.hostname,
@@ -233,20 +246,50 @@ function fetchUrl(urlStr, retries = 2) {
 
     const req = lib.request(options, res => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return fetchUrl(res.headers.location, retries).then(resolve).catch(reject);
+        res.resume(); // discard the redirect body so the socket is released
+        if (redirectsLeft <= 0) {
+          return reject(new Error(`Too many redirects for ${urlStr}`));
+        }
+        let next;
+        try {
+          // Location may be relative; resolve it against the current URL.
+          next = new URL(res.headers.location, parsed);
+        } catch (err) {
+          return reject(new Error(`Invalid redirect location from ${urlStr}`));
+        }
+        if (parsed.protocol === 'https:' && next.protocol !== 'https:') {
+          return reject(new Error(`Refusing HTTPS→${next.protocol} redirect from ${urlStr}`));
+        }
+        return fetchUrl(next.href, retries, redirectsLeft - 1).then(resolve).catch(reject);
+      }
+
+      const declared = parseInt(res.headers['content-length'], 10);
+      if (declared > MAX_RESPONSE_BYTES) {
+        res.destroy();
+        return reject(new Error(`Response too large (${declared} bytes) for ${urlStr}`));
       }
       const chunks = [];
-      res.on('data', c => chunks.push(c));
+      let received = 0;
+      res.on('data', c => {
+        received += c.length;
+        if (received > MAX_RESPONSE_BYTES) {
+          res.destroy();
+          reject(new Error(`Response exceeded ${MAX_RESPONSE_BYTES} bytes for ${urlStr}`));
+          return;
+        }
+        chunks.push(c);
+      });
       res.on('end', () => resolve({ statusCode: res.statusCode, body: Buffer.concat(chunks), headers: res.headers }));
+      res.on('error', reject);
     });
 
     req.on('error', err => {
-      if (retries > 0) fetchUrl(urlStr, retries - 1).then(resolve).catch(reject);
+      if (retries > 0) fetchUrl(urlStr, retries - 1, redirectsLeft).then(resolve).catch(reject);
       else reject(err);
     });
     req.on('timeout', () => {
       req.destroy();
-      if (retries > 0) fetchUrl(urlStr, retries - 1).then(resolve).catch(reject);
+      if (retries > 0) fetchUrl(urlStr, retries - 1, redirectsLeft).then(resolve).catch(reject);
       else reject(new Error('Request timed out'));
     });
     req.end();
