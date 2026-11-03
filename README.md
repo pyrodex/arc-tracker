@@ -94,6 +94,7 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts, amplificati
 ### Vision Sync *(new, experimental)*
 - **Stash reader** — the optional [arc-vision](agent/README.md) desktop agent runs on your gaming PC. It reads the stash screen with screen capture and computer vision, and only ever reads pixels; it never touches the game. It recognises tracked items, reads their stack counts and syncs them here. A click-through overlay with hotkeys shows what it saw
 - **Scroll-safe** — frames are lined up by matching rows, so scrolling back and forth never counts an item twice; a frame it can't place is skipped, never guessed
+- **Learned blueprints** — the game's checkmark on a blueprint marks it learned here too (never the other way round)
 - **Preview, then apply** — nothing is written until you've seen the change list. Only items it actually saw are changed (unless you turn on full-stash mode), and counts it can't read are left alone
 - **Vision Sync page** — every applied sync with its before/after values, and one-click revert that keeps anything you've edited since
 
@@ -255,7 +256,7 @@ arc-tracker/
 | GET | `/api/reports/arc-parts` | ARC parts collected with per-character breakdown |
 | GET | `/api/reports/workshop-materials` | Workshop materials collected with per-character breakdown |
 | GET | `/api/vision/catalog` | Every trackable item (blueprints, stencils, ARC parts, amplification, workshop materials) with its icon URL, for the arc-vision agent |
-| POST | `/api/vision/sync` | Preview (`apply: false`) or apply observed counts: `{character_id, items: [{type, id, count}], apply}`. Stacks of one item are summed; only listed items change; blueprints/stencils write `extras`, everything else `count` |
+| POST | `/api/vision/sync` | Preview (`apply: false`) or apply observed counts: `{character_id, items: [{type, id, count, learned?}], apply}`. Stacks of one item are summed; only listed items change; blueprints/stencils write `extras`, everything else `count`. `learned: true` (blueprints/stencils, `count` optional) marks an item learned; syncs never un-learn |
 | GET | `/api/vision/syncs` | Applied syncs with their changes (query: `?character_id=&limit=`) |
 | POST | `/api/vision/syncs/:id/revert` | Restore a sync's previous values, skipping anything changed since |
 | POST | `/api/icons/refresh` | Trigger a background icon re-download |

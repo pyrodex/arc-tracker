@@ -184,8 +184,9 @@ class FakeClient:
     def characters(self):
         return [{"id": 1, "name": "Main"}, {"id": 2, "name": "Alt"}]
 
-    def sync(self, character_id, counts, apply):
+    def sync(self, character_id, counts, apply, learned=()):
         self.calls.append((character_id, dict(counts), apply))
+        self.learned = set(learned)
         return {"applied": apply, "sync_id": 9 if apply else None,
                 "changes": [{"type": k.split(":")[0], "id": int(k.split(":")[1]), "before": 0, "after": v} for k, v in counts.items()],
                 "unchanged": 0, "unknown": []}
@@ -275,3 +276,16 @@ def test_engine_follows_signed_in_character(world, monkeypatch):
     shown["name"] = "Stranger"
     eng.check_identity(lobby)
     assert not eng.state().character_confirmed and "isn't linked" in eng.state().error
+
+
+
+def test_session_reports_learned_blueprints():
+    from arc_vision.scanner import SlotResult
+    row = [SlotResult(0, 0, (0, 0, 1, 1), "item", key="blueprint:3", count=1, learned=True, signature=(1,)),
+           SlotResult(0, 1, (0, 0, 1, 1), "item", key="blueprint:4", count=2, learned=False, signature=(2,)),
+           SlotResult(0, 2, (0, 0, 1, 1), "item", key="blueprint:5", count=0, count_uncertain=True,
+                      learned=True, signature=(3,))]
+    s = ScanSession()
+    assert s.add(row, trusted=True)
+    assert s.learned() == {"blueprint:3", "blueprint:5"}      # learned even when the count won't read
+    assert s.totals() == {"blueprint:3": 1, "blueprint:4": 2}

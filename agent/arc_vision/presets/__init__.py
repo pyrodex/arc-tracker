@@ -22,6 +22,7 @@ PRESETS = {
             "rows": 6,
             "icon_box": [6, 6, 117, 88],
             "count_box": [64, 97, 62, 27],
+            "learned_box": [92, 2, 36, 30],
             "anchor": {"box": [636, 190, 115, 36], "file": "anchor.png"},
         },
         "anchor_image": "3440x1440-stash-anchor.png",

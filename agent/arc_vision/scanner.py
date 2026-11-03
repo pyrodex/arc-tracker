@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from pathlib import Path
 from dataclasses import dataclass, field
 
 import cv2
@@ -10,6 +11,7 @@ import numpy as np
 
 from . import config
 from .catalog import IGNORE_KEY, Catalog, icon_path, load_icon_rgba, taught_templates
+from .digits import ink_mask
 from .matcher import Matcher
 from .ocr import CountReader
 
@@ -28,6 +30,7 @@ class SlotResult:
     candidates: list = field(default_factory=list)   # top matches, for teach/debug
     signature: tuple = ()                    # coarse appearance, for unknown slots
     blueprint: bool = False                  # drawn on the blue blueprint grid
+    learned: bool = False                    # blueprint shows the learned checkmark
 
 
 class Geometry:
@@ -103,6 +106,35 @@ class Scanner:
             if img is not None:
                 self._anchor = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         self._geom_cache: dict = {}
+        self._check = None
+        check_file = config.APP_DIR / "learned.png"
+        if not check_file.exists():
+            check_file = Path(__file__).parent / "presets" / "3440x1440-learned-check.png"
+        img = cv2.imread(str(check_file), cv2.IMREAD_GRAYSCALE)
+        if img is not None:
+            self._check = (img > 127).astype(np.float32) * 255
+        self._check_scaled: dict = {}
+
+    def learned_mark(self, frame, sbox, g: "Geometry") -> bool:
+        """Learned blueprints show a white checkmark in the slot's top-right corner."""
+        if self._check is None:
+            return False
+        w, h = g.slot
+        rel = self.calib.get("learned_box") or [round(w * 0.71), round(h * 0.016), round(w * 0.28), round(h * 0.23)]
+        if g.scale != (1.0, 1.0) and self.calib.get("learned_box"):
+            rel = [round(v * f) for v, f in zip(rel, (*g.scale, *g.scale))]
+        region = crop(frame, g.sub_box(sbox, rel))
+        # The shipped mark was cut from 129 px slots; scale it to these.
+        f = w / 129.0
+        if f not in self._check_scaled:
+            t = self._check if abs(f - 1) < 0.02 else cv2.resize(self._check, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
+            self._check_scaled[f] = t
+        tpl = self._check_scaled[f]
+        ink = ink_mask(region, 180, 60).astype(np.float32) * 255
+        if ink.max() == 0 or ink.shape[0] < tpl.shape[0] or ink.shape[1] < tpl.shape[1]:
+            return False
+        score = float(cv2.matchTemplate(ink, tpl, cv2.TM_CCOEFF_NORMED).max())
+        return score >= self.cfg.get("learned_threshold", 0.65)
 
     def geometry(self, frame) -> Geometry:
         size = (frame.shape[1], frame.shape[0])
@@ -244,6 +276,8 @@ class Scanner:
                             res.status = "ignored"
                         else:
                             res.status = "item"
+                            if res.blueprint:
+                                res.learned = self.learned_mark(frame, sbox, g)
                             if g.count_box:
                                 res.count, res.count_uncertain = self.counts.read(crop(frame, g.sub_box(sbox, g.count_box)))
                             else:
@@ -440,6 +474,11 @@ class ScanSession:
                     out[slot[1]] += slot[2]
         return dict(out)
 
+    def learned(self) -> set[str]:
+        """Blueprints seen with the learned checkmark."""
+        return {slot[1] for contents in self._current.values() for slot in contents
+                if slot[0] in ("item", "unread") and slot[3]}
+
     def unread(self) -> dict[str, int]:
         """Item key → stacks whose count wouldn't read (not included in totals)."""
         out: dict[str, int] = defaultdict(int)
@@ -455,7 +494,7 @@ SIGNATURE_TOLERANCE = 4
 
 def _contents(row: tuple) -> tuple:
     """What counts: tracked items and their counts. Untracked slots collapse to 'other'."""
-    return tuple(s[:3] if s[0] in ("item", "unread") else (s[0],) for s in row)
+    return tuple(s[:4] if s[0] in ("item", "unread") else (s[0],) for s in row)
 
 
 def _blank(row: tuple) -> bool:
@@ -466,7 +505,7 @@ def _slots_match(a: tuple, b: tuple) -> bool:
     if a[0] != b[0]:
         return False
     if a[0] in ("item", "unread"):
-        return a[1:3] == b[1:3]
+        return a[1:4] == b[1:4]
     if a[0] == "empty":
         return True
     # unknown / ignored: compare appearance loosely; hover can nudge colours
@@ -480,7 +519,8 @@ def _rows_match(a: tuple, b: tuple) -> bool:
 def _slot_key(s: SlotResult) -> tuple:
     """(kind, item key, count, signature) — signature last, used only for alignment."""
     if s.status == "item":
-        return ("unread", s.key, None, s.signature) if s.count_uncertain else ("item", s.key, s.count, s.signature)
+        kind = "unread" if s.count_uncertain else "item"
+        return (kind, s.key, None if s.count_uncertain else s.count, s.learned, s.signature)
     if s.status in ("ignored", "unknown"):
-        return (s.status, None, None, s.signature)
-    return ("empty", None, None, ())
+        return (s.status, None, None, False, s.signature)
+    return ("empty", None, None, False, ())

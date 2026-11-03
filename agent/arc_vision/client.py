@@ -29,12 +29,22 @@ class TrackerClient:
     def icon_bytes(self, icon_url: str) -> bytes:
         return self._get(icon_url).content
 
-    def sync(self, character_id: int, counts: dict[str, int], apply: bool) -> dict:
-        """counts maps 'type:id' → total count seen."""
+    def sync(self, character_id: int, counts: dict[str, int], apply: bool, learned=()) -> dict:
+        """counts maps 'type:id' → total count seen; learned lists blueprints seen as learned.
+
+        A learned blueprint whose count couldn't be read is sent without a count.
+        """
         items = []
+        learned = set(learned)
         for key, count in counts.items():
             t, i = key.split(":", 1)
-            items.append({"type": t, "id": int(i), "count": int(count)})
+            item = {"type": t, "id": int(i), "count": int(count)}
+            if key in learned:
+                item["learned"] = True
+            items.append(item)
+        for key in learned - set(counts):
+            t, i = key.split(":", 1)
+            items.append({"type": t, "id": int(i), "learned": True})
         r = self.http.post(
             self.base + "/api/vision/sync",
             json={"character_id": character_id, "items": items, "apply": apply, "source": "arc-vision"},

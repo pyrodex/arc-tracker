@@ -54,6 +54,7 @@ class Engine:
         self._state = State()
         self._session = ScanSession(cfg["stable_frames"])
         self._preview_counts: dict | None = None
+        self._preview_learned: set = set()
         self._preview_frames = -1
         self._characters: list[dict] = []
         self._frame = None
@@ -219,8 +220,10 @@ class Engine:
             self._set(message="Nothing scanned yet — snapshot or watch the stash first.")
             return
         counts = self._counts_to_send()
-        resp = self.client.sync(char["id"], counts, apply=False)
+        learned = self._session.learned()
+        resp = self.client.sync(char["id"], counts, apply=False, learned=learned)
         self._preview_counts = counts
+        self._preview_learned = learned
         self._preview_frames = self._session.frames
         n = len(resp["changes"])
         self._set(preview=resp, message=f"{n} change(s) for {char['name']}. Apply to save." if n else "Tracker already matches.")
@@ -235,7 +238,7 @@ class Engine:
         if self._preview_counts is None or self._preview_frames != self._session.frames:
             self._set(message="Preview first — the scan changed since the last preview.")
             return
-        resp = self.client.sync(char["id"], self._preview_counts, apply=True)
+        resp = self.client.sync(char["id"], self._preview_counts, apply=True, learned=self._preview_learned)
         n = len(resp["changes"])
         self._reset_session(f"Applied {n} change(s) to {char['name']}"
                             + (f" (sync #{resp['sync_id']} — revert from Vision Sync in arc-tracker)." if resp.get("sync_id") else "."))

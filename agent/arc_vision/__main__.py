@@ -193,6 +193,8 @@ def cmd_scan_image(args, cfg):
         print(f"  {cat.name(k):<32} {v}")
     for k, n in unread.items():
         print(f"  {cat.name(k):<32} ? (count unreadable in {n} stack(s))")
+    if session.learned():
+        print("Learned (checkmark): " + ", ".join(sorted(cat.name(k) for k in session.learned())))
     if args.out and last:
         frame, results = last
         out = draw_grid(frame, cfg["calibration"])
@@ -212,10 +214,11 @@ def cmd_scan_image(args, cfg):
         if not cfg.get("character_id"):
             sys.exit("No character set — run setup first.")
         counts = {k: v for k, v in totals.items() if k not in unread}
-        resp = _client(cfg).sync(cfg["character_id"], counts, apply=args.apply)
+        resp = _client(cfg).sync(cfg["character_id"], counts, apply=args.apply, learned=session.learned())
         print(f"\n{'Applied' if resp['applied'] else 'Would change'} {len(resp['changes'])} item(s):")
         for c in resp["changes"]:
-            print(f"  {c['name']:<32} {c['before']} → {c['after']}")
+            what = "learned" if c.get("field") == "learned" else f"{c['before']} → {c['after']}"
+            print(f"  {c['name']:<32} {what}")
 
 
 def cmd_teach(args, cfg):

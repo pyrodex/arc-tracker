@@ -22,8 +22,10 @@ function SyncCard({ sync }: { sync: VisionSync }) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const revert = useRevertVisionSync();
-  const up = sync.changes.filter(c => c.after > c.before).length;
-  const down = sync.changes.length - up;
+  const learnedCount = sync.changes.filter(c => c.field === 'learned').length;
+  const counts = sync.changes.filter(c => c.field !== 'learned');
+  const up = counts.filter(c => c.after > c.before).length;
+  const down = counts.length - up;
 
   const doRevert = () => {
     if (!confirming) { setConfirming(true); return; }
@@ -52,7 +54,9 @@ function SyncCard({ sync }: { sync: VisionSync }) {
           <div className="min-w-0">
             <p className="text-sm text-arc-text font-medium truncate">
               {sync.character_name} · {sync.changes.length} change{sync.changes.length === 1 ? '' : 's'}
-              <span className="text-arc-dim font-normal"> ({up} up, {down} down)</span>
+              <span className="text-arc-dim font-normal">
+                {' '}({up} up, {down} down{learnedCount ? `, ${learnedCount} learned` : ''})
+              </span>
             </p>
             <p className="text-xs text-arc-dim">#{sync.id} · {when(sync.created_at)} · {sync.source ?? 'arc-vision'}</p>
           </div>
@@ -89,11 +93,13 @@ function SyncCard({ sync }: { sync: VisionSync }) {
               <tr key={`${c.type}:${c.id}`} className="border-t border-arc-border/60">
                 <td className="px-4 py-1.5 text-arc-text">{c.name}</td>
                 <td className="px-4 py-1.5 text-arc-muted hidden sm:table-cell">
-                  {TYPE_LABEL[c.type]}{c.field === 'extras' ? ' extras' : ''}
+                  {TYPE_LABEL[c.type]}{c.field === 'extras' ? ' extras' : c.field === 'learned' ? ' learned' : ''}
                 </td>
-                <td className="px-4 py-1.5 text-right tabular-nums text-arc-muted">{c.before}</td>
+                <td className="px-4 py-1.5 text-right tabular-nums text-arc-muted">
+                  {c.field === 'learned' ? (c.before ? 'Learned' : 'Not learned') : c.before}
+                </td>
                 <td className={`px-4 py-1.5 text-right tabular-nums font-medium ${c.after > c.before ? 'text-arc-learned' : 'text-arc-extra'}`}>
-                  {c.after}
+                  {c.field === 'learned' ? (c.after ? 'Learned' : 'Not learned') : c.after}
                 </td>
               </tr>
             ))}

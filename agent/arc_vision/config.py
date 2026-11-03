@@ -35,6 +35,8 @@ DEFAULTS: dict = {
     # Share of the item-art border that must be grid-blue for a slot to count
     # as a blueprint (real blueprints ≈0.5, everything else ≤0.03).
     "blueprint_bg_min": 0.3,
+    # Match threshold for the learned checkmark on blueprints.
+    "learned_threshold": 0.65,
     # A slot whose icon area has less brightness variation than this is empty.
     "empty_std": 9.0,
     # Count digits: pixels brighter than this (0-255) count as text.

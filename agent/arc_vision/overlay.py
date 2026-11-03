@@ -147,7 +147,10 @@ class Overlay:
             ch = st.preview["changes"]
             lines.append(f"Preview — {len(ch)} change(s), {st.preview['unchanged']} unchanged:")
             for c in ch[:14]:
-                lines.append(f"  {c['name'][:24]:<24} {c['before']:>4} → {c['after']:<4}")
+                if c.get("field") == "learned":
+                    lines.append(f"  {c['name'][:24]:<24} learned ✓")
+                else:
+                    lines.append(f"  {c['name'][:24]:<24} {c['before']:>4} → {c['after']:<4}")
             if len(ch) > 14:
                 lines.append(f"  … and {len(ch) - 14} more")
         elif st.totals:

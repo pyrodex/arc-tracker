@@ -10,15 +10,19 @@
  *   POST /api/vision/syncs/:id/revert    put a sync's values back
  *
  * Counts map onto the existing tracking tables. Blueprints and stencils write
- * the held-copy count to `extras` and never touch `learned`; everything else
- * writes `count`. Items the agent did not see are left alone, so a partial
- * scan never zeroes anything.
+ * the held-copy count to `extras`; everything else writes `count`. Items the
+ * agent did not see are left alone, so a partial scan never zeroes anything.
+ *
+ * `learned: true` on a blueprint or stencil (the game's checkmark) marks it
+ * learned. It is never used to un-learn: a missed checkmark can't undo
+ * progress you recorded.
  */
 
 const fs = require('fs');
 const path = require('path');
 
 const MAX_COUNT = 9999;
+const LEARNABLE = new Set(['blueprint', 'stencil']);
 const MAX_ITEMS = 1000;
 const ICON_EXTS = ['png', 'webp'];
 
@@ -74,6 +78,28 @@ module.exports = function registerVisionRoutes(app, db, { iconsDir }) {
         updated_at = excluded.updated_at
     `);
   }
+  const learnedReaders = {};
+  const learnedWriters = {};
+  for (const type of LEARNABLE) {
+    const t = TYPES[type];
+    learnedReaders[type] = db.prepare(
+      `SELECT learned AS value FROM ${t.tracking} WHERE character_id = ? AND ${t.fk} = ?`
+    );
+    learnedWriters[type] = db.prepare(`
+      INSERT INTO ${t.tracking} (character_id, ${t.fk}, learned, updated_at)
+      VALUES (?, ?, ?, datetime('now'))
+      ON CONFLICT(character_id, ${t.fk}) DO UPDATE SET
+        learned    = excluded.learned,
+        updated_at = excluded.updated_at
+    `);
+  }
+  const read = (c, characterId) => {
+    const r = (c.field === 'learned' ? learnedReaders : readers)[c.type].get(characterId, c.id);
+    return r ? r.value : 0;
+  };
+  const write = (c, characterId, value) =>
+    (c.field === 'learned' ? learnedWriters : writers)[c.type].run(characterId, c.id, value);
+
   const characterExists = db.prepare('SELECT id FROM characters WHERE id = ?');
   const insertSync = db.prepare(
     'INSERT INTO vision_syncs (character_id, source, changes) VALUES (?, ?, ?)'
@@ -115,29 +141,48 @@ module.exports = function registerVisionRoutes(app, db, { iconsDir }) {
 
     // Several stacks of one item arrive as separate entries; they add up.
     const totals = new Map();
+    const learned = new Map();
     const unknown = [];
     for (const [i, it] of items.entries()) {
       if (!it || !TYPES[it.type] || !Number.isInteger(it.id)) {
         return res.status(400).json({ error: `items[${i}] needs a valid type and integer id` });
       }
-      if (!Number.isInteger(it.count) || it.count < 0) {
+      const hasCount = it.count !== undefined;
+      if (hasCount && (!Number.isInteger(it.count) || it.count < 0)) {
         return res.status(400).json({ error: `items[${i}].count must be a non-negative integer` });
+      }
+      if (it.learned !== undefined && it.learned !== true) {
+        return res.status(400).json({ error: `items[${i}].learned can only be true (syncs never un-learn)` });
+      }
+      if (it.learned && !LEARNABLE.has(it.type)) {
+        return res.status(400).json({ error: `items[${i}]: only blueprints and stencils can be learned` });
+      }
+      if (!hasCount && !it.learned) {
+        return res.status(400).json({ error: `items[${i}] needs a count or learned: true` });
       }
       const row = lookups[it.type].get(it.id);
       if (!row) { unknown.push({ type: it.type, id: it.id }); continue; }
       const key = `${it.type}:${it.id}`;
-      const prev = totals.get(key);
-      totals.set(key, { type: it.type, id: it.id, name: row.name, count: (prev ? prev.count : 0) + it.count });
+      if (hasCount) {
+        const prev = totals.get(key);
+        totals.set(key, { type: it.type, id: it.id, name: row.name, count: (prev ? prev.count : 0) + it.count });
+      }
+      if (it.learned) learned.set(key, { type: it.type, id: it.id, name: row.name });
     }
 
     const changes = [];
     let unchanged = 0;
     for (const t of totals.values()) {
-      const cur = readers[t.type].get(character_id, t.id);
-      const before = cur ? cur.value : 0;
+      const c = { type: t.type, id: t.id, name: t.name, field: TYPES[t.type].field };
+      const before = read(c, character_id);
       const after = Math.min(t.count, MAX_COUNT);
       if (before === after) { unchanged++; continue; }
-      changes.push({ type: t.type, id: t.id, name: t.name, field: TYPES[t.type].field, before, after });
+      changes.push({ ...c, before, after });
+    }
+    for (const l of learned.values()) {
+      const c = { type: l.type, id: l.id, name: l.name, field: 'learned' };
+      if (read(c, character_id) === 1) { unchanged++; continue; }
+      changes.push({ ...c, before: 0, after: 1 });
     }
 
     if (!apply || changes.length === 0) {
@@ -145,7 +190,7 @@ module.exports = function registerVisionRoutes(app, db, { iconsDir }) {
     }
 
     const syncId = db.transaction(() => {
-      for (const c of changes) writers[c.type].run(character_id, c.id, c.after);
+      for (const c of changes) write(c, character_id, c.after);
       return insertSync.run(character_id, source || 'arc-vision', JSON.stringify(changes)).lastInsertRowid;
     })();
 
@@ -184,11 +229,10 @@ module.exports = function registerVisionRoutes(app, db, { iconsDir }) {
       const reverted = [];
       const skipped = [];
       for (const c of JSON.parse(sync.changes)) {
-        if (!TYPES[c.type]) continue;
-        const cur = readers[c.type].get(sync.character_id, c.id);
-        const value = cur ? cur.value : 0;
+        if (!TYPES[c.type] || (c.field === 'learned' && !LEARNABLE.has(c.type))) continue;
+        const value = read(c, sync.character_id);
         if (value !== c.after) { skipped.push({ ...c, current: value }); continue; }
-        writers[c.type].run(sync.character_id, c.id, c.before);
+        write(c, sync.character_id, c.before);
         reverted.push(c);
       }
       db.prepare("UPDATE vision_syncs SET reverted_at = datetime('now') WHERE id = ?").run(id);

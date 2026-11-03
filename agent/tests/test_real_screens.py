@@ -114,3 +114,16 @@ def test_reads_a_rendered_name():
     img[:] = (30, 25, 20)
     cv2.putText(img, "MortySmith", (40, 28), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (235, 235, 235), 2, cv2.LINE_AA)
     assert identity.read_name(img, (0, 0, 300, 40)) == "MortySmith"
+
+
+
+def test_learned_checkmark_on_real_blueprints(scanner):
+    """Learned blueprints carry a white check in the top-right corner."""
+    for name in COUNTS:
+        img = load(name)
+        g = scanner.geometry(img)
+        dy = scanner.scroll_phase(img)
+        marked = {(i, c) for i, r in enumerate(g.visible_rows(dy)) for c in range(g.cols)
+                  if scanner.learned_mark(img, g.slot_box(r, c, dy), g)}
+        want = {(1, 3), (2, 0)} if name == "stash_filtered_blueprints" else set()
+        assert marked == want, name

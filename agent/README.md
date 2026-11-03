@@ -23,7 +23,7 @@ Everything arc-tracker counts:
 
 | Item type | What gets written |
 |---|---|
-| Blueprints and stencils | `extras` (copies held). `learned` is never changed. |
+| Blueprints and stencils | `extras` (copies held). Blueprints showing the game's learned checkmark are also marked **learned**. A sync never un-learns anything, so a missed checkmark can't undo your progress. |
 | ARC parts, amplification components, workshop materials | `count` |
 
 Anything else in your stash (guns, ammo, loot) is skipped.
@@ -103,6 +103,16 @@ blue grid background, so the agent checks for that grid. Blueprints only match
 slots on the grid, and ARC parts, amplification components and workshop
 materials only match slots off it. An Anvil in your stash will never be
 counted as an Anvil blueprint.
+
+## Learned blueprints
+
+Learned blueprints show a white checkmark in the slot's top-right corner. The
+agent looks for it on every blueprint it recognises and marks the blueprint
+learned in arc-tracker, even if that stack's count couldn't be read. It only
+ever sets learned. If it doesn't see a checkmark, nothing changes, so a
+blueprint you learned and no longer hold keeps its status. A learned change
+shows up in the preview and on the Vision Sync page, and reverting a sync
+undoes it.
 
 ## Counts
 
@@ -218,8 +228,8 @@ These live in `~/.arc_vision/config.json`:
   hotkeys won't register while the game has focus.
 - Rarity borders aren't used yet. Items that share art and differ only by tier
   colour depend on the colour check and on teaching.
-- Only the stash grid is read. Items in your loadout (backpack, quick use,
-  safe pocket) aren't counted yet.
+- Only the stash grid is read, by choice. Items in your loadout (backpack,
+  quick use, safe pocket) aren't counted.
 
 ## Tests
 

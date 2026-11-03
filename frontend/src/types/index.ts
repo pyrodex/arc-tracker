@@ -633,7 +633,7 @@ export interface VisionChange {
   type: VisionItemType;
   id: number;
   name: string;
-  field: 'extras' | 'count';
+  field: 'extras' | 'count' | 'learned';
   before: number;
   after: number;
 }
