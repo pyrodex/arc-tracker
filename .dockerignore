@@ -42,3 +42,6 @@ docs/
 
 # Docker files (already in context root)
 docker-compose*.yml
+
+# Desktop agent (not part of the server image)
+agent/

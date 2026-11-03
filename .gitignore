@@ -11,3 +11,9 @@ data/
 Thumbs.db
 *.log
 npm-debug.log*
+
+# Python (arc-vision agent)
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/

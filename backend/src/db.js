@@ -329,6 +329,20 @@ function initSchema() {
       FOREIGN KEY (weapon_id) REFERENCES weapons(id),
       UNIQUE(weapon_id, tier)
     );
+
+    -- One row per inventory sync applied by the vision agent. changes is a
+    -- JSON array of {type, id, name, field, before, after}, kept so a sync
+    -- can be reviewed and reverted from the Vision Sync page.
+    CREATE TABLE IF NOT EXISTS vision_syncs (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      character_id INTEGER NOT NULL,
+      source       TEXT,
+      changes      TEXT    NOT NULL,
+      created_at   TEXT    DEFAULT (datetime('now')),
+      reverted_at  TEXT,
+      FOREIGN KEY (character_id) REFERENCES characters(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_vision_syncs_char ON vision_syncs(character_id, created_at);
   `);
 }
 
