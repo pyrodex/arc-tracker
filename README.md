@@ -91,6 +91,12 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts, amplificati
 - **Workshop Materials** *(new in v1.3.0)* — total workshop materials collected per material type; expand to see per-character counts
 - **Loadouts** *(new in v1.4.0)* — builds, guns held, amplified guns and total value per character; expand a character to see every build with its mods, amplifications and value, plus most-built-weapons, amplification-usage and mod-usage breakdowns across all characters
 
+### Vision Sync *(new, experimental)*
+- **Stash reader** — the optional [arc-vision](agent/README.md) desktop agent runs on your gaming PC. It reads the stash screen with screen capture and computer vision, and only ever reads pixels; it never touches the game. It recognises tracked items, reads their stack counts and syncs them here. A click-through overlay with hotkeys shows what it saw
+- **Scroll-safe** — frames are lined up by matching rows, so scrolling back and forth never counts an item twice; a frame it can't place is skipped, never guessed
+- **Preview, then apply** — nothing is written until you've seen the change list. Only items it actually saw are changed (unless you turn on full-stash mode), and counts it can't read are left alone
+- **Vision Sync page** — every applied sync with its before/after values, and one-click revert that keeps anything you've edited since
+
 ### UI & Themes
 - **Dark, Light, and System/Auto** color schemes — toggle between dark (default), light, or follow the OS preference; choice persisted in `localStorage`
 - **Responsive layout** — sidebar navigation with the official ARC Raiders icon; on phones it becomes a slide-out menu behind a top bar, and pages scroll as a whole
@@ -248,6 +254,10 @@ arc-tracker/
 | GET | `/api/reports/amplification` | Amplification components held with per-character breakdown and value |
 | GET | `/api/reports/arc-parts` | ARC parts collected with per-character breakdown |
 | GET | `/api/reports/workshop-materials` | Workshop materials collected with per-character breakdown |
+| GET | `/api/vision/catalog` | Every trackable item (blueprints, stencils, ARC parts, amplification, workshop materials) with its icon URL, for the arc-vision agent |
+| POST | `/api/vision/sync` | Preview (`apply: false`) or apply observed counts: `{character_id, items: [{type, id, count}], apply}`. Stacks of one item are summed; only listed items change; blueprints/stencils write `extras`, everything else `count` |
+| GET | `/api/vision/syncs` | Applied syncs with their changes (query: `?character_id=&limit=`) |
+| POST | `/api/vision/syncs/:id/revert` | Restore a sync's previous values, skipping anything changed since |
 | POST | `/api/icons/refresh` | Trigger a background icon re-download |
 | GET | `/health` | Server health check (status, blueprint/character counts, uptime) |
 | GET | `/icons/:slug.png` | Item icon PNG |
@@ -299,6 +309,10 @@ Blueprint, stencil, ARC part, workshop, weapon, mod and amplification data sourc
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
+
+### Unreleased
+
+- **Vision Sync** *(experimental)* — new `agent/` folder with arc-vision, a Windows desktop agent that reads the stash from the screen (icon matching against the wiki icons plus labelled in-game crops, Tesseract for stack counts, scroll tracking that never double-counts) and syncs counts through the new `/api/vision/*` endpoints. It adds a new `vision_syncs` table (created on startup) and a Vision Sync page listing every sync, with revert
 
 ### v2.0.0
 

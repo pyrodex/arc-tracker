@@ -1661,6 +1661,9 @@ app.post('/api/icons/refresh', (req, res) => {
   res.json({ status: 'started', message: 'Icon download started in background.' });
 });
 
+// ── Vision sync (arc-vision desktop agent) ─────────────────────────────────────
+require('./vision')(app, db, { iconsDir: ICONS_DIR });
+
 // ── Serve frontend ─────────────────────────────────────────────────────────────
 if (fs.existsSync(STATIC_DIR)) {
   app.use(express.static(STATIC_DIR, { maxAge: '1d', etag: true }));

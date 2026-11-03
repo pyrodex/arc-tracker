@@ -1,0 +1,28 @@
+name: arc-vision agent tests
+
+on:
+  push:
+    branches: [main]
+    paths: ['agent/**', '.github/workflows/agent-tests.yml']
+  pull_request:
+    paths: ['agent/**', '.github/workflows/agent-tests.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Tesseract
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends tesseract-ocr
+      - name: Install dependencies
+        # Headless OpenCV on CI; the tests don't need capture, hotkeys or the overlay.
+        run: pip install opencv-python-headless numpy pytesseract requests pytest
+      - name: Run tests
+        working-directory: agent
+        run: python -m pytest tests -q

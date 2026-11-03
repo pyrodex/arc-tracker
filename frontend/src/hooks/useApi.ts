@@ -45,6 +45,8 @@ import type {
   AmplificationTrackingMap,
   AmplificationCountUpdate,
   AmplificationReport,
+  VisionSync,
+  VisionRevertResult,
 } from '../types';
 
 async function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -556,5 +558,31 @@ export function useArcPartsReport() {
     queryKey: ['reports', 'arc-parts'],
     queryFn: () => apiFetch('/api/reports/arc-parts'),
     staleTime: 15_000,
+  });
+}
+
+// ── Vision sync ────────────────────────────────────────────────────────────────
+
+export function useVisionSyncs(characterId: number | null) {
+  return useQuery<VisionSync[]>({
+    queryKey: ['vision-syncs', characterId ?? 'all'],
+    queryFn: () => apiFetch(`/api/vision/syncs${characterId ? `?character_id=${characterId}` : ''}`),
+    // The desktop agent writes syncs behind the page's back; poll gently.
+    refetchInterval: 15_000,
+  });
+}
+
+export function useRevertVisionSync() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (syncId: number) =>
+      apiFetch<VisionRevertResult>(`/api/vision/syncs/${syncId}/revert`, { method: 'POST' }),
+    onSuccess: () => {
+      // A revert can touch every tracked area.
+      for (const key of ['vision-syncs', 'tracking', 'stencil-tracking', 'amplification-tracking',
+        'arc-parts-tracking', 'workshop-materials-tracking', 'reports', 'activity']) {
+        qc.invalidateQueries({ queryKey: [key] });
+      }
+    },
   });
 }
