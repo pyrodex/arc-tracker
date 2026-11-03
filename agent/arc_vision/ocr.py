@@ -18,6 +18,9 @@ except Exception:  # missing module or missing tesseract binary
 
 
 
+from .digits import DigitReader
+
+
 class CountReader:
     """Returns (count, uncertain).
 
@@ -26,11 +29,16 @@ class CountReader:
     Text that won't read → (1, True), so the slot is flagged instead of guessed.
     """
 
-    def __init__(self, text_threshold: int = 170, min_ink: float = 0.015, max_saturation: int = 70):
+    def __init__(self, text_threshold: int = 170, min_ink: float = 0.015, max_saturation: int = 70,
+                 mode: str = "auto"):
         self.text_threshold = text_threshold
         self.max_saturation = max_saturation
         self.min_ink = min_ink
         self._cache: dict[bytes, int | None] = {}
+        # "auto": game-font templates when present, else Tesseract. "tesseract" forces Tesseract.
+        self.digits = DigitReader()
+        if mode == "tesseract":
+            self.digits.ok = False
 
     def _ink(self, bgr: np.ndarray) -> np.ndarray:
         """Bright, nearly colourless pixels: white-ish digits, not brightly coloured art."""
@@ -47,14 +55,14 @@ class CountReader:
         Art that pokes into the count box touches the box's top or left edge;
         digits sit inside it, all about the same height.
         """
-        if scale > 1:
+        if scale != 1:
             crop_bgr = cv2.resize(crop_bgr, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
         ink = self._ink(crop_bgr)
         n, labels, stats, _ = cv2.connectedComponentsWithStats(ink, connectivity=8)
         keep = []
         for i in range(1, n):
             x, y, w, h, area = stats[i]
-            if x == 0 or y == 0 or area < 3 * scale * scale:
+            if x == 0 or y == 0 or area < 3 * max(1.0, scale) ** 2:
                 continue
             keep.append(i)
         if not keep:
@@ -83,10 +91,14 @@ class CountReader:
         ink = self.digits_mask(crop_bgr)
         if (ink > 0).mean() < self.min_ink:
             return 1, False
-        big = self.digits_mask(crop_bgr, scale=4)
-        key = hashlib.blake2b(np.packbits(big > 0).tobytes() + bytes(str(big.shape), "ascii"), digest_size=12).digest()
+        key = hashlib.blake2b(np.packbits(ink > 0).tobytes() + bytes(str(ink.shape), "ascii"), digest_size=12).digest()
         if key not in self._cache:
-            self._cache[key] = self._ocr(big)
+            if self.digits.ok:
+                # Templates of the game's font; an unclear glyph means unreadable.
+                self._cache[key] = self.digits.read(crop_bgr, self.text_threshold, self.max_saturation)
+            else:
+                ys = np.nonzero(ink.any(axis=1))[0]
+                self._cache[key] = self._ocr(crop_bgr, int(ys.max() - ys.min() + 1))
             if len(self._cache) > 5000:
                 self._cache.clear()
         n = self._cache[key]
@@ -94,15 +106,23 @@ class CountReader:
             return 1, True
         return n, False
 
-    def _ocr(self, ink: np.ndarray) -> int | None:
-        if not HAVE_TESSERACT:
+    # Digits are scaled to these heights (px) before OCR. Tesseract's answer
+    # depends on size, so a count is only trusted when two sizes agree (or two
+    # of three); otherwise it's reported as unreadable rather than guessed.
+    OCR_HEIGHTS = (60, 48, 72)
+
+    def _ocr(self, crop_bgr: np.ndarray, digit_height: int) -> int | None:
+        if not HAVE_TESSERACT or digit_height < 4:
             return None
-        # Tesseract wants dark text on a light page with some margin.
-        img = cv2.copyMakeBorder(255 - ink, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
-        img = cv2.GaussianBlur(img, (3, 3), 0)
-        for psm in (7, 8):
-            text = pytesseract.image_to_string(img, config=f"--psm {psm} -c tessedit_char_whitelist=0123456789")
+        votes = []
+        for target in self.OCR_HEIGHTS:
+            ink = self.digits_mask(crop_bgr, scale=target / digit_height)
+            img = cv2.copyMakeBorder(255 - ink, 20, 20, 20, 20, cv2.BORDER_CONSTANT, value=255)
+            img = cv2.GaussianBlur(img, (3, 3), 0)
+            text = pytesseract.image_to_string(img, config="--psm 7 -c tessedit_char_whitelist=0123456789")
             digits = re.sub(r"\D", "", text)
-            if digits and len(digits) <= 4 and int(digits) > 0:
-                return int(digits)
+            votes.append(int(digits) if digits and len(digits) <= 4 and int(digits) > 0 else None)
+            settled = [v for v in votes if v is not None and votes.count(v) >= 2]
+            if settled:
+                return settled[0]
         return None

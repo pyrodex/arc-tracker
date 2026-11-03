@@ -73,7 +73,7 @@ def _fit_rgba(rgba: np.ndarray) -> np.ndarray:
     return canvas
 
 
-def art_box(img: np.ndarray, box, valid: np.ndarray | None = None):
+def art_box(img: np.ndarray, box, valid: np.ndarray | None = None, fg_hint: np.ndarray | None = None):
     """(centre x, centre y, side, background BGR) of the art inside `box`.
 
     The slot background is estimated from the box's outer ring; pixels that
@@ -86,7 +86,10 @@ def art_box(img: np.ndarray, box, valid: np.ndarray | None = None):
     ring = np.concatenate([sub[:2].reshape(-1, 3), sub[-2:].reshape(-1, 3),
                            sub[:, :2].reshape(-1, 3), sub[:, -2:].reshape(-1, 3)])
     bg = np.median(ring, axis=0)
-    fg = np.abs(sub - bg).sum(axis=2) > BG_DISTANCE
+    if fg_hint is not None:   # caller knows the background better (e.g. the blueprint grid)
+        fg = fg_hint[y:y + h, x:x + w] > 0
+    else:
+        fg = np.abs(sub - bg).sum(axis=2) > BG_DISTANCE
     if valid is not None:
         fg &= valid[y:y + h, x:x + w] > 0
     fg = cv2.morphologyEx(fg.astype(np.uint8), cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
@@ -128,10 +131,10 @@ class Matcher:
         edge = _edges(_blur(cv2.cvtColor(comp, cv2.COLOR_BGR2GRAY).astype(np.float32)))
         self._add(key, False, _blur(gray_art * alpha), _blur(1 - alpha), mask_g, edge, mask_g, mask_c, a, b)
 
-    def add_taught(self, key: str, icon_bgr: np.ndarray) -> None:
-        """An in-game crop of the icon box, labelled by you."""
+    def add_taught(self, key: str, icon_bgr: np.ndarray, fg_hint: np.ndarray | None = None) -> None:
+        """An in-game crop of the icon box, labelled by you (fg_hint: same as when matching)."""
         h, w = icon_bgr.shape[:2]
-        img = self.variants(icon_bgr, (0, 0, w, h), only_base=True)[0][0]
+        img = self.variants(icon_bgr, (0, 0, w, h), only_base=True, fg_hint=fg_hint)[0][0]
         gray, a, b = _gray_lab(img)
         ones = np.ones((SIZE, SIZE), np.float32)
         self._add(key, True, gray, np.zeros_like(gray), ones, _edges(gray), ones, ones, a, b)
@@ -161,9 +164,10 @@ class Matcher:
 
     # ── matching ─────────────────────────────────────────────────────────────
     @staticmethod
-    def variants(frame: np.ndarray, box, only_base: bool = False, valid: np.ndarray | None = None):
+    def variants(frame: np.ndarray, box, only_base: bool = False, valid: np.ndarray | None = None,
+                 fg_hint: np.ndarray | None = None):
         """[(image, validity mask, background gray)] — the art squared at a few scales/offsets."""
-        cx, cy, side, bg = art_box(frame, box, valid)
+        cx, cy, side, bg = art_box(frame, box, valid, fg_hint)
         bg_gray = float(cv2.cvtColor(np.uint8([[np.clip(bg, 0, 255)]]), cv2.COLOR_BGR2GRAY)[0, 0])
         if valid is None:
             valid = np.ones(frame.shape[:2], np.uint8)
@@ -186,13 +190,15 @@ class Matcher:
                 out.append((img, m, bg_gray))
         return out
 
-    def match(self, frame: np.ndarray, box, top: int = 5, valid: np.ndarray | None = None) -> list[Match]:
+    def match(self, frame: np.ndarray, box, top: int = 5, valid: np.ndarray | None = None,
+              fg_hint: np.ndarray | None = None, allow=None) -> list[Match]:
+        """Best matches, one per key. `allow(key) -> bool` limits which keys may compete."""
         if not self._keys:
             return []
         if not self._ready:
             self._build()
         Gs, As, Bs, Es, Ws, bgs = [], [], [], [], [], []
-        for c, m, bg in self.variants(frame, box, valid=valid):
+        for c, m, bg in self.variants(frame, box, valid=valid, fg_hint=fg_hint):
             g, a, b = _gray_lab(c)
             Gs.append(g.ravel()); As.append(a.ravel()); Bs.append(b.ravel()); Es.append(_edges(g).ravel())
             Ws.append((m > 0).astype(np.float32).ravel()); bgs.append(bg)
@@ -234,6 +240,8 @@ class Matcher:
         per_key: dict[str, Match] = {}
         for i in np.argsort(-best):
             k = self._keys[i]
+            if allow is not None and not allow(k):
+                continue
             if k not in per_key:
                 per_key[k] = Match(k, float(best[i]), bool(self._taught_arr[i]))
             if len(per_key) >= top:

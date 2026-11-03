@@ -14,7 +14,7 @@ from datetime import datetime
 
 import cv2
 
-from . import config
+from . import config, identity
 from .catalog import Catalog
 from .scanner import ScanSession, Scanner, SlotResult
 
@@ -28,6 +28,8 @@ class State:
     stash_visible: bool = False
     full_mode: bool = False
     character: dict | None = None
+    character_confirmed: bool = False   # seen on the main menu, or picked by hand
+    in_game_name: str | None = None
     frames: int = 0
     rows: int = 0
     rejected: int = 0
@@ -56,6 +58,7 @@ class Engine:
         self._characters: list[dict] = []
         self._frame = None
         self._thread: threading.Thread | None = None
+        self._session_char: int | None = None   # the character the current scan belongs to
 
     # ── public ───────────────────────────────────────────────────────────────
     def send(self, cmd: str) -> None:
@@ -81,6 +84,7 @@ class Engine:
         self._capture = self._capture_factory()
         self._load_characters()
         next_watch = 0.0
+        next_identity = 0.0
         while True:
             timeout = max(0.0, next_watch - time.monotonic()) if self._state.watching else 0.25
             try:
@@ -95,6 +99,9 @@ class Engine:
                 if self._state.watching and time.monotonic() >= next_watch:
                     next_watch = time.monotonic() + self.cfg["watch_interval_s"]
                     self._capture_and_scan(trusted=False)
+                if self._identity_box() and time.monotonic() >= next_identity:
+                    next_identity = time.monotonic() + self.cfg["identity"]["check_interval_s"]
+                    self.check_identity(self._capture.grab())
             except Exception as e:  # keep the loop alive; show the error on the overlay
                 self._set(error=f"{type(e).__name__}: {e}")
         if hasattr(self._capture, "close"):
@@ -122,6 +129,57 @@ class Engine:
         elif cmd == "apply":
             self._apply()
 
+    # ── who's signed in ──────────────────────────────────────────────────────
+    def _identity_box(self, frame=None):
+        ident = self.cfg.get("identity") or {}
+        box = ident.get("name_box")
+        if not box:
+            return None
+        if frame is None:
+            return box
+        sw, sh = ident.get("screen_size") or (frame.shape[1], frame.shape[0])
+        fx, fy = frame.shape[1] / sw, frame.shape[0] / sh
+        return (int(box[0] * fx), int(box[1] * fy), int(box[2] * fx), int(box[3] * fy))
+
+    def check_identity(self, frame) -> None:
+        """If the main menu is up, read the name there and follow it."""
+        if self.scanner.stash_visible(frame) and self.scanner._anchor is not None:
+            return   # the stash screen doesn't show the name
+        raw = identity.read_name(frame, self._identity_box(frame))
+        if not raw:
+            return
+        aliases = {k: int(v) for k, v in (self.cfg["identity"].get("aliases") or {}).items()}
+        char = identity.resolve(raw, self._characters, aliases)
+        if char is None:
+            if raw != self._state.in_game_name:
+                self._set(in_game_name=raw, character_confirmed=False,
+                          error=f"Signed in as '{raw}', which isn't linked to a character — "
+                                f"run: python -m arc_vision link \"{raw}\" <character>")
+            return
+        cur = self._state.character
+        if cur and cur["id"] == char["id"]:
+            if not self._state.character_confirmed or raw != self._state.in_game_name:
+                self._set(in_game_name=raw, character_confirmed=True, error="")
+            return
+        msg = f"Signed in as {raw} → {char['name']}."
+        if self._session.frames:
+            msg += f" The scan in progress for {cur['name'] if cur else 'the previous character'} was discarded."
+            self._reset_session(msg)
+        self.cfg["character_id"] = char["id"]
+        config.save(self.cfg)
+        self._set(character=char, character_confirmed=True, in_game_name=raw, preview=None, message=msg, error="")
+
+    def _character_ready(self) -> bool:
+        if self._state.character is None:
+            self._set(error="No character selected — add one in arc-tracker first.")
+            return False
+        need = self._identity_box() and self.cfg["identity"].get("require_confirmed", True)
+        if need and not self._state.character_confirmed:
+            self._set(error="I don't know which raider is signed in yet — go to the main menu once "
+                            "(or pick the character with the next-character hotkey).")
+            return False
+        return True
+
     def _capture_and_scan(self, trusted: bool) -> bool:
         frame = self._capture.grab()
         self._frame = frame
@@ -130,6 +188,8 @@ class Engine:
             self._set(stash_visible=False)
             return False
         results = self.scanner.scan(frame)
+        if self._session.frames == 0:
+            self._session_char = self._state.character["id"] if self._state.character else None
         placed = self._session.add(results, trusted=trusted)
         update = dict(stash_visible=True, last_results=results, frames=self._session.frames,
                       rows=self._session.positions(), rejected=self._session.rejected,
@@ -152,10 +212,9 @@ class Engine:
         return counts
 
     def _preview(self) -> None:
-        char = self._state.character
-        if not char:
-            self._set(error="No character selected — add one in arc-tracker first.")
+        if not self._character_ready():
             return
+        char = self._state.character
         if self._session.frames == 0:
             self._set(message="Nothing scanned yet — snapshot or watch the stash first.")
             return
@@ -167,7 +226,12 @@ class Engine:
         self._set(preview=resp, message=f"{n} change(s) for {char['name']}. Apply to save." if n else "Tracker already matches.")
 
     def _apply(self) -> None:
+        if not self._character_ready():
+            return
         char = self._state.character
+        if self._session_char != char["id"]:
+            self._reset_session("The character changed during this scan, so it was discarded — scan again.")
+            return
         if self._preview_counts is None or self._preview_frames != self._session.frames:
             self._set(message="Preview first — the scan changed since the last preview.")
             return
@@ -178,6 +242,7 @@ class Engine:
 
     def _reset_session(self, message: str) -> None:
         self._session = ScanSession(self.cfg["stable_frames"])
+        self._session_char = None
         self._preview_counts = None
         self._preview_frames = -1
         self._set(frames=0, rows=0, rejected=0, totals={}, unread={}, preview=None, last_results=[], message=message)
@@ -202,8 +267,11 @@ class Engine:
         char = self._characters[(idx + 1) % len(self._characters)]
         self.cfg["character_id"] = char["id"]
         config.save(self.cfg)
+        msg = f"Character: {char['name']}"
+        if self._session.frames:
+            self._reset_session(msg + " — the scan in progress was discarded.")
         self._preview_counts = None
-        self._set(character=char, preview=None, message=f"Character: {char['name']}")
+        self._set(character=char, character_confirmed=True, preview=None, message=msg)
 
     def _save_frame(self) -> None:
         frame = self._capture.grab()

@@ -56,9 +56,29 @@ def build_catalog(rng, n_tracked=60, n_untracked=25):
     return {"types": types, "items": items}, icons, untracked
 
 
-def render_slot(rng, content, icons, untracked):
-    """content: None | ('item', key, count) | ('other', idx)."""
+def blueprint_background():
+    """The game draws blueprints on a saturated blue grid, above the usual dark footer."""
+    bg = np.full((SLOT, SLOT, 3), (38, 34, 30), np.uint8)
+    top = SLOT * 3 // 4
+    grid = bg[:top]
+    grid[:] = (150, 70, 40)
+    for i in range(0, SLOT, 9):
+        cv2.line(grid, (i, 0), (i, top), (190, 110, 70), 1)
+        cv2.line(grid, (0, i), (SLOT, i), (190, 110, 70), 1)
+    return bg
+
+
+def render_slot(rng, content, icons, untracked, as_blueprint=None):
+    """content: None | ('item', key, count) | ('other', idx).
+
+    Blueprint items are drawn on the blueprint grid unless as_blueprint=False
+    (the item itself rather than its blueprint).
+    """
     slot = np.full((SLOT, SLOT, 3), (38, 34, 30), np.uint8)
+    if content is not None and content[0] == "item":
+        on_grid = content[1].startswith("blueprint:") if as_blueprint is None else as_blueprint
+        if on_grid:
+            slot = blueprint_background()
     cv2.rectangle(slot, (0, 0), (SLOT - 1, SLOT - 1), (90, 84, 76), 2)
     if content is None:
         return slot

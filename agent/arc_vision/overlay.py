@@ -124,6 +124,10 @@ class Overlay:
     def _refresh(self):
         st = self.engine.state()
         char = st.character["name"] if st.character else "no character"
+        if st.character and self.engine._identity_box() and not st.character_confirmed:
+            char += " (unconfirmed — visit the main menu)"
+        elif st.in_game_name:
+            char += f" ({st.in_game_name})"
         mode = "WATCHING" if st.watching else "idle"
         self.title.config(text=f"arc-vision · {char} · {mode}" + (" · FULL STASH" if st.full_mode else ""))
         stash = "stash open" if st.stash_visible else "stash not detected"

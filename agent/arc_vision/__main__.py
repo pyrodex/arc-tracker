@@ -91,9 +91,32 @@ def _load_or_capture(args, cfg):
     return img
 
 
+def apply_preset(name, cfg):
+    import shutil
+    from . import config
+    from .presets import HERE, PRESETS
+    p = PRESETS[name]
+    config.ensure_dirs()
+    shutil.copyfile(HERE / p["anchor_image"], config.APP_DIR / p["calibration"]["anchor"]["file"])
+    cfg["calibration"] = dict(p["calibration"])
+    cfg["identity"].update(p["identity"])
+    config.save(cfg)
+    c = p["calibration"]
+    print(f"Applied the {name} preset: {c['cols']}×{c['rows']} stash grid, player-name box on the main menu.")
+    print("Check it with: python -m arc_vision scan-image <stash screenshot> --out check.png")
+
+
 def cmd_calibrate(args, cfg):
     from . import calibrate, config
+    from .presets import PRESETS, for_size
+    if args.preset:
+        if args.preset not in PRESETS:
+            sys.exit(f"Unknown preset. Have: {', '.join(PRESETS)}")
+        return apply_preset(args.preset, cfg)
     img = _load_or_capture(args, cfg)
+    match = for_size(img.shape[1], img.shape[0])
+    if match and input(f"There's a measured preset for {match}. Use it instead of clicking? [Y/n] ").strip().lower() != "n":
+        return apply_preset(match, cfg)
     calib = calibrate.run(img, cfg)
     if not calib:
         sys.exit("Calibration cancelled; nothing saved.")
@@ -101,6 +124,46 @@ def cmd_calibrate(args, cfg):
     config.save(cfg)
     print(f"Saved: {calib['cols']}×{calib['rows']} grid, slot {calib['slot'][0]}×{calib['slot'][1]} px.")
     print("Check it with: python -m arc_vision scan-image <screenshot> --out check.png")
+
+
+def cmd_calibrate_name(args, cfg):
+    from . import calibrate, config, identity
+    img = _load_or_capture(args, cfg)
+    print("Drag a box around your player name on the main menu (top centre, by the crown icon).")
+    import cv2
+    cv2.namedWindow(calibrate.WIN, cv2.WINDOW_AUTOSIZE)
+    try:
+        box = calibrate.pick_rect_overview(img, "Player name on the main menu")
+    finally:
+        cv2.destroyAllWindows()
+    if not box:
+        sys.exit("Cancelled; nothing saved.")
+    raw = identity.read_name(img, box)
+    cfg["identity"]["name_box"] = box
+    cfg["identity"]["screen_size"] = [img.shape[1], img.shape[0]]
+    config.save(cfg)
+    print(f"Saved. Read the name as: {raw!r}")
+    if raw:
+        try:
+            chars = _client(cfg).characters()
+        except Exception:
+            chars = []
+        aliases = {k: int(v) for k, v in cfg["identity"]["aliases"].items()}
+        char = identity.resolve(raw, chars, aliases)
+        print(f"That's {char['name']} in arc-tracker." if char else
+              f"No arc-tracker character matches — link it: python -m arc_vision link \"{raw}\" <character>")
+
+
+def cmd_link(args, cfg):
+    from . import config
+    chars = _client(cfg).characters()
+    want = args.character.lower()
+    char = next((c for c in chars if c["name"].lower() == want or str(c["id"]) == want), None)
+    if not char:
+        sys.exit(f"No arc-tracker character '{args.character}'. Have: " + ", ".join(c["name"] for c in chars))
+    cfg["identity"]["aliases"][args.name] = char["id"]
+    config.save(cfg)
+    print(f"In-game name {args.name!r} → {char['name']}.")
 
 
 def cmd_scan_image(args, cfg):
@@ -140,6 +203,8 @@ def cmd_scan_image(args, cfg):
             x, y, w, h = r.box
             cv2.rectangle(out, (x, y), (x + w, y + h), colors[r.status], 2)
             label = f"{(r.name or '?')[:14]} x{r.count}" if r.status == "item" else f"{r.score:.2f}"
+            if r.blueprint:
+                label = "BP " + label
             cv2.putText(out, label, (x + 2, y + h - 4), cv2.FONT_HERSHEY_SIMPLEX, 0.38, colors[r.status], 1, cv2.LINE_AA)
         cv2.imwrite(args.out, out)
         print(f"\nAnnotated image (last screenshot): {args.out}")
@@ -211,6 +276,7 @@ def main(argv=None):
     s = sub.add_parser("calibrate", help="mark the stash grid on a screenshot")
     s.add_argument("--image", help="screenshot to calibrate on (default: capture the screen)")
     s.add_argument("--delay", type=int, default=5, help="seconds before capturing (default 5)")
+    s.add_argument("--preset", help="use a measured preset (e.g. 3440x1440) without clicking")
     s = sub.add_parser("scan-image", help="scan screenshots (in scroll order) and show what was found")
     s.add_argument("images", nargs="+")
     s.add_argument("--out", help="write an annotated copy of the last screenshot")
@@ -219,11 +285,17 @@ def main(argv=None):
     s = sub.add_parser("teach", help="label unrecognised slots in screenshots")
     s.add_argument("images", nargs="*", help="screenshots (default: frames saved from `run`)")
     s.add_argument("--all", action="store_true", help="also review slots that were recognised")
+    s = sub.add_parser("calibrate-name", help="mark where the main menu shows your player name")
+    s.add_argument("--image", help="main-menu screenshot (default: capture the screen)")
+    s.add_argument("--delay", type=int, default=5)
+    s = sub.add_parser("link", help="link an in-game name to an arc-tracker character")
+    s.add_argument("name", help="player name as shown on the main menu")
+    s.add_argument("character", help="arc-tracker character name or id")
     sub.add_parser("run", help="overlay + hotkeys while you play")
     args = p.parse_args(argv)
     cfg = config.load()
     {"setup": cmd_setup, "refresh": cmd_refresh, "calibrate": cmd_calibrate, "scan-image": cmd_scan_image,
-     "teach": cmd_teach, "run": cmd_run}[args.cmd](args, cfg)
+     "teach": cmd_teach, "run": cmd_run, "calibrate-name": cmd_calibrate_name, "link": cmd_link}[args.cmd](args, cfg)
 
 
 if __name__ == "__main__":

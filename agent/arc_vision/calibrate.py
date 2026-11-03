@@ -132,31 +132,44 @@ def run(img: np.ndarray, cfg: dict) -> dict | None:
     cv2.namedWindow(WIN, cv2.WINDOW_AUTOSIZE)
     try:
         while True:
-            tl = pick_point(img, "1/4  TOP-LEFT corner of the top-left stash slot")
-            br = tl and pick_point(img, "2/4  BOTTOM-RIGHT corner of that same slot")
-            nx = br and pick_point(img, "3/4  TOP-LEFT corner of the slot to its RIGHT")
-            ny = nx and pick_point(img, "4/4  TOP-LEFT corner of the slot BELOW it")
-            if not ny:
+            tl = pick_point(img, "1/2  TOP-LEFT corner of the top-left stash slot")
+            br = tl and pick_point(img, "2/2  BOTTOM-RIGHT corner of that same slot")
+            if not br:
+                return None
+            print("\nNow in the terminal:")
+            cols = _ask_int("  How many slot COLUMNS does the stash grid show", 4)
+            rows = _ask_int("  How many FULL slot ROWS are visible at once (ignore a cut-off row)", 6)
+            # Measuring across the whole grid keeps a fractional pitch accurate.
+            if cols > 1:
+                lx = pick_point(img, f"TOP-LEFT corner of the LAST slot in the first row (column {cols})")
+                pitch_x = (lx[0] - tl[0]) / (cols - 1) if lx else None
+            else:
+                pitch_x = br[0] - tl[0] + 1
+            if rows > 1:
+                ly = pick_point(img, f"TOP-LEFT corner of the first slot in the LAST full row (row {rows})")
+                pitch_y = (ly[1] - tl[1]) / (rows - 1) if ly else None
+            else:
+                pitch_y = br[1] - tl[1] + 1
+            if not pitch_x or not pitch_y:
                 return None
             calib = {
                 "screen_size": [img.shape[1], img.shape[0]],
                 "origin": list(tl),
                 "slot": [br[0] - tl[0], br[1] - tl[1]],
-                "pitch": [nx[0] - tl[0], ny[1] - tl[1]],
+                "pitch": [round(pitch_x, 2), round(pitch_y, 2)],
+                "cols": cols,
+                "rows": rows,
             }
             if min(calib["slot"]) < 8 or min(calib["pitch"]) < 8:
                 print("Those points don't make a sensible slot — let's try again.")
                 continue
-            print("\nNow in the terminal:")
-            calib["cols"] = _ask_int("  How many slot COLUMNS does the stash grid show", 8)
-            calib["rows"] = _ask_int("  How many full slot ROWS are visible at once", 6)
 
             slot_box = (*calib["origin"], *calib["slot"])
-            print("\nBack in the window: drag a tight box around the item ART in that first slot "
-                  "(put an item there first). Press c to use the default.")
+            print("\nBack in the window: drag a box around the item ART area of that first slot — "
+                  "everything above the footer strip with the category icon and count. Press c for the default.")
             calib["icon_box"] = pick_rect_zoomed(img, slot_box, "Item art inside the slot")
-            print("Drag a box around where the STACK COUNT digits sit in that slot "
-                  "(leave room for 3 digits). Press c if items there have no counts.")
+            print("Drag a box around the right part of the footer where the count (×24) sits — "
+                  "leave room for ×100, and keep the category icon on the left out. Press c if there are no counts.")
             calib["count_box"] = pick_rect_zoomed(img, slot_box, "Stack-count digits")
             print("Last: drag a box around a fixed UI element that is only on the stash screen "
                   "(a header or tab label works well). Press c to skip — then every frame counts as the stash.")

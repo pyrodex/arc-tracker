@@ -32,12 +32,18 @@ DEFAULTS: dict = {
         # Crops you taught are taken from the game itself, so hold them to a higher bar.
         "taught_min_score": 0.90,
     },
+    # Share of the item-art border that must be grid-blue for a slot to count
+    # as a blueprint (real blueprints ≈0.5, everything else ≤0.03).
+    "blueprint_bg_min": 0.3,
     # A slot whose icon area has less brightness variation than this is empty.
     "empty_std": 9.0,
     # Count digits: pixels brighter than this (0-255) count as text.
     "count_text_threshold": 170,
     # ...and at most this colourful (HSV saturation 0-255), so bright art isn't read as digits.
     "count_text_max_saturation": 70,
+    # "auto" reads counts with glyph templates of the game font (digits.npz),
+    # falling back to Tesseract if they're missing; "tesseract" always uses Tesseract.
+    "count_reader": "auto",
     # How counts are hidden from icon matching: "ink" (digit pixels only) or
     # "box" (the whole count box, for a solid badge behind the number).
     "count_mask": "ink",
@@ -49,6 +55,14 @@ DEFAULTS: dict = {
     "stable_frames": 2,
     # Detect the grid's pixel offset each frame, for stashes that scroll smoothly.
     "scroll_phase": True,
+    # Who's signed in, read from the main menu (see identity.py).
+    "identity": {
+        "name_box": None,          # [x, y, w, h] on the main menu; set with `calibrate-name`
+        "screen_size": None,
+        "aliases": {},             # in-game name → arc-tracker character id (`link`)
+        "require_confirmed": True, # don't sync until the signed-in raider is known
+        "check_interval_s": 2.0,
+    },
     "hotkeys": {
         "snapshot": "ctrl+alt+s",
         "toggle_watch": "ctrl+alt+w",

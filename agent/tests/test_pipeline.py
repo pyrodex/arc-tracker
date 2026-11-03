@@ -32,6 +32,7 @@ def world():
     cal = syn.write_fixture(HOME, catalog_payload, icons, first)
     cfg = config.load()
     cfg["calibration"] = cal
+    cfg["count_reader"] = "tesseract"   # synthetic digits aren't in the game font
     catalog = Catalog.load_cached()
     scanner = Scanner(cfg, catalog)
     # Untracked loot can resemble a tracked icon. The fix is the `teach`
@@ -91,6 +92,29 @@ def test_single_frame_detection(world):
 def test_few_lookalikes_needed_teaching(world):
     # Out of 25 untracked icons, only the odd one should need an "ignore" label.
     assert len(world["lookalikes"]) <= 2
+
+
+def test_item_is_not_counted_as_its_blueprint(world):
+    """A weapon and its blueprint share art; only the grid version is the blueprint."""
+    s = world["scanner"]
+    bp_key = next(k for k in world["catalog"].items if k.startswith("blueprint:"))
+    rng = random.Random(1)
+    icons = {bp_key: syn.make_icon(rng)}
+    # Use the real catalog icon for this key, drawn both ways.
+    from arc_vision.catalog import icon_path, load_icon_rgba
+    icons[bp_key] = load_icon_rgba(icon_path(world["catalog"].items[bp_key]))
+    frame = np.full((syn.SCREEN[1], syn.SCREEN[0], 3), (16, 15, 14), np.uint8)
+    for r in range(syn.ROWS):               # the game always draws the empty grid
+        for c in range(syn.COLS):
+            x, y = syn.ORIGIN[0] + c * syn.PITCH, syn.ORIGIN[1] + r * syn.PITCH
+            frame[y:y + syn.SLOT, x:x + syn.SLOT] = syn.render_slot(rng, None, {}, [])
+    for c, grid in enumerate((True, False)):
+        slot = syn.render_slot(rng, ("item", bp_key, 1), icons, [], as_blueprint=grid)
+        x, y = syn.ORIGIN[0] + c * syn.PITCH, syn.ORIGIN[1]
+        frame[y:y + syn.SLOT, x:x + syn.SLOT] = slot
+    res = {r.col: r for r in s.scan(frame) if r.row == 0 and r.col < 2}
+    assert res[0].status == "item" and res[0].key == bp_key and res[0].blueprint
+    assert res[1].key != bp_key and not res[1].blueprint
 
 
 def test_stash_anchor(world):
@@ -208,3 +232,46 @@ def test_engine_thread_watch_mode(world):
     assert not st.error, st.error
     assert st.totals == syn.truth_totals(world["grid"])
     assert client.calls and client.calls[-1][2] is False
+
+
+def test_engine_follows_signed_in_character(world, monkeypatch):
+    from arc_vision import identity
+    lobby = np.zeros((syn.SCREEN[1], syn.SCREEN[0], 3), np.uint8)     # no stash anchor → main menu
+    stash = [syn.render_frame(world["canvas"], off) for off in (0, 184)]
+    cfg = dict(world["cfg"])
+    cfg["identity"] = dict(cfg["identity"], name_box=[0, 0, 200, 40], screen_size=list(syn.SCREEN),
+                           aliases={"MortySmith": 1, "RickSanchez": 2})
+    shown = {"name": "MortySmith"}
+    monkeypatch.setattr(identity, "read_name", lambda frame, box: shown["name"])
+    monkeypatch.setattr(config, "save", lambda c: None)
+    client = FakeClient()
+    eng = Engine(cfg, client, world["catalog"], lambda: FakeCapture(stash), scanner=world["scanner"])
+    eng._capture = eng._capture_factory()
+    eng._load_characters()
+
+    # Not seen the main menu yet: scanning works, syncing doesn't.
+    eng._handle("snapshot")
+    eng._handle("preview")
+    assert "which raider is signed in" in eng.state().error and not client.calls
+
+    # Main menu shows MortySmith → Main, confirmed.
+    eng.check_identity(lobby)
+    st = eng.state()
+    assert st.character["id"] == 1 and st.character_confirmed and st.in_game_name == "MortySmith"
+    eng._handle("snapshot")
+    eng._handle("preview")
+    assert client.calls and client.calls[-1][0] == 1
+
+    # Signing into the other account discards the scan in progress.
+    shown["name"] = "RickSanchez"
+    eng.check_identity(lobby)
+    st = eng.state()
+    assert st.character["id"] == 2 and st.frames == 0 and "discarded" in st.message
+    n = len(client.calls)
+    eng._handle("apply")
+    assert len(client.calls) == n      # nothing was written for either character
+
+    # An in-game name nobody linked blocks syncing until it's linked.
+    shown["name"] = "Stranger"
+    eng.check_identity(lobby)
+    assert not eng.state().character_confirmed and "isn't linked" in eng.state().error
