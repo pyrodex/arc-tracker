@@ -625,3 +625,31 @@ export type TrackingUpdate = {
   learned: boolean;
   extras: number;
 };
+
+// ── Vision sync (arc-vision desktop agent) ───────────────────────────────────
+export type VisionItemType = 'blueprint' | 'stencil' | 'arc_part' | 'amplification' | 'workshop_material';
+
+export interface VisionChange {
+  type: VisionItemType;
+  id: number;
+  name: string;
+  field: 'extras' | 'count' | 'learned';
+  before: number;
+  after: number;
+}
+
+export interface VisionSync {
+  id: number;
+  character_id: number;
+  character_name: string;
+  source: string | null;
+  changes: VisionChange[];
+  created_at: string;
+  reverted_at: string | null;
+}
+
+export interface VisionRevertResult {
+  sync_id: number;
+  reverted: VisionChange[];
+  skipped: (VisionChange & { current: number })[];
+}

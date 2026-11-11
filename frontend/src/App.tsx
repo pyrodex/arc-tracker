@@ -9,6 +9,7 @@ import Amplification from './pages/Amplification';
 import Workshop from './pages/Workshop';
 import Loadouts from './pages/Loadouts';
 import Reports from './pages/Reports';
+import Vision from './pages/Vision';
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="workshop" element={<Workshop />} />
           <Route path="loadouts" element={<Loadouts />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="vision" element={<Vision />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

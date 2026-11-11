@@ -1,0 +1,7 @@
+# arc-vision desktop agent — Python 3.10+ on Windows
+opencv-python>=4.8
+numpy>=1.24
+mss>=9.0             # overlay placement + "screen" capture fallback
+windows-capture>=1.4  # Windows Graphics Capture of the game window (default)
+requests>=2.31
+pytesseract>=0.3.10   # also install the Tesseract binary; see README

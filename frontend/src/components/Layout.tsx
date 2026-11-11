@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, BarChart3, Cpu, Wrench, Crosshair, SprayCan, Zap, Menu, X, Search } from 'lucide-react';
+import { LayoutDashboard, Users, BookOpen, BarChart3, Cpu, Wrench, Crosshair, SprayCan, Zap, ScanEye, Menu, X, Search } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Toaster from './Toaster';
 import QuickEntry, { openQuickEntry } from './QuickEntry';
@@ -17,6 +17,7 @@ const navItems = [
   { to: '/workshop',   label: 'Workshop',   icon: Wrench },
   { to: '/loadouts',   label: 'Loadouts',   icon: Crosshair },
   { to: '/reports',    label: 'Reports',    icon: BarChart3 },
+  { to: '/vision',     label: 'Vision Sync', icon: ScanEye },
 ];
 
 const SHORTCUT = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
