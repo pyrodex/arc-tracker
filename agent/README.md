@@ -4,13 +4,13 @@ arc-vision runs on your gaming PC. It reads the ARC Raiders stash screen with
 screen capture and computer vision, then syncs the counts to your self-hosted
 arc-tracker. It shows its progress in a small click-through overlay.
 
-It only reads pixels from your screen. It never touches the game process, its
-memory, its network traffic or its files.
+It only reads pixels. It never touches the game process, its memory, its
+network traffic or its files.
 
 ```
 Gaming PC                                   Homelab
 ┌────────────────────────────────┐         ┌──────────────────────────┐
-│ ARC Raiders (borderless)       │         │ arc-tracker              │
+│ ARC Raiders (windowed fs)      │         │ arc-tracker              │
 │   ▲ overlay (hotkeys)          │  HTTP   │  GET  /api/vision/catalog│
 │ arc-vision: capture → match →  │ ──────► │  POST /api/vision/sync   │
 │   OCR counts → scroll tracking │         │  Vision Sync page/revert │
@@ -39,8 +39,40 @@ Anything else in your stash (guns, ammo, loot) is skipped.
    .venv\Scripts\activate
    pip install -r requirements.txt
    ```
-4. Set ARC Raiders to **borderless windowed**. Exclusive fullscreen usually
-   captures as black and draws over the overlay.
+4. Set ARC Raiders to **Windowed Fullscreen** (borderless). Exclusive
+   fullscreen can't be window-captured and draws over the overlay.
+5. Check that capture works. Start the game, then run
+   `python -m arc_vision capture-test`. It saves `capture-test.png`, a single
+   frame of the game window.
+
+## How it captures the game
+
+arc-vision uses **Windows Graphics Capture** on the ARC Raiders window. That's
+the API Windows provides for recording an app's window, and it's what
+streaming and clip tools use for window capture: OBS's "Window Capture
+(Windows 10)", Discord on Windows 11, and Medal's "Advanced Window Capture".
+The ARCTracker overlay describes its approach the same way: "Windows' own
+screen capture, like streaming software."
+
+- **Nothing is injected or hooked.** Windows composites the game window and
+  hands over a copy of its pixels. No DLL goes into the game, DirectX isn't
+  hooked (that's how "game capture" modes work), and no game memory is read.
+- **Only the game window is captured,** not the whole desktop. The overlay
+  and other windows can never end up in the frame.
+- **The cursor and the yellow capture border are turned off** where Windows
+  allows it. Hiding the border needs Windows 11; on Windows 10 the border
+  shows but isn't part of the captured frame.
+- **Hotkeys don't hook the keyboard.** They're registered with
+  `RegisterHotKey`, so nothing watches your keystrokes.
+- **The game window is found by its title** (`capture.window_title`, default
+  "ARC Raiders"). If the game isn't running yet, the agent waits and picks it
+  up when it starts. If the window closes, it waits for it to come back.
+
+Embark doesn't publish a list of approved tools, so no third-party program
+can promise you won't be banned. This is the same read-only method the tools
+above rely on. If window capture won't start on your PC, set `capture.method`
+to `"screen"` in `~/.arc_vision/config.json`. That copies the monitor through
+GDI instead, which also doesn't touch the game, but sees everything on screen.
 
 ## First-time setup
 
@@ -218,14 +250,22 @@ These live in `~/.arc_vision/config.json`:
 | `stable_frames` | 2 | How many frames a row must read the same before it counts (watch mode) |
 | `scroll_phase` | true | Detect pixel-scroll offsets |
 | `anchor_threshold` | 0.80 | Match threshold for the stash-open element |
+| `capture.method` | `window` | `window` = Windows Graphics Capture of the game window; `screen` = mss desktop copy |
+| `capture.window_title` | `ARC Raiders` | Part of the game window's title |
+| `capture.channel_order` | `bgra` | Set to `rgba` if `capture-test` shows red and blue swapped |
 
 ## Notes and limits
 
-- The overlay hides itself from screen capture on Windows 10 2004 and later,
-  so the agent never reads its own boxes. On older Windows, keep slot boxes
-  off while scanning.
-- If the game runs as administrator, run arc-vision as administrator too, or
-  hotkeys won't register while the game has focus.
+- Window capture only sees the game, so the overlay can't get into the frame.
+  With the `"screen"` fallback, the overlay hides itself from capture on
+  Windows 10 2004 and later; on older Windows, keep slot boxes off while
+  scanning.
+- With Windows HDR on, captured colours can look washed out. If
+  `capture-test.png` looks pale, turn HDR off for the game.
+- Hotkeys are registered with Windows' `RegisterHotKey`, the documented way
+  for an app to claim a key combination. There's no keyboard hook watching
+  every keystroke. If another app already owns a combination, `run` tells you
+  which one, and you can change it under `hotkeys` in the config.
 - Rarity borders aren't used yet. Items that share art and differ only by tier
   colour depend on the colour check and on teaching.
 - Only the stash grid is read, by choice. Items in your loadout (backpack,

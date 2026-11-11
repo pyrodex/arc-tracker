@@ -289,3 +289,42 @@ def test_session_reports_learned_blueprints():
     assert s.add(row, trusted=True)
     assert s.learned() == {"blueprint:3", "blueprint:5"}      # learned even when the count won't read
     assert s.totals() == {"blueprint:3": 1, "blueprint:4": 2}
+
+
+def test_engine_waits_for_the_game_window(world, monkeypatch):
+    """No game window yet: say so and keep retrying; pick it up once it appears."""
+    from arc_vision import engine as engine_mod
+    from arc_vision.capture import CaptureUnavailable
+    frames = [syn.render_frame(world["canvas"], 0)]
+    attempts = {"n": 0}
+
+    def factory():
+        attempts["n"] += 1
+        if attempts["n"] < 3:
+            raise CaptureUnavailable("no window titled like 'ARC Raiders' — is the game running?")
+        return FakeCapture(frames)
+
+    clock = {"t": 0.0}
+    monkeypatch.setattr(engine_mod.time, "monotonic", lambda: clock["t"])
+    eng = Engine(world["cfg"], FakeClient(), world["catalog"], factory, scanner=world["scanner"])
+    eng._next_capture_try = 0.0
+    eng._handle("snapshot")
+    st = eng.state()
+    assert not st.capturing and "Waiting for ARC Raiders" in st.message and st.frames == 0
+    eng._handle("snapshot")                 # too soon: no new attempt
+    assert attempts["n"] == 1
+    for _ in range(2):
+        clock["t"] += 3.1
+        eng._handle("snapshot")
+    st = eng.state()
+    assert attempts["n"] == 3 and st.capturing and st.frames == 1
+
+
+def test_hotkey_parsing():
+    from arc_vision.hotkeys import MOD_ALT, MOD_CONTROL, MOD_NOREPEAT, MOD_SHIFT, parse
+    assert parse("ctrl+alt+s") == (MOD_CONTROL | MOD_ALT | MOD_NOREPEAT, ord("S"))
+    assert parse("Ctrl + Shift + F10") == (MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, 0x79)
+    with pytest.raises(ValueError):
+        parse("ctrl+alt")
+    with pytest.raises(ValueError):
+        parse("ctrl+banana")

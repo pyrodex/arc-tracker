@@ -97,6 +97,7 @@ class Overlay:
         _click_through(self.panel)
         _click_through(self.boxes)
         self._drawn_results = None
+        self._boxes_rect = dict(self.mon)
 
     # hotkey thread → Tk thread
     def toggle_visible(self):
@@ -129,6 +130,8 @@ class Overlay:
         elif st.in_game_name:
             char += f" ({st.in_game_name})"
         mode = "WATCHING" if st.watching else "idle"
+        if not st.capturing:
+            mode = "waiting for game"
         self.title.config(text=f"arc-vision · {char} · {mode}" + (" · FULL STASH" if st.full_mode else ""))
         stash = "stash open" if st.stash_visible else "stash not detected"
         self.status.config(text=f"{stash} · {st.frames} frame(s) · {st.rows} row(s) placed"
@@ -136,6 +139,12 @@ class Overlay:
         self.body.config(text=self._body_text(st))
         msg = st.error or st.message
         self.msg.config(text=msg, fg=BAD if st.error else ACCENT)
+        # Slot boxes sit over the captured game window, which can move or resize.
+        rect = st.frame_rect or self.mon
+        if rect != self._boxes_rect:
+            self._boxes_rect = dict(rect)
+            self.boxes.geometry(f"{rect['width']}x{rect['height']}+{rect['left']}+{rect['top']}")
+            self._drawn_results = None
         if self.show_boxes and st.last_results is not self._drawn_results:
             self._draw_boxes(st.last_results)
         self.root.after(200, self._refresh)

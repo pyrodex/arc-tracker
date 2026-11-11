@@ -92,7 +92,7 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts, amplificati
 - **Loadouts** *(new in v1.4.0)* — builds, guns held, amplified guns and total value per character; expand a character to see every build with its mods, amplifications and value, plus most-built-weapons, amplification-usage and mod-usage breakdowns across all characters
 
 ### Vision Sync *(new, experimental)*
-- **Stash reader** — the optional [arc-vision](agent/README.md) desktop agent runs on your gaming PC. It reads the stash screen with screen capture and computer vision, and only ever reads pixels; it never touches the game. It recognises tracked items, reads their stack counts and syncs them here. A click-through overlay with hotkeys shows what it saw
+- **Stash reader** — the optional [arc-vision](agent/README.md) desktop agent runs on your gaming PC. It reads the stash screen with computer vision, capturing the game window through Windows Graphics Capture (the same method streaming and clip tools use). It only ever reads pixels and never touches the game. It recognises tracked items, reads their stack counts and syncs them here. A click-through overlay with hotkeys shows what it saw
 - **Scroll-safe** — frames are lined up by matching rows, so scrolling back and forth never counts an item twice; a frame it can't place is skipped, never guessed
 - **Learned blueprints** — the game's checkmark on a blueprint marks it learned here too (never the other way round)
 - **Preview, then apply** — nothing is written until you've seen the change list. Only items it actually saw are changed (unless you turn on full-stash mode), and counts it can't read are left alone

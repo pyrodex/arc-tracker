@@ -82,12 +82,14 @@ def _load_or_capture(args, cfg):
         if img is None:
             sys.exit(f"Can't read {args.image}")
         return img
-    from .capture import ScreenCapture
+    from .capture import wait_for_capture
     print(f"Switch to the game with the stash open — capturing in {args.delay}s…")
     time.sleep(args.delay)
-    cap = ScreenCapture(cfg["monitor"])
-    img = cap.grab()
-    cap.close()
+    cap = wait_for_capture(cfg)
+    try:
+        img = cap.grab()
+    finally:
+        cap.close()
     return img
 
 
@@ -152,6 +154,24 @@ def cmd_calibrate_name(args, cfg):
         char = identity.resolve(raw, chars, aliases)
         print(f"That's {char['name']} in arc-tracker." if char else
               f"No arc-tracker character matches — link it: python -m arc_vision link \"{raw}\" <character>")
+
+
+def cmd_capture_test(args, cfg):
+    """Grab one frame with the configured backend and save it, to check capture works."""
+    import cv2
+    from .capture import wait_for_capture
+    c = cfg.get("capture") or {}
+    print(f"Capture method: {c.get('method', 'window')}" +
+          (f" (window title containing {c.get('window_title', 'ARC Raiders')!r})" if c.get("method", "window") == "window" else ""))
+    cap = wait_for_capture(cfg, timeout=args.wait)
+    try:
+        img = cap.grab()
+        print(f"Got a {img.shape[1]}×{img.shape[0]} frame from {getattr(cap, 'title', 'the screen')!r} at {cap.region}.")
+    finally:
+        cap.close()
+    cv2.imwrite(args.out, img)
+    print(f"Saved {args.out}. Open it: colours should look normal (if red and blue are swapped, "
+          f"set capture.channel_order to 'rgba').")
 
 
 def cmd_link(args, cfg):
@@ -233,26 +253,27 @@ def cmd_teach(args, cfg):
 
 def cmd_run(args, cfg):
     import mss
-    from .capture import ScreenCapture
+    from .capture import make_capture
     from .engine import Engine
+    from .hotkeys import Hotkeys
     from .overlay import Overlay
 
-    try:
-        import keyboard
-    except ImportError:
-        sys.exit("The `keyboard` package is needed for hotkeys: pip install keyboard")
     if not cfg.get("calibration"):
         sys.exit("Not calibrated yet — run: python -m arc_vision calibrate")
     with mss.mss() as s:
         mon = s.monitors[cfg["monitor"]]
     cat = _catalog(cfg)
-    engine = Engine(cfg, _client(cfg), cat, lambda: ScreenCapture(cfg["monitor"]))
+    engine = Engine(cfg, _client(cfg), cat, lambda: make_capture(cfg))
     overlay = Overlay(engine, cfg, mon)
     hk = cfg["hotkeys"]
+    keys = Hotkeys()
     for name in ("snapshot", "toggle_watch", "preview", "apply", "discard", "next_character", "save_frame", "toggle_full"):
-        keyboard.add_hotkey(hk[name], engine.send, args=(name,))
-    keyboard.add_hotkey(hk["toggle_overlay"], overlay.toggle_visible)
-    keyboard.add_hotkey(hk["toggle_boxes"], overlay.toggle_boxes)
+        keys.add(hk[name], lambda n=name: engine.send(n))
+    keys.add(hk["toggle_overlay"], overlay.toggle_visible)
+    keys.add(hk["toggle_boxes"], overlay.toggle_boxes)
+    keys.start()
+    if keys.failed:
+        print("These hotkeys are taken by another app; change them in config.json: " + ", ".join(keys.failed))
     engine.start()
     print("arc-vision running. Hotkeys:")
     for k, v in hk.items():
@@ -263,7 +284,7 @@ def cmd_run(args, cfg):
     except KeyboardInterrupt:
         pass
     finally:
-        keyboard.unhook_all_hotkeys()
+        keys.stop()
         engine.stop()
 
 
@@ -291,6 +312,9 @@ def main(argv=None):
     s = sub.add_parser("calibrate-name", help="mark where the main menu shows your player name")
     s.add_argument("--image", help="main-menu screenshot (default: capture the screen)")
     s.add_argument("--delay", type=int, default=5)
+    s = sub.add_parser("capture-test", help="grab one frame of the game and save it")
+    s.add_argument("--out", default="capture-test.png")
+    s.add_argument("--wait", type=int, default=30, help="seconds to wait for the game window")
     s = sub.add_parser("link", help="link an in-game name to an arc-tracker character")
     s.add_argument("name", help="player name as shown on the main menu")
     s.add_argument("character", help="arc-tracker character name or id")
@@ -298,7 +322,8 @@ def main(argv=None):
     args = p.parse_args(argv)
     cfg = config.load()
     {"setup": cmd_setup, "refresh": cmd_refresh, "calibrate": cmd_calibrate, "scan-image": cmd_scan_image,
-     "teach": cmd_teach, "run": cmd_run, "calibrate-name": cmd_calibrate_name, "link": cmd_link}[args.cmd](args, cfg)
+     "teach": cmd_teach, "run": cmd_run, "calibrate-name": cmd_calibrate_name, "link": cmd_link,
+     "capture-test": cmd_capture_test}[args.cmd](args, cfg)
 
 
 if __name__ == "__main__":

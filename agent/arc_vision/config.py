@@ -17,7 +17,15 @@ DEFAULTS: dict = {
     # arc-tracker base URL (the same address you open in the browser)
     "server_url": "http://localhost:3333",
     "character_id": None,
-    # mss monitor index: 1 = primary display
+    # How frames are captured (see capture.py). "window": Windows Graphics
+    # Capture of the game window, the method streaming/clip tools use.
+    # "screen": desktop copy of `monitor` via mss, as a fallback.
+    "capture": {
+        "method": "window",
+        "window_title": "ARC Raiders",   # matched as a case-insensitive substring
+        "channel_order": "bgra",         # 'rgba' if capture-test shows red/blue swapped
+    },
+    # Monitor for the overlay panel and the "screen" method: 1 = primary display
     "monitor": 1,
     # Written by `python -m arc_vision calibrate`; see calibrate.py for the fields.
     "calibration": None,

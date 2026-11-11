@@ -15,6 +15,7 @@ from datetime import datetime
 import cv2
 
 from . import config, identity
+from .capture import CaptureUnavailable
 from .catalog import Catalog
 from .scanner import ScanSession, Scanner, SlotResult
 
@@ -39,6 +40,8 @@ class State:
     preview: dict | None = None
     message: str = ""
     error: str = ""
+    capturing: bool = False              # the game window is being captured
+    frame_rect: dict | None = None       # where captured pixel (0, 0) is on the desktop
 
 
 class Engine:
@@ -82,7 +85,8 @@ class Engine:
 
     # ── loop ─────────────────────────────────────────────────────────────────
     def _run(self) -> None:
-        self._capture = self._capture_factory()
+        self._next_capture_try = 0.0
+        self._ensure_capture()
         self._load_characters()
         next_watch = 0.0
         next_identity = 0.0
@@ -102,16 +106,18 @@ class Engine:
                     self._capture_and_scan(trusted=False)
                 if self._identity_box() and time.monotonic() >= next_identity:
                     next_identity = time.monotonic() + self.cfg["identity"]["check_interval_s"]
-                    self.check_identity(self._capture.grab())
+                    frame = self._grab()
+                    if frame is not None:
+                        self.check_identity(frame)
             except Exception as e:  # keep the loop alive; show the error on the overlay
                 self._set(error=f"{type(e).__name__}: {e}")
-        if hasattr(self._capture, "close"):
+        if self._capture is not None and hasattr(self._capture, "close"):
             self._capture.close()
 
     def _handle(self, cmd: str) -> None:
         self._set(error="")
         if cmd == "snapshot":
-            if not self._capture_and_scan(trusted=True):
+            if not self._capture_and_scan(trusted=True) and self._capture is not None:
                 self._set(message="Stash screen not detected — open the stash and try again.")
         elif cmd == "toggle_watch":
             self._set(watching=not self._state.watching,
@@ -181,8 +187,45 @@ class Engine:
             return False
         return True
 
+    # ── capture ──────────────────────────────────────────────────────────────
+    def _ensure_capture(self) -> bool:
+        """Start capturing the game window, retrying every few seconds until it's there."""
+        if self._capture is not None:
+            return True
+        if time.monotonic() < self._next_capture_try:
+            return False
+        self._next_capture_try = time.monotonic() + 3.0
+        try:
+            self._capture = self._capture_factory()
+        except CaptureUnavailable as e:
+            self._set(capturing=False, message=f"Waiting for ARC Raiders — {e}")
+            return False
+        rect = getattr(self._capture, "region", None)
+        self._set(capturing=True, frame_rect=rect if isinstance(rect, dict) else None,
+                  message=f"Capturing {getattr(self._capture, 'title', 'the screen')}.")
+        return True
+
+    def _grab(self):
+        """The current frame, or None while the game window isn't available."""
+        if not self._ensure_capture():
+            return None
+        try:
+            frame = self._capture.grab()
+        except CaptureUnavailable as e:
+            if hasattr(self._capture, "close"):
+                self._capture.close()
+            self._capture = None
+            self._set(capturing=False, message=f"Lost the game window ({e}); waiting for it.")
+            return None
+        rect = getattr(self._capture, "region", None)
+        if isinstance(rect, dict) and rect != self._state.frame_rect:
+            self._set(frame_rect=rect)   # the window moved or resized; keep the overlay boxes on it
+        return frame
+
     def _capture_and_scan(self, trusted: bool) -> bool:
-        frame = self._capture.grab()
+        frame = self._grab()
+        if frame is None:
+            return False
         self._frame = frame
         visible = self.scanner.stash_visible(frame)
         if not visible:
@@ -277,7 +320,9 @@ class Engine:
         self._set(character=char, character_confirmed=True, preview=None, message=msg)
 
     def _save_frame(self) -> None:
-        frame = self._capture.grab()
+        frame = self._grab()
+        if frame is None:
+            return
         config.ensure_dirs()
         path = config.FRAMES_DIR / f"frame-{datetime.now():%Y%m%d-%H%M%S}.png"
         cv2.imwrite(str(path), frame)
