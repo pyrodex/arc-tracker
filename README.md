@@ -37,6 +37,7 @@ A self-hosted web tool for tracking blueprints, stencils, ARC parts, amplificati
 - **Color coding** — pick from preset colors or a custom color picker; colors appear throughout the UI
 - **Notes** — optional free-text notes per character
 - **Stash space** *(new in v1.6.0)* — per-character +/– counters for stash upgrades (up to 11, 24 slots each), Nomad expansions (up to 2, 12 slots each) and expeditions (up to 5, 12 slots each), with the character's total stash shown on top of the 64-slot base (max 412)
+- **Outpost slots** — a per-character +/– counter for Outpost slots unlocked (0–4, starting at 0), next to the stash counters on the Characters page
 - **At-a-glance stats** — each character card shows learned blueprint count, unlearned count, spare/extra copies, and total ARC parts collected
 - **Delete confirmation** — a prominent confirmation prompt (with warning) is shown before a character and all its data are permanently removed
 
@@ -211,7 +212,7 @@ arc-tracker/
 | GET | `/api/characters` | All characters |
 | GET | `/api/characters/activity` | Last-updated per character per tracked area (UTC) |
 | POST | `/api/characters` | Create a character (supports `parent_id`) |
-| PUT | `/api/characters/:id` | Update a character (supports `parent_id`, `normal_stash` 0–11, `nomad_stash` 0–2, `expedition_stash` 0–5) |
+| PUT | `/api/characters/:id` | Update a character (supports `parent_id`, `normal_stash` 0–11, `nomad_stash` 0–2, `expedition_stash` 0–5, `outpost_slots` 0–4) |
 | DELETE | `/api/characters/:id` | Delete a character and all its tracking data |
 | GET | `/api/tracking/:characterId` | All blueprint tracking records for a character |
 | POST | `/api/tracking` | Upsert a single blueprint tracking record |
@@ -299,6 +300,10 @@ Blueprint, stencil, ARC part, workshop, weapon, mod and amplification data sourc
 This project is not affiliated with Embark Studios or ARC Raiders.
 
 ## Changelog
+
+### Unreleased
+
+- **Outpost slots per character**: the Characters page has an Outpost counter (0–4, starting at 0) beside the stash counters. The API enforces the range, and a new `outpost_slots` column is added on startup (existing characters start at 0)
 
 ### v2.0.0
 
