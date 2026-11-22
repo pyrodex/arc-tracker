@@ -57,6 +57,7 @@ function initSchema() {
       normal_stash INTEGER DEFAULT 0,
       nomad_stash  INTEGER DEFAULT 0,
       expedition_stash INTEGER DEFAULT 0,
+      outpost_slots INTEGER DEFAULT 0,
       parent_id    INTEGER REFERENCES characters(id) ON DELETE SET NULL,
       created_at   TEXT    DEFAULT (datetime('now'))
     );
@@ -908,6 +909,9 @@ function runMigrations() {
   }
   if (!charCols.includes('expedition_stash')) {
     db.exec('ALTER TABLE characters ADD COLUMN expedition_stash INTEGER DEFAULT 0');
+  }
+  if (!charCols.includes('outpost_slots')) {
+    db.exec('ALTER TABLE characters ADD COLUMN outpost_slots INTEGER DEFAULT 0');
   }
 
   // Weapon amplification: which Mk. module a weapon needs (NULL = can't be

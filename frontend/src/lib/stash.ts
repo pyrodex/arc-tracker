@@ -39,3 +39,11 @@ export const MAX_STASH_SLOTS = STASH_SOURCES.reduce(
   (total, source) => total + source.max * source.slotsEach,
   BASE_STASH_SLOTS,
 );
+
+/** Outpost slots a character can unlock. Keep in sync with STASH_LIMITS in backend/src/server.js. */
+export const MAX_OUTPOST_SLOTS = 4;
+
+/** A character's Outpost slots, clamped to 0..MAX_OUTPOST_SLOTS. */
+export function outpostSlots(char: Character): number {
+  return Math.min(Math.max(0, char.outpost_slots ?? 0), MAX_OUTPOST_SLOTS);
+}

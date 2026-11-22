@@ -7,13 +7,18 @@ import CharacterForm from '../components/CharacterForm';
 import LastUpdated from '../components/LastUpdated';
 import {
   BASE_STASH_SLOTS,
+  MAX_OUTPOST_SLOTS,
   MAX_STASH_SLOTS,
   STASH_SOURCES,
+  outpostSlots,
   stashCount,
   totalStashSlots,
   type StashField,
   type StashSource,
 } from '../lib/stash';
+
+/** Every per-character counter the page can change. */
+type CounterField = StashField | 'outpost_slots';
 
 type CharacterGroup = {
   parent: Character;
@@ -125,19 +130,25 @@ interface CharacterRowProps {
   parentName?: string;
   onEdit: (char: Character) => void;
   onDelete: (char: Character) => void;
-  onStashChange: (id: number, field: StashField, value: number) => void;
+  onStashChange: (id: number, field: CounterField, value: number) => void;
   stashPending: boolean;
 }
 
-interface StashCounterProps {
-  source: StashSource;
+interface CounterProps {
+  label: string;
   value: number;
+  max: number;
+  /** Small line under the counter, e.g. "+24 each". */
+  hint: string;
   pending: boolean;
   onChange: (value: number) => void;
 }
 
-function StashCounter({ source, value, pending, onChange }: StashCounterProps) {
-  const { label, slotsEach, max } = source;
+function StashCounter({ source, ...rest }: Omit<CounterProps, 'label' | 'max' | 'hint'> & { source: StashSource }) {
+  return <Counter label={source.label} max={source.max} hint={`+${source.slotsEach} each`} {...rest} />;
+}
+
+function Counter({ label, value, max, hint, pending, onChange }: CounterProps) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span className="text-[11px] font-medium text-arc-muted uppercase tracking-wide">{label}</span>
@@ -162,7 +173,7 @@ function StashCounter({ source, value, pending, onChange }: StashCounterProps) {
           <Plus className="w-3.5 h-3.5" />
         </button>
       </div>
-      <span className="text-xs text-arc-dim tabular-nums">+{slotsEach} each</span>
+      <span className="text-xs text-arc-dim tabular-nums">{hint}</span>
     </div>
   );
 }
@@ -174,7 +185,7 @@ function StashPanel({
 }: {
   char: Character;
   pending: boolean;
-  onStashChange: (id: number, field: StashField, value: number) => void;
+  onStashChange: (id: number, field: CounterField, value: number) => void;
 }) {
   const total = totalStashSlots(char);
   return (
@@ -196,6 +207,16 @@ function StashPanel({
           onChange={value => onStashChange(char.id, source.field, value)}
         />
       ))}
+      <div className="sm:pl-6 sm:border-l sm:border-arc-border/40">
+        <Counter
+          label="Outpost"
+          value={outpostSlots(char)}
+          max={MAX_OUTPOST_SLOTS}
+          hint="slots"
+          pending={pending}
+          onChange={value => onStashChange(char.id, 'outpost_slots', value)}
+        />
+      </div>
     </div>
   );
 }

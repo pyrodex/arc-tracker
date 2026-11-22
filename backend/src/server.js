@@ -156,11 +156,12 @@ app.get('/api/characters', (req, res) => {
   res.json(characters);
 });
 
-// Max number of each stash expansion a character can have.
+// Max value of each per-character counter.
 const STASH_LIMITS = {
   normal_stash: 11,     // stash upgrades, 24 slots each
   nomad_stash: 2,       // Nomad expansions, 12 slots each
   expedition_stash: 5,  // expeditions completed, 12 slots each
+  outpost_slots: 4,     // Outpost slots unlocked
 };
 
 // Returns value if it's an integer within 0..STASH_LIMITS[field], otherwise fallback.
@@ -169,7 +170,7 @@ function parseStashCount(field, value, fallback) {
 }
 
 app.post('/api/characters', (req, res) => {
-  const { name, label, notes, color, sort_order, normal_stash, nomad_stash, expedition_stash, parent_id } = req.body;
+  const { name, label, notes, color, sort_order, normal_stash, nomad_stash, expedition_stash, outpost_slots, parent_id } = req.body;
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'name is required' });
   }
@@ -179,8 +180,8 @@ app.post('/api/characters', (req, res) => {
   if (parentError) return res.status(400).json({ error: parentError });
 
   const result = db.prepare(`
-    INSERT INTO characters (name, label, notes, color, sort_order, normal_stash, nomad_stash, expedition_stash, parent_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO characters (name, label, notes, color, sort_order, normal_stash, nomad_stash, expedition_stash, outpost_slots, parent_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     name.trim().slice(0, 64),
     label ? label.trim().slice(0, 32) : null,
@@ -190,6 +191,7 @@ app.post('/api/characters', (req, res) => {
     parseStashCount('normal_stash', normal_stash, 0),
     parseStashCount('nomad_stash', nomad_stash, 0),
     parseStashCount('expedition_stash', expedition_stash, 0),
+    parseStashCount('outpost_slots', outpost_slots, 0),
     parsedParentId,
   );
 
@@ -204,7 +206,7 @@ app.put('/api/characters/:id', (req, res) => {
   const existing = db.prepare('SELECT id FROM characters WHERE id = ?').get(id);
   if (!existing) return res.status(404).json({ error: 'character not found' });
 
-  const { name, label, notes, color, sort_order, normal_stash, nomad_stash, expedition_stash, parent_id } = req.body;
+  const { name, label, notes, color, sort_order, normal_stash, nomad_stash, expedition_stash, outpost_slots, parent_id } = req.body;
   if (name !== undefined && (typeof name !== 'string' || !name.trim())) {
     return res.status(400).json({ error: 'name must be a non-empty string' });
   }
@@ -225,6 +227,7 @@ app.put('/api/characters/:id', (req, res) => {
       normal_stash = ?,
       nomad_stash  = ?,
       expedition_stash = ?,
+      outpost_slots = ?,
       parent_id   = ?
     WHERE id = ?
   `).run(
@@ -236,6 +239,7 @@ app.put('/api/characters/:id', (req, res) => {
     parseStashCount('normal_stash', normal_stash, current.normal_stash ?? 0),
     parseStashCount('nomad_stash', nomad_stash, current.nomad_stash ?? 0),
     parseStashCount('expedition_stash', expedition_stash, current.expedition_stash ?? 0),
+    parseStashCount('outpost_slots', outpost_slots, current.outpost_slots ?? 0),
     parsedParentId,
     id,
   );
